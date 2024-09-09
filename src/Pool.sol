@@ -4,7 +4,7 @@ pragma solidity ^0.8.13;
 import {IPool} from "./interfaces/IPool.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 import {IPoolLogicActions} from "./interfaces/pool-logic/IPoolLogicActions.sol";
-import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import {IERC20} from "./interfaces/utils/IERC20.sol";
 
 contract Pool is IPool, Ownable{
     address public override VAULT_ADDRESS = address(0);
@@ -72,6 +72,7 @@ contract Pool is IPool, Ownable{
 
     function updatePoolLogicAddress(address poolLogicAddress) external override onlyOwner {
         emit PoolLogicAddressUpdated(POOL_LOGIC, poolLogicAddress);
+        POOL_LOGIC = poolLogicAddress;
         poolLogic = IPoolLogicActions(POOL_LOGIC);
     }
 
@@ -108,8 +109,6 @@ contract Pool is IPool, Ownable{
     }
 
     function _removeLiquidity(address user, address token, uint256 lpUnits) internal {
-        
-        if (lpUnits > userLpUnitInfo[user][token]) revert InvalidLpUnits();
 
         // deduct lp from user
         userLpUnitInfo[user][token] -= lpUnits;
