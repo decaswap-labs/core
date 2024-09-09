@@ -11,5 +11,7 @@ interface IPoolActions{
     function updatePoolLogicAddress(address) external;
     function updateVaultAddress(address) external;
     function updateRouterAddress(address) external;
+    function updateMinLaunchReserveA(address, uint256) external;
+    function updateMinSlippage(address, uint256) external;
 
 }

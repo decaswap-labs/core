@@ -9,4 +9,6 @@ interface IPoolEvents {
     event VaultAddressUpdated(address, address);
     event RouterAddressUpdated(address, address);
     event PoolLogicAddressUpdated(address, address);
+    event MinLaunchReserveUpdated(address, uint256, uint256);
+    event MinSlippageUpdated(address, uint256, uint256);
 }

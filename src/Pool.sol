@@ -76,6 +76,16 @@ contract Pool is IPool, Ownable{
         poolLogic = IPoolLogicActions(POOL_LOGIC);
     }
 
+    function updateMinLaunchReserveA(address token, uint256 newMinLaunchReserveA) external override onlyOwner {
+        emit MinLaunchReserveUpdated(token, poolInfo[token].minLaunchReserveA, newMinLaunchReserveA);
+        poolInfo[token].minLaunchReserveA = newMinLaunchReserveA;
+    }
+
+    function updateMinSlippage(address token, uint256 newMinSlippage) external override onlyOwner {
+        emit MinSlippageUpdated(token, poolInfo[token].poolSlippage, newMinSlippage);
+        poolInfo[token].poolSlippage = newMinSlippage;
+    }
+
     function _createPool(address token, uint256 minLaunchReserveA, uint256 poolSlippage) internal {
         if (token == address(0)){
             revert InvalidToken();
