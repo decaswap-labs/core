@@ -6,6 +6,7 @@ import "../lib/openzeppelin-contracts-upgradeable/contracts/access/OwnableUpgrad
 import {IPoolActions} from "./interfaces/pool/IPoolActions.sol";
 import {IPoolStates} from "./interfaces/pool/IPoolStates.sol";
 import {IRouter} from "./interfaces/IRouter.sol";
+import {IERC20} from "./interfaces/utils/IERC20.sol";
 
 contract Router is Initializable,OwnableUpgradeable, IRouter{
 
@@ -26,9 +27,9 @@ contract Router is Initializable,OwnableUpgradeable, IRouter{
 
     function addLiquidity(address token, uint256 amount) external override {
         if(getPoolAddress(token) == address(0)) revert InvalidPool();
-
         if(amount == 0) revert InvalidAmount();
 
+        IERC20(token).transferFrom(msg.sender, POOL_ADDRESS, amount);
         pool.add(msg.sender, token, amount);
 
         emit LiquidityAdded(msg.sender, token, amount);
