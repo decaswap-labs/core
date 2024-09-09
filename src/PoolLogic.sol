@@ -1,11 +1,13 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.13;
+pragma solidity ^0.8.20;
 
 import {IPoolStates} from "./interfaces/pool/IPoolStates.sol";
 import {IPoolLogic} from "./interfaces/IPoolLogic.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
+import "@openzeppelin/contracts/proxy/utils/Initializable.sol";
 
-contract PoolLogic is Ownable, IPoolLogic {
+
+contract PoolLogic is Initializable, Ownable, IPoolLogic {
 
     uint256 internal BASE_D_AMOUNT = 1e18;
     uint256 internal DECIMAL = 1e18;
@@ -18,7 +20,8 @@ contract PoolLogic is Ownable, IPoolLogic {
         _;
     }
 
-    constructor(address poolAddress) Ownable(msg.sender){
+    function initialize(address poolAddress) public initializer {
+        Ownable(msg.sender);
         POOL_ADDRESS = poolAddress;
         pool = IPoolStates(POOL_ADDRESS);
         emit PoolAddressUpdated(address(0), POOL_ADDRESS);
@@ -64,6 +67,7 @@ contract PoolLogic is Ownable, IPoolLogic {
     }
 
     function decoupleTuple(address poolAddress) private view returns (address) {
+        // TODO : Resolve this tuple unbundling issue
         (uint a, uint b, uint c, uint d, uint f, uint g, address tokenAddress) = pool.poolInfo(poolAddress);
         return tokenAddress;
     }

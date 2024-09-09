@@ -6,6 +6,7 @@ interface IPoolLogicActions{
     function mintDUnits(uint256 amount, uint256 reserveA, uint256 reserveD) external returns(uint256);
     function updateBaseDAmount(uint amount) external;
     function updatePoolAddress(address) external;
+    
     function calculateAssetTransfer(uint,uint,uint) external view returns(uint256);
     function calculateDToDeduct(uint,uint,uint) external view returns(uint256);
 }
