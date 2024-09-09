@@ -31,6 +31,7 @@ contract PoolLogic is Ownable, IPoolLogic {
 
         uint256 lpUnits = totalLpUnits * amount / (amount + reserveA);
         emit LPUnitsMinted(lpUnits);
+        return lpUnits;
     }
 
     function mintDUnits(uint256 amount, uint256 reserveA, uint256 reserveD) external override onlyPool returns(uint256) {
@@ -38,8 +39,17 @@ contract PoolLogic is Ownable, IPoolLogic {
             return BASE_D_AMOUNT;
         }
 
-        uint256 dUints = reserveD * amount / (amount + reserveA);
+        uint256 dUints = reserveD * amount / (reserveA);
         emit DUnitsMinted(dUints);
+        return dUints;
+    }
+
+    function calculateAssetTransfer(uint256 lpUnits, uint256 reserveA, uint256 totalLpUnits) external pure returns(uint256) {
+        return reserveA * (lpUnits/totalLpUnits);
+    }
+
+    function calculateDToDeduct(uint256 lpUnits, uint256 reserveD, uint256 totalLpUnits) external pure returns(uint256) {
+        return reserveD * (lpUnits/totalLpUnits);
     }
 
     function updateBaseDAmount(uint256 newBaseDAmount) external override onlyOwner {

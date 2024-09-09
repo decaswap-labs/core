@@ -6,4 +6,5 @@ interface IPoolErrors {
     error InvalidToken();
     error InvalidDReserve();
     error InvalidSlippage();
+    error InvalidLpUnits();
 }

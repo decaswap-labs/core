@@ -4,6 +4,7 @@ pragma solidity ^0.8.13;
 import {IPool} from "./interfaces/IPool.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 import {IPoolLogicActions} from "./interfaces/pool-logic/IPoolLogicActions.sol";
+import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 contract Pool is IPool, Ownable{
     address public override VAULT_ADDRESS = address(0);
@@ -79,9 +80,24 @@ contract Pool is IPool, Ownable{
         emit LiquidityAdded(user, token, amount, newLpUnits, newDUnits);
     }
 
-    function remove(address token, uint256 lpUnits) external override onlyRouter {
-        emit LiquidityRemoved();
-        //TODO
+    function remove(address user, address token, uint256 lpUnits) external override onlyRouter {
+
+        if (lpUnits > userLpUnitInfo[user][token]) revert InvalidLpUnits();
+
+        // deduct lp from user
+        userLpUnitInfo[user][token] -= lpUnits;
+        // calculate asset to transfer
+        uint256 assetToTransfer = poolLogic.calculateAssetTransfer(lpUnits, poolInfo[token].reserveA, poolInfo[token].poolOwnershipUnitsTotal);
+        // minus d amount from reserve
+        uint256 dAmountToDeduct = poolLogic.calculateDToDeduct(lpUnits, poolInfo[token].reserveD, poolInfo[token].poolOwnershipUnitsTotal);
+        
+        poolInfo[token].reserveD -= dAmountToDeduct;
+        poolInfo[token].reserveA -= assetToTransfer;
+        poolInfo[token].poolOwnershipUnitsTotal -= lpUnits;
+
+        IERC20(token).transfer(user,assetToTransfer);
+
+        emit LiquidityRemoved(user,token,lpUnits,assetToTransfer,dAmountToDeduct);
     }
 
     function updateRouterAddress(address routerAddress) external override onlyOwner {
