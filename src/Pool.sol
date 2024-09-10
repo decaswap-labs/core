@@ -10,6 +10,7 @@ contract Pool is IPool, Ownable{
     address public override VAULT_ADDRESS = address(0);
     address public override ROUTER_ADDRESS = address(0);
     address public override POOL_LOGIC = address(0);
+    uint256 public override globalSlippage = 0;
 
     IPoolLogicActions poolLogic;
 
@@ -17,14 +18,24 @@ contract Pool is IPool, Ownable{
         uint256 reserveD;
         uint256 poolOwnershipUnitsTotal;
         uint256 reserveA;
-        uint256 poolSlippage;
         uint256 minLaunchReserveA;
         uint256 poolFeeCollected;
         address tokenAddress;    
     }
 
+    struct Swap {
+        uint256 swapID;
+        uint256 swapAmount;
+        uint256 swapAmountRemainign;
+        uint256 streamsCount;
+        uint256 streamsRemaining;
+        address tokenIn;
+        address tokenOut; // 0xD if swapping to D
+    }
+
     mapping(address => PoolInfo) public override poolInfo;
     mapping(address => mapping(address=>uint256)) public override userLpUnitInfo;
+    mapping(bytes32 => uint256) public override pairSlippage;
 
     modifier onlyRouter(){
         if(msg.sender != ROUTER_ADDRESS) revert NotRouter(msg.sender);
@@ -43,8 +54,8 @@ contract Pool is IPool, Ownable{
     }
 
 
-    function createPool(address token, uint256 minLaunchReserveA, uint256 poolSlippage, uint256 tokenAmount) external override onlyOwner {
-        _createPool(token,minLaunchReserveA,poolSlippage);
+    function createPool(address token, uint256 minLaunchReserveA, uint256 tokenAmount) external override onlyOwner {
+        _createPool(token,minLaunchReserveA);
         _addLiquidity(msg.sender, token, tokenAmount);
     }
 
@@ -59,6 +70,22 @@ contract Pool is IPool, Ownable{
     function remove(address user, address token, uint256 lpUnits) external override onlyRouter {
         _removeLiquidity(user,token,lpUnits);
     }
+
+    // function swap(uint256 amountIn, uint256 amountOut, address tokenIn, address tokenOut) external {
+    //     uint256 streamCount;
+    //     // break into streams
+    //     if(tokenOut == address(0)) {
+    //         streamCount = poolLogic.calculateStreamCount(amountIn, poolInfo[tokenIn].poolSlippage, poolInfo[tokenIn].reserveD);
+    //     }
+
+    //     uint256 minPoolDepth = poolInfo[tokenIn].reserveD <= poolInfo[tokenOut].reserveD? poolInfo[tokenIn].reserveD : poolInfo[tokenOut].reserveD;
+    //     streamCount = poolLogic.calculateStreamCount(amountIn, poolInfo[tokenIn].poolSlippage, minPoolDepth);
+
+
+
+    //     // add into queue 
+    //     // execute pending streams
+    // }
 
     function updateRouterAddress(address routerAddress) external override onlyOwner {
         emit RouterAddressUpdated(ROUTER_ADDRESS,routerAddress);
@@ -81,35 +108,37 @@ contract Pool is IPool, Ownable{
         poolInfo[token].minLaunchReserveA = newMinLaunchReserveA;
     }
 
-    function updateMinSlippage(address token, uint256 newMinSlippage) external override onlyOwner {
-        emit MinSlippageUpdated(token, poolInfo[token].poolSlippage, newMinSlippage);
-        poolInfo[token].poolSlippage = newMinSlippage;
+    function updatePairSlippage(address tokenA, address tokenB, uint256 newSlippage) external override onlyOwner {
+        (address A, address B) = tokenA < tokenB ? (tokenA,tokenB):(tokenB,tokenA);
+        bytes32 poolId = keccak256(abi.encodePacked(A,B));
+        pairSlippage[poolId] = newSlippage;
+        emit PairSlippageUpdated(tokenA, tokenB, newSlippage);
     }
 
-    function _createPool(address token, uint256 minLaunchReserveA, uint256 poolSlippage) internal {
+    function updateGlobalSlippage(uint256 newGlobalSlippage) external override onlyOwner{
+        emit GlobalSlippageUpdated(globalSlippage, newGlobalSlippage);
+        globalSlippage = newGlobalSlippage;
+    }
+
+    function _createPool(address token, uint256 minLaunchReserveA) internal {
         if (token == address(0)){
             revert InvalidToken();
-        }
-
-        if (poolSlippage == 0){
-            revert InvalidSlippage();
         }
         
         poolInfo[token].tokenAddress = token;
         poolInfo[token].minLaunchReserveA = minLaunchReserveA;
-        poolInfo[token].poolSlippage = poolSlippage;
 
         emit PoolCreated(token,minLaunchReserveA);
     }
 
     function _addLiquidity(address user, address token, uint256 amount) internal {
                 // lp units
-        uint256 newLpUnits = poolLogic.mintLpUnits(amount, poolInfo[token].reserveA, poolInfo[token].poolOwnershipUnitsTotal);
+        uint256 newLpUnits = poolLogic.calculateLpUnitsToMint(amount, poolInfo[token].reserveA, poolInfo[token].poolOwnershipUnitsTotal);
         poolInfo[token].reserveA += amount;
         poolInfo[token].poolOwnershipUnitsTotal+= newLpUnits;
 
         // d units
-        uint256 newDUnits = poolLogic.mintDUnits(amount, poolInfo[token].reserveA, poolInfo[token].reserveD);
+        uint256 newDUnits = poolLogic.calculateDUnitsToMint(amount, poolInfo[token].reserveA, poolInfo[token].reserveD);
         poolInfo[token].reserveD += newDUnits;
 
         //mint D

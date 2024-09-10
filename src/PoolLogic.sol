@@ -27,25 +27,27 @@ contract PoolLogic is Initializable, OwnableUpgradeable, IPoolLogic {
         emit PoolAddressUpdated(address(0), POOL_ADDRESS);
     }
 
-    function mintLpUnits(uint256 amount, uint256 reserveA, uint256 totalLpUnits) external override onlyPool returns(uint256) {
+    function calculateLpUnitsToMint(uint256 amount, uint256 reserveA, uint256 totalLpUnits) external pure returns(uint256) {
         if (reserveA == 0) {
             return amount;
         }
 
-        uint256 lpUnits = totalLpUnits * amount / (amount + reserveA);
-        emit LPUnitsMinted(lpUnits);
-        return lpUnits;
+        return totalLpUnits * amount / (amount + reserveA);
     }
 
-    function mintDUnits(uint256 amount, uint256 reserveA, uint256 reserveD) external override onlyPool returns(uint256) {
+    function calculateDUnitsToMint(uint256 amount, uint256 reserveA, uint256 reserveD) external view returns(uint256) {
          if (reserveD == 0) {
             return BASE_D_AMOUNT;
         }
 
-        uint256 dUints = reserveD * amount / (reserveA);
-        emit DUnitsMinted(dUints);
-        return dUints;
+        return reserveD * amount / (reserveA);
     }
+
+    // // 0.15% will be 15 poolSlippage. 100% is 100000 units
+    // function calculateStreamCount(uint256 amount, uint256 poolSlippage, uint256 reserveD) external pure override returns(uint256) {
+    //     // streamQuantity = SwappedAmount/(globalMinSlippage * PoolDepth)
+    //     return amount * 10000/ (100000-poolSlippage * reserveD);
+    // }
 
     function calculateAssetTransfer(uint256 lpUnits, uint256 reserveA, uint256 totalLpUnits) external pure returns(uint256) {
         return reserveA * (lpUnits/totalLpUnits);
@@ -68,7 +70,7 @@ contract PoolLogic is Initializable, OwnableUpgradeable, IPoolLogic {
 
     function getPoolAddress(address poolAddress) private view returns (address) {
         // TODO : Resolve this tuple unbundling issue
-        (uint a, uint b, uint c, uint d, uint f, uint g, address tokenAddress) = pool.poolInfo(poolAddress);
+        (uint a, uint b, uint c, uint d, uint f, address tokenAddress) = pool.poolInfo(poolAddress);
         return tokenAddress;
     }
 }

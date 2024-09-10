@@ -54,7 +54,7 @@ contract Router is Initializable,OwnableUpgradeable, IRouter{
 
     function getPoolAddress(address token) internal returns(address){
         // TODO : Resolve this tuple unbundling issue
-        (uint a, uint b, uint c, uint d, uint f, uint g, address tokenAddress) = poolStates.poolInfo(token);
+        (uint a, uint b, uint c, uint d, uint f, address tokenAddress) = poolStates.poolInfo(token);
         return tokenAddress;
     }
 
