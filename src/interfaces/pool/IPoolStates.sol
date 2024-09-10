@@ -9,4 +9,5 @@ interface IPoolStates {
     function POOL_LOGIC() external view returns(address);
     function pairSlippage(bytes32) external view returns(uint256);
     function globalSlippage() external view returns(uint256);
+    function pairSwapHistory(bytes32) external view returns(uint256,uint256);
 }

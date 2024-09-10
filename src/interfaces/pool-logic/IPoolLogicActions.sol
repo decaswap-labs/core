@@ -9,4 +9,5 @@ interface IPoolLogicActions{
     
     function calculateAssetTransfer(uint,uint,uint) external pure returns(uint256);
     function calculateDToDeduct(uint,uint,uint) external pure returns(uint256);
+    function calculateStreamCount(uint,uint,uint) external pure returns(uint);
 }

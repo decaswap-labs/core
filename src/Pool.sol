@@ -5,12 +5,19 @@ import {IPool} from "./interfaces/IPool.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 import {IPoolLogicActions} from "./interfaces/pool-logic/IPoolLogicActions.sol";
 import {IERC20} from "./interfaces/utils/IERC20.sol";
+import {Queue} from "./lib/SwapQueue.sol";
+import {Swap} from "./lib/SwapQueue.sol";
+import {PoolSwapData} from "./lib/SwapQueue.sol";
 
 contract Pool is IPool, Ownable{
+    using Queue for Queue.QueueStruct;
+    Queue.QueueStruct private streamQueue;
+
     address public override VAULT_ADDRESS = address(0);
     address public override ROUTER_ADDRESS = address(0);
     address public override POOL_LOGIC = address(0);
     uint256 public override globalSlippage = 0;
+
 
     IPoolLogicActions poolLogic;
 
@@ -23,19 +30,10 @@ contract Pool is IPool, Ownable{
         address tokenAddress;    
     }
 
-    struct Swap {
-        uint256 swapID;
-        uint256 swapAmount;
-        uint256 swapAmountRemainign;
-        uint256 streamsCount;
-        uint256 streamsRemaining;
-        address tokenIn;
-        address tokenOut; // 0xD if swapping to D
-    }
-
     mapping(address => PoolInfo) public override poolInfo;
     mapping(address => mapping(address=>uint256)) public override userLpUnitInfo;
     mapping(bytes32 => uint256) public override pairSlippage;
+    mapping(bytes32 => PoolSwapData) public override pairSwapHistory;
 
     modifier onlyRouter(){
         if(msg.sender != ROUTER_ADDRESS) revert NotRouter(msg.sender);
@@ -47,6 +45,7 @@ contract Pool is IPool, Ownable{
         ROUTER_ADDRESS = routerAddress;
         POOL_LOGIC = poolLogicAddress;
         poolLogic = IPoolLogicActions(POOL_LOGIC);
+        streamQueue.init();
 
         emit VaultAddressUpdated(address(0), VAULT_ADDRESS);
         emit RouterAddressUpdated(address(0), ROUTER_ADDRESS);
@@ -71,21 +70,42 @@ contract Pool is IPool, Ownable{
         _removeLiquidity(user,token,lpUnits);
     }
 
-    // function swap(uint256 amountIn, uint256 amountOut, address tokenIn, address tokenOut) external {
-    //     uint256 streamCount;
-    //     // break into streams
-    //     if(tokenOut == address(0)) {
-    //         streamCount = poolLogic.calculateStreamCount(amountIn, poolInfo[tokenIn].poolSlippage, poolInfo[tokenIn].reserveD);
-    //     }
+    function swap(uint256 amountIn, uint256 amountOut, uint256 executionPrice, address tokenIn, address tokenOut) external {
+        uint256 streamCount;
+        // break into streams
+        if(tokenOut == address(0)) {
+            streamCount = poolLogic.calculateStreamCount(amountIn, globalSlippage , poolInfo[tokenIn].reserveD);
+        }
 
-    //     uint256 minPoolDepth = poolInfo[tokenIn].reserveD <= poolInfo[tokenOut].reserveD? poolInfo[tokenIn].reserveD : poolInfo[tokenOut].reserveD;
-    //     streamCount = poolLogic.calculateStreamCount(amountIn, poolInfo[tokenIn].poolSlippage, minPoolDepth);
+        uint256 minPoolDepth = poolInfo[tokenIn].reserveD <= poolInfo[tokenOut].reserveD? poolInfo[tokenIn].reserveD : poolInfo[tokenOut].reserveD;
+        bytes32 poolId = getPoolId(tokenIn, tokenOut);
+        streamCount = poolLogic.calculateStreamCount(amountIn, pairSlippage[poolId] , minPoolDepth);
 
+        // initiate swapqueue per direction
+        bytes32 pairId = keccak256(abi.encodePacked(tokenIn, tokenOut)); // for one direction
 
+        // update history
+        pairSwapHistory[pairId] = PoolSwapData({
+            poolSwapIdLatest: pairSwapHistory[poolId].poolSwapIdLatest + 1,
+            totalSwapsPool: pairSwapHistory[poolId].totalSwapsPool + 1
+        });
 
-    //     // add into queue 
-    //     // execute pending streams
-    // }
+        // if execution price 0 (stream queue) , otherwise another queue
+        // add into queue
+        if(executionPrice == 0){
+            streamQueue.enqueue(Swap({
+                swapID: pairSwapHistory[poolId].poolSwapIdLatest,
+                swapAmount: amountIn,
+                swapAmountRemainign: amountIn,
+                streamsCount: streamCount,
+                streamsRemaining: streamCount,
+                tokenIn: tokenIn,
+                tokenOut : tokenOut
+            }));
+        }
+
+        // execute pending streams
+    }
 
     function updateRouterAddress(address routerAddress) external override onlyOwner {
         emit RouterAddressUpdated(ROUTER_ADDRESS,routerAddress);
@@ -109,8 +129,7 @@ contract Pool is IPool, Ownable{
     }
 
     function updatePairSlippage(address tokenA, address tokenB, uint256 newSlippage) external override onlyOwner {
-        (address A, address B) = tokenA < tokenB ? (tokenA,tokenB):(tokenB,tokenA);
-        bytes32 poolId = keccak256(abi.encodePacked(A,B));
+        bytes32 poolId = getPoolId(tokenA, tokenB);
         pairSlippage[poolId] = newSlippage;
         emit PairSlippageUpdated(tokenA, tokenB, newSlippage);
     }
@@ -118,6 +137,11 @@ contract Pool is IPool, Ownable{
     function updateGlobalSlippage(uint256 newGlobalSlippage) external override onlyOwner{
         emit GlobalSlippageUpdated(globalSlippage, newGlobalSlippage);
         globalSlippage = newGlobalSlippage;
+    }
+
+    function getPoolId(address tokenA, address tokenB) public pure returns(bytes32){
+        (address A, address B) = tokenA < tokenB ? (tokenA,tokenB):(tokenB,tokenA);
+        return keccak256(abi.encodePacked(A,B));
     }
 
     function _createPool(address token, uint256 minLaunchReserveA) internal {

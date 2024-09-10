@@ -43,11 +43,11 @@ contract PoolLogic is Initializable, OwnableUpgradeable, IPoolLogic {
         return reserveD * amount / (reserveA);
     }
 
-    // // 0.15% will be 15 poolSlippage. 100% is 100000 units
-    // function calculateStreamCount(uint256 amount, uint256 poolSlippage, uint256 reserveD) external pure override returns(uint256) {
-    //     // streamQuantity = SwappedAmount/(globalMinSlippage * PoolDepth)
-    //     return amount * 10000/ (100000-poolSlippage * reserveD);
-    // }
+    // 0.15% will be 15 poolSlippage. 100% is 100000 units
+    function calculateStreamCount(uint256 amount, uint256 poolSlippage, uint256 reserveD) external pure override returns(uint256) {
+        // streamQuantity = SwappedAmount/(globalMinSlippage * PoolDepth)
+        return amount * 10000/ (100000-poolSlippage * reserveD);
+    }
 
     function calculateAssetTransfer(uint256 lpUnits, uint256 reserveA, uint256 totalLpUnits) external pure returns(uint256) {
         return reserveA * (lpUnits/totalLpUnits);
