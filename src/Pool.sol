@@ -249,6 +249,13 @@ contract Pool is IPool, Ownable{
                 tempSwap.swapAmountRemainign -= tempSwap.swapPerStream;
                 tempSwap.amountOut += amountOut;
                 tempSwap.streamsCount--;
+
+                if(tempSwap.streamsCount == 0) {
+                    tempSwap.completed = true;
+                }
+
+                pairStreamQueue[pairId].data[i] = tempSwap;
+                
             }else if(tempSwap.streamsRemaining == tempSwap.streamsCount){
                 //TODO: find opposing direction swap and execute full
             }else{
