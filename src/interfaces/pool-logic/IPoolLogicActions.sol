@@ -10,4 +10,5 @@ interface IPoolLogicActions{
     function calculateAssetTransfer(uint,uint,uint) external pure returns(uint256);
     function calculateDToDeduct(uint,uint,uint) external pure returns(uint256);
     function calculateStreamCount(uint,uint,uint) external pure returns(uint);
+    function getSwapAmountOut(uint256 amountIn, uint256 reserveA, uint256 reserveB, uint256 reserveD1, uint256 reserveD2) external pure returns (uint256, uint256);
 }

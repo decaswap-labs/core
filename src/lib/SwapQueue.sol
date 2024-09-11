@@ -7,8 +7,13 @@ struct Swap {
     uint256 swapAmountRemainign;
     uint256 streamsCount;
     uint256 streamsRemaining;
+    uint256 swapPerStream;
+    uint256 executionPrice;
+    uint256 amountOut;
+    address user;
     address tokenIn;
-    address tokenOut; // 0xD if swapping to D
+    address tokenOut;
+    bool completed; // 0xD if swapping to D
 }
 
 struct PoolSwapData{
