@@ -50,7 +50,7 @@ contract PoolLogic is Initializable, OwnableUpgradeable, IPoolLogic {
     }
 
     function calculateAssetTransfer(uint256 lpUnits, uint256 reserveA, uint256 totalLpUnits) external pure override returns(uint256) {
-        return reserveA * (lpUnits/totalLpUnits);
+        return (reserveA * lpUnits)/totalLpUnits;
     }
 
     function calculateDToDeduct(uint256 lpUnits, uint256 reserveD, uint256 totalLpUnits) external pure override returns(uint256) {
@@ -62,7 +62,7 @@ contract PoolLogic is Initializable, OwnableUpgradeable, IPoolLogic {
         // return d1 -> this will be updated in the pool
         // b = d * B / d + D2 -> this will be returned to the pool
         uint256 d1 = (amountIn * reserveD1) / (amountIn + reserveA);
-        return (d1 , (d1 * reserveB / d1 * reserveD2));
+        return (d1 , (d1 * reserveB / d1 + reserveD2));
         
     }
 

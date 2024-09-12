@@ -70,6 +70,7 @@ contract Pool is IPool, Ownable{
         _removeLiquidity(user,token,lpUnits);
     }
      
+    // TODO: cancel pending streams by ID.
     // neeed to add in interface
     function executeSwap(address user, uint256 amountIn, uint256 executionPrice, address tokenIn, address tokenOut) external override onlyRouter{
         uint256 streamCount;
@@ -92,13 +93,6 @@ contract Pool is IPool, Ownable{
 
         // initiate swapqueue per direction
         pairId = keccak256(abi.encodePacked(tokenIn, tokenOut)); // for one direction
-
-        // update history
-        // pairSwapHistory[pairId] = PoolSwapData({
-        //     poolSwapIdLatest: pairSwapHistory[pairId].poolSwapIdLatest + 1,
-        //     totalSwapsPool: pairSwapHistory[pairId].totalSwapsPool + 1
-        // });
-
 
         // if execution price 0 (stream queue) , otherwise another queue
         // add into queue
@@ -193,7 +187,7 @@ contract Pool is IPool, Ownable{
     }
 
     function _addLiquidity(address user, address token, uint256 amount) internal {
-                // lp units
+        // lp units
         uint256 newLpUnits = poolLogic.calculateLpUnitsToMint(amount, poolInfo[token].reserveA, poolInfo[token].poolOwnershipUnitsTotal);
         poolInfo[token].reserveA += amount;
         poolInfo[token].poolOwnershipUnitsTotal+= newLpUnits;
@@ -221,7 +215,7 @@ contract Pool is IPool, Ownable{
         poolInfo[token].reserveA -= assetToTransfer;
         poolInfo[token].poolOwnershipUnitsTotal -= lpUnits;
 
-        IERC20(token).transfer(user,assetToTransfer);
+        // IERC20(token).transfer(user,assetToTransfer);
 
         emit LiquidityRemoved(user,token,lpUnits,assetToTransfer,dAmountToDeduct);
 
@@ -297,10 +291,9 @@ contract Pool is IPool, Ownable{
             }
 
         }
-            // }else{
-            //     //TODO: find pending swap and execute it, if price is reached.
-            // }
-        // }
+
+         //TODO: find pending swap and execute it, if price is reached.
+
     }
 
 }
