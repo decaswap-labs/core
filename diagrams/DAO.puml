@@ -1,0 +1,30 @@
+@startuml Router
+!pragma teoz true
+
+title Router.sol
+
+actor User as U
+box "F" #LightYellow
+participant "Example Participant 1" as EP1
+end box
+box "Example Box 2" #LightBlue
+    database ExampleDatabase1 as ED1
+    database ExampleDatabase2 as ED2
+end box
+database ExampleBridge as EB
+box "Example Box 3" #LightPink
+    database ExampleDatabase3 as ED3
+    database ExampleDatabase4 as ED4
+end box
+
+U --> EP1 : Example Action 1
+  EP1 --> ED1: Example Action 2
+  ED1 --> ED2: Example Action 3
+  ED2 --> ED1: Example Action 4
+  ED1 --> EB: Example Action 5
+  EB --> ED3: Example Action 6
+  ED3 --> ED4: Example Action 7
+  ED3 --> ED1: Example Action 8
+  ED1 --> ED1: Example Action 9
+
+@enduml
