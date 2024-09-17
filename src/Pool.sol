@@ -8,6 +8,7 @@ import {IERC20} from "./interfaces/utils/IERC20.sol";
 import {Queue} from "./lib/SwapQueue.sol";
 import {Swap} from "./lib/SwapQueue.sol";
 import {PoolSwapData} from "./lib/SwapQueue.sol";
+import {SwapSorter} from "./lib/QuickSort.sol";
 
 contract Pool is IPool, Ownable {
     using Queue for Queue.QueueStruct;
@@ -24,6 +25,8 @@ contract Pool is IPool, Ownable {
         uint256 poolOwnershipUnitsTotal;
         uint256 reserveA;
         uint256 minLaunchReserveA;
+        uint256 minLaunchReserveD;
+        uint256 initialDToMint;
         uint256 poolFeeCollected;
         address tokenAddress;
     }
@@ -51,8 +54,15 @@ contract Pool is IPool, Ownable {
         emit PoolLogicAddressUpdated(address(0), POOL_LOGIC);
     }
 
-    function createPool(address token, uint256 minLaunchReserveA, uint256 tokenAmount) external override onlyOwner {
-        _createPool(token, minLaunchReserveA);
+
+    function createPool(
+        address token,
+        uint256 minLaunchReserveA,
+        uint256 minLaunchReserveD,
+        uint256 tokenAmount,
+        uint256 initialDToMint
+    ) external override onlyOwner {
+        _createPool(token, minLaunchReserveA, minLaunchReserveD, initialDToMint);
         _addLiquidity(msg.sender, token, tokenAmount);
     }
 
@@ -60,21 +70,24 @@ contract Pool is IPool, Ownable {
         // TODO
     }
 
-    function add(address user, address token, uint256 amount) external override onlyRouter {
-        _addLiquidity(user, token, amount);
+
+    function add(address user, address token, uint256 amountA) external override onlyRouter {
+        _addLiquidity(user, token, amountA);
     }
 
     function remove(address user, address token, uint256 lpUnits) external override onlyRouter {
         _removeLiquidity(user, token, lpUnits);
     }
 
-    // TODO: cancel pending streams by ID.
+
     // neeed to add in interface
     function executeSwap(address user, uint256 amountIn, uint256 executionPrice, address tokenIn, address tokenOut)
         external
         override
         onlyRouter
     {
+        //TODO check if the reserves are greater than min launch
+
         uint256 streamCount;
         uint256 swapPerStream;
         uint256 minPoolDepth;
@@ -83,10 +96,6 @@ contract Pool is IPool, Ownable {
         bytes32 pairId;
 
         // TODO: Need to handle same vault deposit withdraw streams
-        // if(tokenOut == address(0)) {
-        //     streamCount = poolLogic.calculateStreamCount(amountIn, globalSlippage , poolInfo[tokenIn].reserveD);
-        // }
-
         // break into streams
         minPoolDepth = poolInfo[tokenIn].reserveD <= poolInfo[tokenOut].reserveD
             ? poolInfo[tokenIn].reserveD
@@ -98,15 +107,18 @@ contract Pool is IPool, Ownable {
         // initiate swapqueue per direction
         pairId = keccak256(abi.encodePacked(tokenIn, tokenOut)); // for one direction
 
+        uint256 currentPrice = poolLogic.getExecutionPrice(poolInfo[tokenIn].reserveA, poolInfo[tokenOut].reserveA);
+
         // if execution price 0 (stream queue) , otherwise another queue
         // add into queue
-        if (executionPrice == 0) {
+
+        if (executionPrice <= currentPrice) {
             pairStreamQueue[pairId].enqueue(
                 Swap({
-                    swapID: pairStreamQueue[pairId].front,
+                    swapID: pairStreamQueue[pairId].back,
                     swapAmount: amountIn,
                     executionPrice: executionPrice,
-                    swapAmountRemainign: amountIn,
+                    swapAmountRemaining: amountIn,
                     streamsCount: streamCount,
                     streamsRemaining: streamCount,
                     swapPerStream: swapPerStream,
@@ -121,13 +133,12 @@ contract Pool is IPool, Ownable {
             emit StreamAdded(pairStreamQueue[pairId].front, amountIn, executionPrice, amountIn, streamCount, pairId);
         } else {
             // adding to pending queue
-            // TODO: Reorder queue w.r.t price
             pairPendingQueue[pairId].enqueue(
                 Swap({
-                    swapID: pairPendingQueue[pairId].front,
+                    swapID: pairPendingQueue[pairId].back,
                     swapAmount: amountIn,
                     executionPrice: executionPrice,
-                    swapAmountRemainign: amountIn,
+                    swapAmountRemaining: amountIn,
                     streamsCount: streamCount,
                     swapPerStream: swapPerStream,
                     streamsRemaining: streamCount,
@@ -139,12 +150,27 @@ contract Pool is IPool, Ownable {
                 })
             );
 
+            // Sort the array w.r.t price
+            SwapSorter.quickSort(pairPendingQueue[pairId].data);
+
             emit PendingStreamAdded(
                 pairPendingQueue[pairId].front, amountIn, executionPrice, amountIn, streamCount, pairId
             );
         }
         // execute pending streams
         _executeStream(pairId, tokenIn, tokenOut);
+    }
+
+    function cancelSwap(uint256 swapId, bytes32 pairId, bool isStreaming) external {
+        uint256 amountIn;
+        uint256 amountOut;
+        if (isStreaming) {
+            (pairStreamQueue[pairId], amountIn, amountOut) = _removeSwap(swapId, pairStreamQueue[pairId]);
+        } else {
+            (pairPendingQueue[pairId], amountIn, amountOut) = _removeSwap(swapId, pairPendingQueue[pairId]);
+        }
+
+        emit SwapCancelled(swapId, pairId, amountIn, amountOut);
     }
 
     function updateRouterAddress(address routerAddress) external override onlyOwner {
@@ -184,15 +210,20 @@ contract Pool is IPool, Ownable {
         return keccak256(abi.encodePacked(A, B));
     }
 
-    function _createPool(address token, uint256 minLaunchReserveA) internal {
+    function _createPool(address token, uint256 minLaunchReserveA, uint256 minLaunchReserveD, uint256 initialDToMint)
+        internal
+    {
         if (token == address(0)) {
             revert InvalidToken();
         }
 
         poolInfo[token].tokenAddress = token;
         poolInfo[token].minLaunchReserveA = minLaunchReserveA;
+        poolInfo[token].minLaunchReserveD = minLaunchReserveD;
+        poolInfo[token].initialDToMint = initialDToMint;
 
-        emit PoolCreated(token, minLaunchReserveA);
+
+        emit PoolCreated(token, minLaunchReserveA, minLaunchReserveD);
     }
 
     function _addLiquidity(address user, address token, uint256 amount) internal {
@@ -203,7 +234,9 @@ contract Pool is IPool, Ownable {
         poolInfo[token].poolOwnershipUnitsTotal += newLpUnits;
 
         // d units
-        uint256 newDUnits = poolLogic.calculateDUnitsToMint(amount, poolInfo[token].reserveA, poolInfo[token].reserveD);
+        uint256 newDUnits = poolLogic.calculateDUnitsToMint(
+            amount, poolInfo[token].reserveA, poolInfo[token].reserveD, poolInfo[token].initialDToMint
+        );
         poolInfo[token].reserveD += newDUnits;
 
         //mint D
@@ -226,8 +259,8 @@ contract Pool is IPool, Ownable {
         poolInfo[token].reserveA -= assetToTransfer;
         poolInfo[token].poolOwnershipUnitsTotal -= lpUnits;
 
-        // IERC20(token).transfer(user,assetToTransfer);
 
+        // IERC20(token).transfer(user,assetToTransfer); // commented for test to run
         emit LiquidityRemoved(user, token, lpUnits, assetToTransfer, dAmountToDeduct);
     }
 
@@ -257,11 +290,12 @@ contract Pool is IPool, Ownable {
             // update swaps
 
             //TODO: Deduct fees from amount out = 5BPS.
-            frontSwap.swapAmountRemainign -= frontSwap.swapPerStream;
+            frontSwap.swapAmountRemaining -= frontSwap.swapPerStream;
             frontSwap.amountOut += amountOut;
-            frontSwap.streamsCount--;
+            frontSwap.streamsRemaining--;
 
-            if (frontSwap.streamsCount == 0) frontSwap.completed = true;
+
+            if (frontSwap.streamsRemaining == 0) frontSwap.completed = true;
 
             pairStreamQueue[pairId].data[pairStream.front] = frontSwap;
 
@@ -277,7 +311,8 @@ contract Pool is IPool, Ownable {
 
             // D not used
             (uint256 dOut2, uint256 amountOut2) = poolLogic.getSwapAmountOut(
-                oppositeSwap.swapAmountRemainign,
+
+                oppositeSwap.swapAmountRemaining,
                 poolInfo[tokenOut].reserveA,
                 poolInfo[tokenIn].reserveA,
                 poolInfo[tokenOut].reserveD,
@@ -286,17 +321,19 @@ contract Pool is IPool, Ownable {
 
             // D not used
             (uint256 dOut1, uint256 amountOut1) = poolLogic.getSwapAmountOut(
-                frontSwap.swapAmountRemainign,
+
+                frontSwap.swapAmountRemaining,
                 poolInfo[tokenIn].reserveA,
                 poolInfo[tokenOut].reserveA,
                 poolInfo[tokenIn].reserveD,
                 poolInfo[tokenOut].reserveD
             );
 
-            if (frontSwap.swapAmountRemainign < amountOut2) {
-                oppositeSwap.amountOut += frontSwap.swapAmountRemainign;
+
+            if (frontSwap.swapAmountRemaining < amountOut2) {
+                oppositeSwap.amountOut += frontSwap.swapAmountRemaining;
                 frontSwap.amountOut = amountOut1;
-                oppositeSwap.swapAmountRemainign -= frontSwap.swapAmountRemainign;
+                oppositeSwap.swapAmountRemaining -= frontSwap.swapAmountRemaining;
 
                 frontSwap.completed = true;
                 frontSwap.streamsRemaining = 0;
@@ -304,9 +341,9 @@ contract Pool is IPool, Ownable {
                 pairStreamQueue[pairId].data[pairStream.front] = frontSwap;
                 Queue.dequeue(pairStreamQueue[pairId]);
             } else {
-                frontSwap.amountOut += oppositeSwap.swapAmountRemainign;
+                frontSwap.amountOut += oppositeSwap.swapAmountRemaining;
                 oppositeSwap.amountOut = amountOut2;
-                frontSwap.swapAmountRemainign -= oppositeSwap.swapAmountRemainign;
+                frontSwap.swapAmountRemaining -= oppositeSwap.swapAmountRemaining;
 
                 oppositeSwap.completed = true;
                 oppositeSwap.streamsRemaining = 0;
@@ -316,6 +353,53 @@ contract Pool is IPool, Ownable {
             }
         }
 
-        //TODO: find pending swap and execute it, if price is reached.
+
+
+        // --------------------------- HANDLE PENDING SWAP INSERTION ----------------------------- //
+        Swap storage frontPendingSwap;
+        Queue.QueueStruct storage pairPending = pairPendingQueue[pairId];
+        frontPendingSwap = pairPending.data[pairPending.front];
+
+        uint256 executionPriceInOrder = frontPendingSwap.executionPrice;
+        uint256 executionPriceLatest = poolLogic.getExecutionPrice(
+            poolInfo[frontPendingSwap.tokenIn].reserveA, poolInfo[frontPendingSwap.tokenOut].reserveA
+        );
+
+        if (executionPriceLatest >= executionPriceInOrder) {
+            pairStreamQueue[pairId].enqueue(frontPendingSwap);
+            pairPendingQueue[pairId].dequeue();
+        }
+    }
+
+    function _removeSwap(uint256 swapId, Queue.QueueStruct storage swapQueue)
+        internal
+        returns (Queue.QueueStruct storage, uint256, uint256)
+    {
+        // transferring the remaining amount
+        uint256 amountIn = swapQueue.data[swapId].swapAmountRemaining;
+        uint256 amountOut = swapQueue.data[swapId].amountOut;
+        address user = swapQueue.data[swapId].user;
+        address token = swapQueue.data[swapId].tokenIn;
+        address tokenOut = swapQueue.data[swapId].tokenOut;
+
+        IERC20(token).transfer(user, amountIn);
+        IERC20(tokenOut).transfer(user, amountOut);
+
+        if (swapId == 0) {
+            swapQueue.front++;
+        } else if (swapId == swapQueue.back) {
+            Queue.dequeue(swapQueue);
+        } else {
+            // iterate over queue to fix the index data
+            uint256 i = swapId;
+            uint256 lengthOfIteration = swapQueue.data.length - 1;
+
+            for (i; i < lengthOfIteration; i++) {
+                swapQueue.data[i] = swapQueue.data[i + 1];
+            }
+            swapQueue.back--;
+        }
+
+        return (swapQueue, amountIn, amountOut);
     }
 }

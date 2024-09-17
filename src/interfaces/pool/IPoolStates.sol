@@ -4,7 +4,11 @@ pragma solidity ^0.8.13;
 import {Swap} from "../../lib/SwapQueue.sol";
 
 interface IPoolStates {
-    function poolInfo(address) external view returns (uint256, uint256, uint256, uint256, uint256, address);
+
+    function poolInfo(address)
+        external
+        view
+        returns (uint256, uint256, uint256, uint256, uint256, uint256, uint256, address);
     function userLpUnitInfo(address, address) external view returns (uint256);
     function VAULT_ADDRESS() external view returns (address);
     function ROUTER_ADDRESS() external view returns (address);

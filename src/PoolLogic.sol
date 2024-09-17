@@ -38,13 +38,14 @@ contract PoolLogic is Initializable, OwnableUpgradeable, IPoolLogic {
         return totalLpUnits * amount / (amount + reserveA);
     }
 
-    function calculateDUnitsToMint(uint256 amount, uint256 reserveA, uint256 reserveD)
+
+    function calculateDUnitsToMint(uint256 amount, uint256 reserveA, uint256 reserveD, uint256 initialDToMint)
         external
-        view
+        pure
         returns (uint256)
     {
         if (reserveD == 0) {
-            return BASE_D_AMOUNT;
+            return initialDToMint;
         }
 
         return reserveD * amount / (reserveA);
@@ -58,7 +59,8 @@ contract PoolLogic is Initializable, OwnableUpgradeable, IPoolLogic {
         returns (uint256)
     {
         // streamQuantity = SwappedAmount/(globalMinSlippage * PoolDepth)
-        return amount * 10000 / (100000 - poolSlippage * reserveD);
+
+        return amount * 10000 / (10000 - poolSlippage * reserveD);
     }
 
     function calculateAssetTransfer(uint256 lpUnits, uint256 reserveA, uint256 totalLpUnits)
@@ -91,6 +93,11 @@ contract PoolLogic is Initializable, OwnableUpgradeable, IPoolLogic {
         // b = d * B / d + D2 -> this will be returned to the pool
         uint256 d1 = (amountIn * reserveD1) / (amountIn + reserveA);
         return (d1, (d1 * reserveB / d1 + reserveD2));
+
+    }
+
+    function getExecutionPrice(uint256 reserveA1, uint256 reserveA2) external pure override returns (uint256) {
+        return (reserveA1 * 1e18 / reserveA2);
     }
 
     function updateBaseDAmount(uint256 newBaseDAmount) external override onlyOwner {
@@ -106,7 +113,8 @@ contract PoolLogic is Initializable, OwnableUpgradeable, IPoolLogic {
 
     function getPoolAddress(address poolAddress) private view returns (address) {
         // TODO : Resolve this tuple unbundling issue
-        (uint256 a, uint256 b, uint256 c, uint256 d, uint256 f, address tokenAddress) = pool.poolInfo(poolAddress);
+        (uint256 a, uint256 b, uint256 c, uint256 d, uint256 f, uint256 g, uint256 h, address tokenAddress) =
+            pool.poolInfo(poolAddress);
         return tokenAddress;
     }
 }

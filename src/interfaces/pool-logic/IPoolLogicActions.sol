@@ -6,7 +6,8 @@ interface IPoolLogicActions {
         external
         pure
         returns (uint256);
-    function calculateDUnitsToMint(uint256 amount, uint256 reserveA, uint256 reserveD)
+
+    function calculateDUnitsToMint(uint256 amount, uint256 reserveA, uint256 reserveD, uint256)
         external
         view
         returns (uint256);
@@ -23,4 +24,6 @@ interface IPoolLogicActions {
         uint256 reserveD1,
         uint256 reserveD2
     ) external pure returns (uint256, uint256);
+
+    function getExecutionPrice(uint256 reserveA1, uint256 reserveA2) external pure returns (uint256);
 }

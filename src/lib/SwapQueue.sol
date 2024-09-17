@@ -4,7 +4,7 @@ pragma solidity ^0.8.13;
 struct Swap {
     uint256 swapID;
     uint256 swapAmount;
-    uint256 swapAmountRemainign;
+    uint256 swapAmountRemaining;
     uint256 streamsCount;
     uint256 streamsRemaining;
     uint256 swapPerStream;
