@@ -7,15 +7,14 @@ import "../lib/openzeppelin-contracts-upgradeable/contracts/proxy/utils/Initiali
 import "../lib/openzeppelin-contracts-upgradeable/contracts/access/OwnableUpgradeable.sol";
 
 contract PoolLogic is Initializable, OwnableUpgradeable, IPoolLogic {
-
     uint256 internal BASE_D_AMOUNT = 1e18;
     uint256 internal DECIMAL = 1e18;
 
     address public override POOL_ADDRESS;
     IPoolStates pool;
 
-    modifier onlyPool(){
-        if(getPoolAddress(msg.sender) == address(0)) revert NotAPool();
+    modifier onlyPool() {
+        if (getPoolAddress(msg.sender) == address(0)) revert NotAPool();
         _;
     }
 
@@ -27,7 +26,11 @@ contract PoolLogic is Initializable, OwnableUpgradeable, IPoolLogic {
         emit PoolAddressUpdated(address(0), POOL_ADDRESS);
     }
 
-    function calculateLpUnitsToMint(uint256 amount, uint256 reserveA, uint256 totalLpUnits) external pure returns(uint256) {
+    function calculateLpUnitsToMint(uint256 amount, uint256 reserveA, uint256 totalLpUnits)
+        external
+        pure
+        returns (uint256)
+    {
         if (reserveA == 0) {
             return amount;
         }
@@ -35,8 +38,12 @@ contract PoolLogic is Initializable, OwnableUpgradeable, IPoolLogic {
         return totalLpUnits * amount / (amount + reserveA);
     }
 
-    function calculateDUnitsToMint(uint256 amount, uint256 reserveA, uint256 reserveD) external view returns(uint256) {
-         if (reserveD == 0) {
+    function calculateDUnitsToMint(uint256 amount, uint256 reserveA, uint256 reserveD)
+        external
+        view
+        returns (uint256)
+    {
+        if (reserveD == 0) {
             return BASE_D_AMOUNT;
         }
 
@@ -44,26 +51,46 @@ contract PoolLogic is Initializable, OwnableUpgradeable, IPoolLogic {
     }
 
     // 0.15% will be 15 poolSlippage. 100% is 100000 units
-    function calculateStreamCount(uint256 amount, uint256 poolSlippage, uint256 reserveD) external pure override returns(uint256) {
+    function calculateStreamCount(uint256 amount, uint256 poolSlippage, uint256 reserveD)
+        external
+        pure
+        override
+        returns (uint256)
+    {
         // streamQuantity = SwappedAmount/(globalMinSlippage * PoolDepth)
-        return amount * 10000/ (100000-poolSlippage * reserveD);
+        return amount * 10000 / (100000 - poolSlippage * reserveD);
     }
 
-    function calculateAssetTransfer(uint256 lpUnits, uint256 reserveA, uint256 totalLpUnits) external pure override returns(uint256) {
-        return (reserveA * lpUnits)/totalLpUnits;
+    function calculateAssetTransfer(uint256 lpUnits, uint256 reserveA, uint256 totalLpUnits)
+        external
+        pure
+        override
+        returns (uint256)
+    {
+        return (reserveA * lpUnits) / totalLpUnits;
     }
 
-    function calculateDToDeduct(uint256 lpUnits, uint256 reserveD, uint256 totalLpUnits) external pure override returns(uint256) {
-        return reserveD * (lpUnits/totalLpUnits);
+    function calculateDToDeduct(uint256 lpUnits, uint256 reserveD, uint256 totalLpUnits)
+        external
+        pure
+        override
+        returns (uint256)
+    {
+        return reserveD * (lpUnits / totalLpUnits);
     }
 
-    function getSwapAmountOut(uint256 amountIn, uint256 reserveA, uint256 reserveB, uint256 reserveD1, uint256 reserveD2) external pure override returns (uint256, uint256){
+    function getSwapAmountOut(
+        uint256 amountIn,
+        uint256 reserveA,
+        uint256 reserveB,
+        uint256 reserveD1,
+        uint256 reserveD2
+    ) external pure override returns (uint256, uint256) {
         // d1 = a * D1 / a + A
         // return d1 -> this will be updated in the pool
         // b = d * B / d + D2 -> this will be returned to the pool
         uint256 d1 = (amountIn * reserveD1) / (amountIn + reserveA);
-        return (d1 , (d1 * reserveB / d1 + reserveD2));
-        
+        return (d1, (d1 * reserveB / d1 + reserveD2));
     }
 
     function updateBaseDAmount(uint256 newBaseDAmount) external override onlyOwner {
@@ -79,7 +106,7 @@ contract PoolLogic is Initializable, OwnableUpgradeable, IPoolLogic {
 
     function getPoolAddress(address poolAddress) private view returns (address) {
         // TODO : Resolve this tuple unbundling issue
-        (uint a, uint b, uint c, uint d, uint f, address tokenAddress) = pool.poolInfo(poolAddress);
+        (uint256 a, uint256 b, uint256 c, uint256 d, uint256 f, address tokenAddress) = pool.poolInfo(poolAddress);
         return tokenAddress;
     }
 }

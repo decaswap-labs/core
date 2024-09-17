@@ -16,7 +16,7 @@ struct Swap {
     bool completed; // 0xD if swapping to D
 }
 
-struct PoolSwapData{
+struct PoolSwapData {
     uint256 poolSwapIdLatest;
     uint256 totalSwapsPool;
 }
@@ -74,4 +74,3 @@ library Queue {
     //     return result;
     // }
 }
-

@@ -6,4 +6,4 @@ import {IPoolStates} from "./pool/IPoolStates.sol";
 import {IPoolEvents} from "./pool/IPoolEvents.sol";
 import {IPoolErrors} from "./pool/IPoolErrors.sol";
 
-interface IPool is IPoolActions,IPoolStates, IPoolEvents, IPoolErrors {}
+interface IPool is IPoolActions, IPoolStates, IPoolEvents, IPoolErrors {}

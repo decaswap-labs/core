@@ -8,12 +8,10 @@ import {IPoolStates} from "./interfaces/pool/IPoolStates.sol";
 import {IRouter} from "./interfaces/IRouter.sol";
 import {IERC20} from "./interfaces/utils/IERC20.sol";
 
-contract Router is Initializable,OwnableUpgradeable, IRouter{
-
+contract Router is Initializable, OwnableUpgradeable, IRouter {
     address public override POOL_ADDRESS;
     IPoolActions pool;
     IPoolStates poolStates;
-
 
     function initialize(address owner, address poolAddress) public initializer {
         __Ownable_init(owner);
@@ -26,8 +24,8 @@ contract Router is Initializable,OwnableUpgradeable, IRouter{
     }
 
     function addLiquidity(address token, uint256 amount) external override {
-        if(getPoolAddress(token) == address(0)) revert InvalidPool();
-        if(amount == 0) revert InvalidAmount();
+        if (getPoolAddress(token) == address(0)) revert InvalidPool();
+        if (amount == 0) revert InvalidAmount();
 
         IERC20(token).transferFrom(msg.sender, POOL_ADDRESS, amount);
         pool.add(msg.sender, token, amount);
@@ -35,10 +33,10 @@ contract Router is Initializable,OwnableUpgradeable, IRouter{
         emit LiquidityAdded(msg.sender, token, amount);
     }
 
-    function removeLiquidity(address token, uint256 lpUnits) external override{
-        if(getPoolAddress(token) == address(0)) revert InvalidPool();
+    function removeLiquidity(address token, uint256 lpUnits) external override {
+        if (getPoolAddress(token) == address(0)) revert InvalidPool();
 
-        if(lpUnits == 0 || lpUnits > poolStates.userLpUnitInfo(msg.sender, token)) revert InvalidAmount();
+        if (lpUnits == 0 || lpUnits > poolStates.userLpUnitInfo(msg.sender, token)) revert InvalidAmount();
 
         pool.remove(msg.sender, token, lpUnits);
 
@@ -52,10 +50,9 @@ contract Router is Initializable,OwnableUpgradeable, IRouter{
         poolStates = IPoolStates(POOL_ADDRESS);
     }
 
-    function getPoolAddress(address token) internal returns(address){
+    function getPoolAddress(address token) internal returns (address) {
         // TODO : Resolve this tuple unbundling issue
-        (uint a, uint b, uint c, uint d, uint f, address tokenAddress) = poolStates.poolInfo(token);
+        (uint256 a, uint256 b, uint256 c, uint256 d, uint256 f, address tokenAddress) = poolStates.poolInfo(token);
         return tokenAddress;
     }
-
 }
