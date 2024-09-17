@@ -46,7 +46,6 @@ contract PoolTest is Test {
         vm.prank(router); // Use router address to add liquidity
         pool.add(user, address(token), 100 * 1e18);
 
-
         (reserveD, poolOwnershipUnitsTotal,,,,,,) = pool.poolInfo(address(token));
 
         assertGt(reserveD, initialReserveA, "ReserveA should increase");
@@ -79,11 +78,7 @@ contract PoolTest is Test {
         // Ensure there's enough liquidity to remove
         assertGe(lpUnits, amountToRemove, "Not enough liquidity to remove");
 
-<<<<<<< Updated upstream
-        (reserveD, poolOwnershipUnitsTotal, reserveA,,,) = pool.poolInfo(address(token));
-=======
         (reserveD, poolOwnershipUnitsTotal, reserveA,,,,,) = pool.poolInfo(address(token));
->>>>>>> Stashed changes
 
         uint256 assetToTransfer = poolLogic.calculateAssetTransfer(amountToRemove, reserveA, poolOwnershipUnitsTotal);
 

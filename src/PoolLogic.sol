@@ -38,7 +38,6 @@ contract PoolLogic is Initializable, OwnableUpgradeable, IPoolLogic {
         return totalLpUnits * amount / (amount + reserveA);
     }
 
-
     function calculateDUnitsToMint(uint256 amount, uint256 reserveA, uint256 reserveD, uint256 initialDToMint)
         external
         pure
@@ -93,7 +92,6 @@ contract PoolLogic is Initializable, OwnableUpgradeable, IPoolLogic {
         // b = d * B / d + D2 -> this will be returned to the pool
         uint256 d1 = (amountIn * reserveD1) / (amountIn + reserveA);
         return (d1, (d1 * reserveB / d1 + reserveD2));
-
     }
 
     function getExecutionPrice(uint256 reserveA1, uint256 reserveA2) external pure override returns (uint256) {

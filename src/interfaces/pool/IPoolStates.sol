@@ -4,7 +4,6 @@ pragma solidity ^0.8.13;
 import {Swap} from "../../lib/SwapQueue.sol";
 
 interface IPoolStates {
-
     function poolInfo(address)
         external
         view

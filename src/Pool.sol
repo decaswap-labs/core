@@ -54,7 +54,6 @@ contract Pool is IPool, Ownable {
         emit PoolLogicAddressUpdated(address(0), POOL_LOGIC);
     }
 
-
     function createPool(
         address token,
         uint256 minLaunchReserveA,
@@ -70,7 +69,6 @@ contract Pool is IPool, Ownable {
         // TODO
     }
 
-
     function add(address user, address token, uint256 amountA) external override onlyRouter {
         _addLiquidity(user, token, amountA);
     }
@@ -78,7 +76,6 @@ contract Pool is IPool, Ownable {
     function remove(address user, address token, uint256 lpUnits) external override onlyRouter {
         _removeLiquidity(user, token, lpUnits);
     }
-
 
     // neeed to add in interface
     function executeSwap(address user, uint256 amountIn, uint256 executionPrice, address tokenIn, address tokenOut)
@@ -222,7 +219,6 @@ contract Pool is IPool, Ownable {
         poolInfo[token].minLaunchReserveD = minLaunchReserveD;
         poolInfo[token].initialDToMint = initialDToMint;
 
-
         emit PoolCreated(token, minLaunchReserveA, minLaunchReserveD);
     }
 
@@ -259,7 +255,6 @@ contract Pool is IPool, Ownable {
         poolInfo[token].reserveA -= assetToTransfer;
         poolInfo[token].poolOwnershipUnitsTotal -= lpUnits;
 
-
         // IERC20(token).transfer(user,assetToTransfer); // commented for test to run
         emit LiquidityRemoved(user, token, lpUnits, assetToTransfer, dAmountToDeduct);
     }
@@ -294,7 +289,6 @@ contract Pool is IPool, Ownable {
             frontSwap.amountOut += amountOut;
             frontSwap.streamsRemaining--;
 
-
             if (frontSwap.streamsRemaining == 0) frontSwap.completed = true;
 
             pairStreamQueue[pairId].data[pairStream.front] = frontSwap;
@@ -311,7 +305,6 @@ contract Pool is IPool, Ownable {
 
             // D not used
             (uint256 dOut2, uint256 amountOut2) = poolLogic.getSwapAmountOut(
-
                 oppositeSwap.swapAmountRemaining,
                 poolInfo[tokenOut].reserveA,
                 poolInfo[tokenIn].reserveA,
@@ -321,14 +314,12 @@ contract Pool is IPool, Ownable {
 
             // D not used
             (uint256 dOut1, uint256 amountOut1) = poolLogic.getSwapAmountOut(
-
                 frontSwap.swapAmountRemaining,
                 poolInfo[tokenIn].reserveA,
                 poolInfo[tokenOut].reserveA,
                 poolInfo[tokenIn].reserveD,
                 poolInfo[tokenOut].reserveD
             );
-
 
             if (frontSwap.swapAmountRemaining < amountOut2) {
                 oppositeSwap.amountOut += frontSwap.swapAmountRemaining;
@@ -352,8 +343,6 @@ contract Pool is IPool, Ownable {
                 Queue.dequeue(pairStreamQueue[otherPairId]);
             }
         }
-
-
 
         // --------------------------- HANDLE PENDING SWAP INSERTION ----------------------------- //
         Swap storage frontPendingSwap;

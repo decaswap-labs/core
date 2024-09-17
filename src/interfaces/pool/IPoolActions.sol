@@ -2,7 +2,6 @@
 pragma solidity ^0.8.13;
 
 interface IPoolActions {
-
     function createPool(address, uint256, uint256, uint256, uint256) external;
     function disablePool(address) external;
     function add(address, address, uint256) external;
