@@ -325,6 +325,7 @@ contract Pool is IPool, Ownable {
         address swapUser;
         uint256 amountOutSwap;
         // loading the front swap from the stream queue
+
         Swap storage frontSwap;
         Queue.QueueStruct storage pairStream = pairStreamQueue[pairId];
         frontSwap = pairStream.data[pairStream.front];
@@ -333,9 +334,9 @@ contract Pool is IPool, Ownable {
         //TODO: Deduct fees from amount out = 5BPS.
         bytes32 otherPairId = keccak256(abi.encodePacked(tokenB, tokenA));
         Queue.QueueStruct storage oppositePairStream = pairStreamQueue[otherPairId];
-        Swap storage oppositeSwap = oppositePairStream.data[oppositePairStream.front];
 
-        if (oppositeSwap.user != address(0)) {
+        if (oppositePairStream.data.length != 0) {
+            Swap storage oppositeSwap = oppositePairStream.data[oppositePairStream.front];
             // A->B , dout1 is D1, amountOut1 is B
             (uint256 dOutA, uint256 amountOutA) = poolLogic.getSwapAmountOut(
                 frontSwap.swapAmountRemaining,
@@ -496,36 +497,36 @@ contract Pool is IPool, Ownable {
     //             poolInfo[tokenIn].reserveD
     //         );
 
-    //         // D not used
-    //         (uint256 dOut1, uint256 amountOut1) = poolLogic.getSwapAmountOut(
-    //             frontSwap.swapAmountRemaining,
-    //             poolInfo[tokenIn].reserveA,
-    //             poolInfo[tokenOut].reserveA,
-    //             poolInfo[tokenIn].reserveD,
-    //             poolInfo[tokenOut].reserveD
-    //         );
+    //         // // D not used
+    //         // (uint256 dOut1, uint256 amountOut1) = poolLogic.getSwapAmountOut(
+    //         //     frontSwap.swapAmountRemaining,
+    //         //     poolInfo[tokenIn].reserveA,
+    //         //     poolInfo[tokenOut].reserveA,
+    //         //     poolInfo[tokenIn].reserveD,
+    //         //     poolInfo[tokenOut].reserveD
+    //         // );
 
-    //         if (frontSwap.swapAmountRemaining < amountOut2) {
-    //             oppositeSwap.amountOut += frontSwap.swapAmountRemaining;
-    //             frontSwap.amountOut = amountOut1;
-    //             oppositeSwap.swapAmountRemaining -= frontSwap.swapAmountRemaining;
+    //         // if (frontSwap.swapAmountRemaining < amountOut2) {
+    //         //     oppositeSwap.amountOut += frontSwap.swapAmountRemaining;
+    //         //     frontSwap.amountOut = amountOut1;
+    //         //     oppositeSwap.swapAmountRemaining -= frontSwap.swapAmountRemaining;
 
-    //             frontSwap.completed = true;
-    //             frontSwap.streamsRemaining = 0;
+    //         //     frontSwap.completed = true;
+    //         //     frontSwap.streamsRemaining = 0;
 
-    //             pairStreamQueue[pairId].data[pairStream.front] = frontSwap;
-    //             Queue.dequeue(pairStreamQueue[pairId]);
-    //         } else {
-    //             frontSwap.amountOut += oppositeSwap.swapAmountRemaining;
-    //             oppositeSwap.amountOut = amountOut2;
-    //             frontSwap.swapAmountRemaining -= oppositeSwap.swapAmountRemaining;
+    //         //     pairStreamQueue[pairId].data[pairStream.front] = frontSwap;
+    //         //     Queue.dequeue(pairStreamQueue[pairId]);
+    //         // } else {
+    //         //     frontSwap.amountOut += oppositeSwap.swapAmountRemaining;
+    //         //     oppositeSwap.amountOut = amountOut2;
+    //         //     frontSwap.swapAmountRemaining -= oppositeSwap.swapAmountRemaining;
 
-    //             oppositeSwap.completed = true;
-    //             oppositeSwap.streamsRemaining = 0;
+    //         //     oppositeSwap.completed = true;
+    //         //     oppositeSwap.streamsRemaining = 0;
 
-    //             pairStreamQueue[otherPairId].data[oppositePairStream.front] = oppositeSwap;
-    //             Queue.dequeue(pairStreamQueue[otherPairId]);
-    //         }
+    //         //     pairStreamQueue[otherPairId].data[oppositePairStream.front] = oppositeSwap;
+    //         //     Queue.dequeue(pairStreamQueue[otherPairId]);
+    //         // }
     //     } else {
     //         (uint256 dToUpdate, uint256 amountOut) = poolLogic.getSwapAmountOut(
     //             frontSwap.swapPerStream,
@@ -556,20 +557,6 @@ contract Pool is IPool, Ownable {
     //         }
     //     }
 
-    //     // --------------------------- HANDLE PENDING SWAP INSERTION ----------------------------- //
-    //     Swap storage frontPendingSwap;
-    //     Queue.QueueStruct storage pairPending = pairPendingQueue[pairId];
-    //     frontPendingSwap = pairPending.data[pairPending.front];
-
-    //     uint256 executionPriceInOrder = frontPendingSwap.executionPrice;
-    //     uint256 executionPriceLatest = poolLogic.getExecutionPrice(
-    //         poolInfo[frontPendingSwap.tokenIn].reserveA, poolInfo[frontPendingSwap.tokenOut].reserveA
-    //     );
-
-    //     if (executionPriceLatest >= executionPriceInOrder) {
-    //         pairStreamQueue[pairId].enqueue(frontPendingSwap);
-    //         pairPendingQueue[pairId].dequeue();
-    //     }
     // }
 
     function _removeSwap(uint256 swapId, Queue.QueueStruct storage swapQueue)
