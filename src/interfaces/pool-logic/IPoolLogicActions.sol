@@ -14,4 +14,6 @@ interface IPoolLogicActions {
     function getSwapAmountOut(uint256, uint256, uint256, uint256, uint256) external pure returns (uint256, uint256);
 
     function getExecutionPrice(uint256, uint256) external pure returns (uint256);
+    function getTokenOut(uint256, uint256, uint256) external pure returns (uint256);
+    function getDOut(uint256, uint256, uint256) external pure returns (uint256);
 }

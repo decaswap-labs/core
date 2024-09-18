@@ -118,7 +118,7 @@ contract Pool is IPool, Ownable {
 
         emit StreamAdded(poolStreamQueue[pairId].front, amountIn, currentPrice, streamCount, pairId);
 
-        _executeDepositVaultStream(pairId, tokenIn);
+        // _executeDepositVaultStream(pairId, tokenIn);
     }
 
     function withdrawVault() external override onlyRouter {}
@@ -400,14 +400,14 @@ contract Pool is IPool, Ownable {
             } else {
                 // update pool
                 poolInfo[tokenB].reserveA += oppositeSwap.swapAmountRemaining;
-                poolInfo[tokenB].reserveD -= dOut2;
+                poolInfo[tokenB].reserveD -= dOutB;
 
                 poolInfo[tokenA].reserveA -= amountOutB;
-                poolInfo[tokenA].reserveD += dOut2;
+                poolInfo[tokenA].reserveD += dOutB;
 
                 frontSwap.amountOut += oppositeSwap.swapAmountRemaining;
-                oppositeSwap.amountOut = amountOut2;
-                frontSwap.swapAmountRemaining -= amountOut2;
+                oppositeSwap.amountOut = amountOutB;
+                frontSwap.swapAmountRemaining -= amountOutB;
                 oppositeSwap.swapAmountRemaining = 0;
 
                 oppositeSwap.completed = true;
@@ -475,7 +475,6 @@ contract Pool is IPool, Ownable {
     }
 
     // function _executeDepositVaultStream(bytes32 pairId, address tokenIn) internal {
-
     //     // loading the front swap from the stream queue
     //     Swap storage frontSwap;
     //     Queue.QueueStruct storage poolStream = poolStreamQueue[pairId];
@@ -485,7 +484,26 @@ contract Pool is IPool, Ownable {
     //     //TODO: Deduct fees from amount out = 5BPS.
     //     bytes32 otherPairId = keccak256(abi.encodePacked(D_TOKEN, tokenIn));
     //     Queue.QueueStruct storage oppositePoolStream = poolStreamQueue[otherPairId];
-    //     Swap storage oppositeSwap = oppositePoolStream.data[oppositePoolStream.front];
+
+    //     if (oppositePoolStream.data.length != 0) {
+    //         Swap storage oppositeSwap = oppositePoolStream.data[oppositePoolStream.front];
+
+    //         (uint256 dOut1, uint256 amountOut1) = poolLogic.getSwapAmountOut(
+    //             frontSwap.swapAmountRemaining,
+    //             poolInfo[tokenIn].reserveA,
+    //             poolInfo[tokenOut].reserveA,
+    //             poolInfo[tokenIn].reserveD,
+    //             poolInfo[tokenOut].reserveD
+    //         );
+
+    //         (uint256 dOut2, uint256 amountOut2) = poolLogic.getSwapAmountOut(
+    //             oppositeSwap.swapAmountRemaining,
+    //             poolInfo[tokenOut].reserveA,
+    //             poolInfo[tokenIn].reserveA,
+    //             poolInfo[tokenOut].reserveD,
+    //             poolInfo[tokenIn].reserveD
+    //         );
+    //     }
 
     //     if (oppositeSwap.user != address(0)) {
     //         // D not used
@@ -498,13 +516,6 @@ contract Pool is IPool, Ownable {
     //         );
 
     //         // // D not used
-    //         // (uint256 dOut1, uint256 amountOut1) = poolLogic.getSwapAmountOut(
-    //         //     frontSwap.swapAmountRemaining,
-    //         //     poolInfo[tokenIn].reserveA,
-    //         //     poolInfo[tokenOut].reserveA,
-    //         //     poolInfo[tokenIn].reserveD,
-    //         //     poolInfo[tokenOut].reserveD
-    //         // );
 
     //         // if (frontSwap.swapAmountRemaining < amountOut2) {
     //         //     oppositeSwap.amountOut += frontSwap.swapAmountRemaining;
@@ -556,7 +567,6 @@ contract Pool is IPool, Ownable {
     //             Queue.dequeue(pairStreamQueue[pairId]);
     //         }
     //     }
-
     // }
 
     function _removeSwap(uint256 swapId, Queue.QueueStruct storage swapQueue)

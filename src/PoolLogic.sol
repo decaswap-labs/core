@@ -94,14 +94,23 @@ contract PoolLogic is Initializable, OwnableUpgradeable, IPoolLogic {
         return (d1, (d1 * reserveB / d1 + reserveD2));
     }
 
-    // function getTokenOut(uint256 dAmount, uint256 reserveA, uint256 reserveD) external pure override returns (uint256) {
-    //     return(dAmount * reserveA) / (dAmount + reserveD);
-    // }
+    function getTokenOut(uint256 dAmount, uint256 reserveA, uint256 reserveD)
+        external
+        pure
+        override
+        returns (uint256)
+    {
+        return (dAmount * reserveA) / (dAmount + reserveD);
+    }
 
-    // function getDOut(uint256 tokenAmount, uint256 reserveA, uint256 reserveD) external pure override returns (uint256) {
-    //     return(amountIn * reserveD1) / (amountIn + reserveA);
-
-    // }
+    function getDOut(uint256 tokenAmount, uint256 reserveA, uint256 reserveD)
+        external
+        pure
+        override
+        returns (uint256)
+    {
+        return (tokenAmount * reserveD) / (tokenAmount + reserveA);
+    }
 
     function getExecutionPrice(uint256 reserveA1, uint256 reserveA2) external pure override returns (uint256) {
         return (reserveA1 * 1e18 / reserveA2);
