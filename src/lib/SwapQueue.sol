@@ -8,12 +8,12 @@ struct Swap {
     uint256 streamsCount;
     uint256 streamsRemaining;
     uint256 swapPerStream;
-    uint256 executionPrice;
+    uint256 executionPrice; // using executionPrice current ratio of D/token during deposit/withdraw
     uint256 amountOut;
     address user;
     address tokenIn;
     address tokenOut;
-    bool completed; // 0xD if swapping to D
+    bool completed; 
 }
 
 struct PoolSwapData {

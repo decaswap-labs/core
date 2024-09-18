@@ -12,7 +12,7 @@ interface IPoolEvents {
     event PairSlippageUpdated(address, address, uint256);
     event GlobalSlippageUpdated(uint256, uint256);
     event SwapAdded(bytes32, uint256, uint256, uint256, uint256, address, address, address);
-    event StreamAdded(uint256, uint256, uint256, uint256, uint256, bytes32);
-    event PendingStreamAdded(uint256, uint256, uint256, uint256, uint256, bytes32);
+    event StreamAdded(uint256, uint256, uint256, uint256, bytes32);
+    event PendingStreamAdded(uint256, uint256, uint256, uint256, bytes32);
     event SwapCancelled(uint256, bytes32, uint256, uint256);
 }

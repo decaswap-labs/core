@@ -15,6 +15,7 @@ contract Pool is IPool, Ownable {
 
     address public override VAULT_ADDRESS = address(0);
     address public override ROUTER_ADDRESS = address(0);
+    address internal D_TOKEN = address(0xD);
     address public override POOL_LOGIC = address(0);
     uint256 public override globalSlippage = 10;
 
@@ -78,7 +79,50 @@ contract Pool is IPool, Ownable {
         _removeLiquidity(user, token, lpUnits);
     }
 
-    function depositVault() external override onlyRouter {}
+    function depositVault(address user, uint256 amountIn, address tokenIn) external override onlyRouter {
+        if (amountIn == 0) revert InvalidTokenAmount();
+        if(poolInfo[tokenIn].tokenAddress == address(0)) revert InvalidPool();
+
+        uint256 streamCount;
+        uint256 swapPerStream;
+        uint256 minPoolDepth;
+
+        bytes32 poolId;
+        bytes32 pairId;
+
+
+        minPoolDepth = poolInfo[tokenIn].reserveD;
+
+
+        streamCount = poolLogic.calculateStreamCount(amountIn, globalSlippage, minPoolDepth);
+        swapPerStream = amountIn / streamCount;
+
+        pairId = keccak256(abi.encodePacked(tokenIn, D_TOKEN)); // for one direction
+
+        uint256 currentPrice = poolLogic.getExecutionPrice(poolInfo[tokenIn].reserveA, poolInfo[tokenIn].reserveA);
+
+        poolStreamQueue[pairId].enqueue(
+                Swap({
+                    swapID: pairStreamQueue[pairId].back,
+                    swapAmount: amountIn,
+                    executionPrice: currentPrice,
+                    swapAmountRemaining: amountIn,
+                    streamsCount: streamCount,
+                    streamsRemaining: streamCount,
+                    swapPerStream: swapPerStream,
+                    tokenIn: tokenIn,
+                    tokenOut: D_TOKEN,
+                    completed: false,
+                    amountOut: 0,
+                    user: user
+                })
+            );
+
+        emit StreamAdded(poolStreamQueue[pairId].front, amountIn, currentPrice, streamCount, pairId);
+
+        _executeDepositVaultStream(pairId, tokenIn);
+
+    }
 
     function withdrawVault() external override onlyRouter {}
 
@@ -106,7 +150,7 @@ contract Pool is IPool, Ownable {
         minPoolDepth = poolInfo[tokenIn].reserveD <= poolInfo[tokenOut].reserveD
             ? poolInfo[tokenIn].reserveD
             : poolInfo[tokenOut].reserveD;
-        poolId = getPoolId(tokenIn, tokenOut); // for pair slippage only. Not an ID for pair direction queue
+        poolId = getPoolId(tokenIn, address(0xD)); // for pair slippage only. Not an ID for pair direction queue
         streamCount = poolLogic.calculateStreamCount(amountIn, pairSlippage[poolId], minPoolDepth);
         swapPerStream = amountIn / streamCount;
 
@@ -117,7 +161,6 @@ contract Pool is IPool, Ownable {
 
         // if execution price 0 (stream queue) , otherwise another queue
         // add into queue
-
         if (executionPrice <= currentPrice) {
             pairStreamQueue[pairId].enqueue(
                 Swap({
@@ -136,7 +179,7 @@ contract Pool is IPool, Ownable {
                 })
             );
 
-            emit StreamAdded(pairStreamQueue[pairId].front, amountIn, executionPrice, amountIn, streamCount, pairId);
+            emit StreamAdded(pairStreamQueue[pairId].front, amountIn, executionPrice, streamCount, pairId);
         } else {
             // adding to pending queue
             pairPendingQueue[pairId].enqueue(
@@ -160,7 +203,7 @@ contract Pool is IPool, Ownable {
             SwapSorter.quickSort(pairPendingQueue[pairId].data);
 
             emit PendingStreamAdded(
-                pairPendingQueue[pairId].front, amountIn, executionPrice, amountIn, streamCount, pairId
+                pairPendingQueue[pairId].front, amountIn, executionPrice, streamCount, pairId
             );
         }
         // execute pending streams
@@ -276,13 +319,16 @@ contract Pool is IPool, Ownable {
         emit LiquidityRemoved(user, token, lpUnits, assetToTransfer, dAmountToDeduct);
     }
 
-    function _executeStream(bytes32 pairId, address tokenIn, address tokenOut) internal {
+    function _executeStream(bytes32 pairId, address tokenA, address tokenB) internal {
         //check if the reserves are greater than min launch
         if (
-            poolInfo[tokenIn].minLaunchReserveA > poolInfo[tokenIn].reserveA
-                || poolInfo[tokenIn].minLaunchReserveD > poolInfo[tokenIn].reserveD
+            poolInfo[tokenA].minLaunchReserveA > poolInfo[tokenA].reserveA
+                || poolInfo[tokenB].minLaunchReserveD > poolInfo[tokenB].reserveD
         ) revert MinLaunchReservesNotReached();
 
+        address completedSwapToken;
+        address swapUser;
+        uint256 amountOutSwap;
         // loading the front swap from the stream queue
         Swap storage frontSwap;
         Queue.QueueStruct storage pairStream = pairStreamQueue[pairId];
@@ -290,9 +336,162 @@ contract Pool is IPool, Ownable {
 
         // ------------------------ CHECK OPP DIR SWAP --------------------------- //
         //TODO: Deduct fees from amount out = 5BPS.
-        bytes32 otherPairId = keccak256(abi.encodePacked(tokenOut, tokenIn));
+        bytes32 otherPairId = keccak256(abi.encodePacked(tokenB, tokenA));
         Queue.QueueStruct storage oppositePairStream = pairStreamQueue[otherPairId];
         Swap storage oppositeSwap = oppositePairStream.data[oppositePairStream.front];
+
+        if (oppositeSwap.user != address(0)) {
+
+            // A->B , dout1 is D1, amountOut1 is B
+            (uint256 dOutA, uint256 amountOutA) = poolLogic.getSwapAmountOut(
+                frontSwap.swapAmountRemaining,
+                poolInfo[tokenA].reserveA,
+                poolInfo[tokenB].reserveA,
+                poolInfo[tokenA].reserveD,
+                poolInfo[tokenB].reserveD
+            );
+             // B->A
+            (uint256 dOutB, uint256 amountOutB) = poolLogic.getSwapAmountOut(
+                oppositeSwap.swapAmountRemaining,
+                poolInfo[tokenB].reserveA,
+                poolInfo[tokenA].reserveA,
+                poolInfo[tokenB].reserveD,
+                poolInfo[tokenA].reserveD
+            );
+
+            /* 
+            I have taken out amountOut of both swap directions
+            Now one swap should consume the other one
+            How to define that?
+
+            I am selling 50 TKN for (10)-> Calculated USDC
+            Alice is buying 50 USDC for (250)-> Calculated TKN
+
+            I should be able to fill alice's order completely. By giving her 50 TKN, and take 10 USDC. 
+
+            AmountIn1 = AmountIn1 - AmountIn1 // 50-50 (Order fulfilled as I have given all the TKN to alice)
+            AmountOut1 = AmountOut1 // 10 (As Alice has given me 10 USDC, which equals to amount I have calculated)
+
+            AmountIn2 = AmountIn2 - AmountOut2 // 50-10, as alice has given me 10. So she has 40 left
+            AmountOut2 = AmountOut2 + AmountIn1 // 0+50, Alice wanted 250 tokens, but now she has only those 
+            tokens which I was selling. Which is 50
+            */
+
+            // TKN , TKN
+            if (frontSwap.swapAmountRemaining < amountOutB) {
+                // update pool
+                poolInfo[tokenA].reserveA += frontSwap.swapAmountRemaining;
+                poolInfo[tokenA].reserveD -= dOutA;
+
+                poolInfo[tokenB].reserveA -= amountOutA;
+                poolInfo[tokenB].reserveD += dOutA;
+
+
+                oppositeSwap.amountOut += frontSwap.swapAmountRemaining;
+                frontSwap.amountOut = amountOutA;
+                oppositeSwap.swapAmountRemaining -= amountOutA;
+                frontSwap.swapAmountRemaining = 0;
+
+                frontSwap.completed = true;
+                frontSwap.streamsRemaining = 0;
+
+                // ----------- to set transfer
+                completedSwapToken = frontSwap.tokenIn;
+                swapUser = frontSwap.user;
+                amountOutSwap = frontSwap.amountOut;
+                // -----------
+
+                pairStreamQueue[pairId].data[pairStream.front] = frontSwap;
+                Queue.dequeue(pairStreamQueue[pairId]);
+            } else {
+                // update pool
+                poolInfo[tokenB].reserveA += oppositeSwap.swapAmountRemaining;
+                poolInfo[tokenB].reserveD -= dOut2;
+                
+                poolInfo[tokenA].reserveA -= amountOutB;
+                poolInfo[tokenA].reserveD += dOut2;
+
+                frontSwap.amountOut += oppositeSwap.swapAmountRemaining;
+                oppositeSwap.amountOut = amountOut2;
+                frontSwap.swapAmountRemaining -= amountOut2;
+                oppositeSwap.swapAmountRemaining = 0;
+
+                oppositeSwap.completed = true;
+                oppositeSwap.streamsRemaining = 0;
+
+                // ----------- to set transfer
+                completedSwapToken = oppositeSwap.tokenIn;
+                swapUser = oppositeSwap.user;
+                amountOutSwap = oppositeSwap.amountOut;
+                // -----------
+
+                pairStreamQueue[otherPairId].data[oppositePairStream.front] = oppositeSwap;
+                Queue.dequeue(pairStreamQueue[otherPairId]);
+            }
+        } else {
+            (uint256 dToUpdate, uint256 amountOut) = poolLogic.getSwapAmountOut(
+                frontSwap.swapPerStream,
+                poolInfo[tokenA].reserveA,
+                poolInfo[tokenB].reserveA,
+                poolInfo[tokenA].reserveD,
+                poolInfo[tokenB].reserveD
+            );
+            // update pools
+            poolInfo[tokenA].reserveD -= dToUpdate;
+            poolInfo[tokenA].reserveA += frontSwap.swapPerStream;
+
+            poolInfo[tokenB].reserveD += dToUpdate;
+            poolInfo[tokenB].reserveA -= amountOut;
+            // update swaps
+
+            //TODO: Deduct fees from amount out = 5BPS.
+            frontSwap.swapAmountRemaining -= frontSwap.swapPerStream;
+            frontSwap.amountOut += amountOut;
+            frontSwap.streamsRemaining--;
+
+            if (frontSwap.streamsRemaining == 0) {
+                frontSwap.completed = true;
+                completedSwapToken = frontSwap.tokenIn;
+                swapUser = frontSwap.user;
+                amountOutSwap = frontSwap.amountOut;
+            }
+
+            pairStreamQueue[pairId].data[pairStream.front] = frontSwap;
+
+            if (pairStreamQueue[pairId].data[pairStream.front].streamsCount == 0) {
+                Queue.dequeue(pairStreamQueue[pairId]);
+            }
+        }
+        if(completedSwapToken != address(0)) IERC20(completedSwapToken).transfer(swapUser, amountOutSwap);
+
+        // --------------------------- HANDLE PENDING SWAP INSERTION ----------------------------- //
+        Swap storage frontPendingSwap;
+        Queue.QueueStruct storage pairPending = pairPendingQueue[pairId];
+        frontPendingSwap = pairPending.data[pairPending.front];
+
+        uint256 executionPriceInOrder = frontPendingSwap.executionPrice;
+        uint256 executionPriceLatest = poolLogic.getExecutionPrice(
+            poolInfo[frontPendingSwap.tokenIn].reserveA, poolInfo[frontPendingSwap.tokenOut].reserveA
+        );
+
+        if (executionPriceLatest >= executionPriceInOrder) {
+            pairStreamQueue[pairId].enqueue(frontPendingSwap);
+            pairPendingQueue[pairId].dequeue();
+        }
+    }
+
+    function _executeDepositVaultStream(bytes32 pairId, address tokenIn) internal {
+
+        // loading the front swap from the stream queue
+        Swap storage frontSwap;
+        Queue.QueueStruct storage poolStream = poolStreamQueue[pairId];
+        frontSwap = poolStream.data[poolStream.front];
+
+        // ------------------------ CHECK OPP DIR SWAP --------------------------- //
+        //TODO: Deduct fees from amount out = 5BPS.
+        bytes32 otherPairId = keccak256(abi.encodePacked(D_TOKEN, tokenIn));
+        Queue.QueueStruct storage oppositePoolStream = poolStreamQueue[otherPairId];
+        Swap storage oppositeSwap = oppositePoolStream.data[oppositePoolStream.front];
 
         if (oppositeSwap.user != address(0)) {
             // D not used
