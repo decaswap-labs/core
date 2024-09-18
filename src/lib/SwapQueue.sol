@@ -13,7 +13,7 @@ struct Swap {
     address user;
     address tokenIn;
     address tokenOut;
-    bool completed; 
+    bool completed;
 }
 
 struct PoolSwapData {
