@@ -78,13 +78,9 @@ contract Pool is IPool, Ownable {
         _removeLiquidity(user, token, lpUnits);
     }
 
-    function depositVault() {
+    function depositVault() external override onlyRouter {}
 
-    }
-
-    function withdrawVault() {
-        
-    }
+    function withdrawVault() external override onlyRouter {}
 
     // neeed to add in interface
     function executeSwap(address user, uint256 amountIn, uint256 executionPrice, address tokenIn, address tokenOut)
@@ -92,7 +88,11 @@ contract Pool is IPool, Ownable {
         override
         onlyRouter
     {
-        //TODO check if the reserves are greater than min launch
+        if (amountIn == 0) revert InvalidTokenAmount();
+        if (executionPrice == 0) revert InvalidExecutionPrice();
+        if (poolInfo[tokenIn].tokenAddress == address(0) || poolInfo[tokenOut].tokenAddress == address(0)) {
+            revert InvalidPool();
+        }
 
         uint256 streamCount;
         uint256 swapPerStream;
@@ -219,9 +219,9 @@ contract Pool is IPool, Ownable {
     function _createPool(address token, uint256 minLaunchReserveA, uint256 minLaunchReserveD, uint256 initialDToMint)
         internal
     {
-        if (token == address(0)) {
-            revert InvalidToken();
-        }
+        if (token == address(0)) revert InvalidToken();
+
+        if (initialDToMint == 0) revert InvalidInitialDAmount();
 
         poolInfo[token].tokenAddress = token;
         poolInfo[token].minLaunchReserveA = minLaunchReserveA;
@@ -232,6 +232,10 @@ contract Pool is IPool, Ownable {
     }
 
     function _addLiquidity(address user, address token, uint256 amount) internal {
+        if (poolInfo[token].tokenAddress == address(0)) revert InvalidToken();
+
+        if (amount == 0) revert InvalidTokenAmount();
+
         // lp units
         uint256 newLpUnits =
             poolLogic.calculateLpUnitsToMint(amount, poolInfo[token].reserveA, poolInfo[token].poolOwnershipUnitsTotal);
@@ -251,6 +255,10 @@ contract Pool is IPool, Ownable {
     }
 
     function _removeLiquidity(address user, address token, uint256 lpUnits) internal {
+        if (poolInfo[token].tokenAddress == address(0)) revert InvalidToken();
+
+        if (lpUnits == 0) revert InvalidTokenAmount();
+
         // deduct lp from user
         userLpUnitInfo[user][token] -= lpUnits;
         // calculate asset to transfer
@@ -269,6 +277,12 @@ contract Pool is IPool, Ownable {
     }
 
     function _executeStream(bytes32 pairId, address tokenIn, address tokenOut) internal {
+        //check if the reserves are greater than min launch
+        if (
+            poolInfo[tokenIn].minLaunchReserveA > poolInfo[tokenIn].reserveA
+                || poolInfo[tokenIn].minLaunchReserveD > poolInfo[tokenIn].reserveD
+        ) revert MinLaunchReservesNotReached();
+
         // loading the front swap from the stream queue
         Swap storage frontSwap;
         Queue.QueueStruct storage pairStream = pairStreamQueue[pairId];
@@ -370,6 +384,7 @@ contract Pool is IPool, Ownable {
         internal
         returns (Queue.QueueStruct storage, uint256, uint256)
     {
+        if (swapQueue.data[swapId].user == address(0)) revert InvalidSwap();
         // transferring the remaining amount
         uint256 amountIn = swapQueue.data[swapId].swapAmountRemaining;
         uint256 amountOut = swapQueue.data[swapId].amountOut;

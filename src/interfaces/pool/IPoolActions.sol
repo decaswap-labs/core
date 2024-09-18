@@ -6,8 +6,9 @@ interface IPoolActions {
     function disablePool(address) external;
     function add(address, address, uint256) external;
     function remove(address, address, uint256) external;
-    function executeSwap(address user, uint256 amountIn, uint256 executionPrice, address tokenIn, address tokenOut)
-        external;
+    function executeSwap(address, uint256, uint256, address, address) external;
+    function depositVault() external;
+    function withdrawVault() external;
 
     function updatePoolLogicAddress(address) external;
     function updateVaultAddress(address) external;
