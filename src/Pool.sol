@@ -254,6 +254,14 @@ contract Pool is IPool, Ownable {
         return keccak256(abi.encodePacked(A, B));
     }
 
+    function getStreamStruct(bytes32 pairId) external view  returns(Queue.QueueStruct memory) {
+        return pairStreamQueue[pairId];
+    }
+
+    function getPendingStruct(bytes32 pairId) external view returns(Queue.QueueStruct memory) {
+        return pairPendingQueue[pairId];
+    }
+
     function _createPool(address token, uint256 minLaunchReserveA, uint256 minLaunchReserveD, uint256 initialDToMint)
         internal
     {
