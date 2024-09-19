@@ -58,8 +58,10 @@ contract PoolLogic is Initializable, OwnableUpgradeable, IPoolLogic {
         returns (uint256)
     {
         // streamQuantity = SwappedAmount/(globalMinSlippage * PoolDepth)
+        
+        // (10e18 * 10000) / (10000-15 * 15e18)
 
-        return amount * 10000 / (10000 - poolSlippage * reserveD);
+        return (amount * 10000) / (((10000 - poolSlippage) * reserveD));
     }
 
     function calculateAssetTransfer(uint256 lpUnits, uint256 reserveA, uint256 totalLpUnits)
@@ -90,8 +92,12 @@ contract PoolLogic is Initializable, OwnableUpgradeable, IPoolLogic {
         // d1 = a * D1 / a + A
         // return d1 -> this will be updated in the pool
         // b = d * B / d + D2 -> this will be returned to the pool
+
+//         10 * 1e18
+//         100000000000000000000
+//         1000000000000000000
         uint256 d1 = (amountIn * reserveD1) / (amountIn + reserveA);
-        return (d1, (d1 * reserveB / d1 + reserveD2));
+        return (d1, ((d1 * reserveB)/ (d1 + reserveD2)));
     }
 
     function getTokenOut(uint256 dAmount, uint256 reserveA, uint256 reserveD)
