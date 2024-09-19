@@ -122,10 +122,7 @@ contract Pool is IPool, Ownable {
             })
         );
 
-        userVaultInfo[tokenIn][user] = VaultDepositInfo({
-            tokenAmount: amountIn,
-            dAmount: 0
-        });
+        userVaultInfo[tokenIn][user] = VaultDepositInfo({tokenAmount: amountIn, dAmount: 0});
 
         emit StreamAdded(poolStreamQueue[pairId].front, amountIn, currentPrice, streamCount, pairId);
 
@@ -518,18 +515,20 @@ contract Pool is IPool, Ownable {
         if (completedSwapToken != address(0)) IERC20(completedSwapToken).transfer(swapUser, amountOutSwap);
 
         // --------------------------- HANDLE PENDING SWAP INSERTION ----------------------------- //
-        Swap storage frontPendingSwap;
-        Queue.QueueStruct storage pairPending = pairPendingQueue[pairId];
-        frontPendingSwap = pairPending.data[pairPending.front];
+        if (pairPendingQueue[pairId].data.length > 0) {
+            Swap storage frontPendingSwap;
+            Queue.QueueStruct storage pairPending = pairPendingQueue[pairId];
+            frontPendingSwap = pairPending.data[pairPending.front];
 
-        uint256 executionPriceInOrder = frontPendingSwap.executionPrice;
-        uint256 executionPriceLatest = poolLogic.getExecutionPrice(
-            poolInfo[frontPendingSwap.tokenIn].reserveA, poolInfo[frontPendingSwap.tokenOut].reserveA
-        );
+            uint256 executionPriceInOrder = frontPendingSwap.executionPrice;
+            uint256 executionPriceLatest = poolLogic.getExecutionPrice(
+                poolInfo[frontPendingSwap.tokenIn].reserveA, poolInfo[frontPendingSwap.tokenOut].reserveA
+            );
 
-        if (executionPriceLatest >= executionPriceInOrder) {
-            pairStreamQueue[pairId].enqueue(frontPendingSwap);
-            pairPendingQueue[pairId].dequeue();
+            if (executionPriceLatest >= executionPriceInOrder) {
+                pairStreamQueue[pairId].enqueue(frontPendingSwap);
+                pairPendingQueue[pairId].dequeue();
+            }
         }
     }
 
@@ -572,11 +571,10 @@ contract Pool is IPool, Ownable {
             if (frontSwap.swapAmountRemaining < amountOutB) {
                 // update pool
 
-
                 frontSwap.amountOut = dOutA;
 
                 //update user vault info
-                userVaultInfo[tokenA][frontSwap.user].dAmount = dOutA; 
+                userVaultInfo[tokenA][frontSwap.user].dAmount = dOutA;
                 userVaultInfo[tokenA][frontSwap.user].tokenAmount = 0;
 
                 frontSwap.completed = true;
@@ -584,7 +582,7 @@ contract Pool is IPool, Ownable {
 
                 oppositeSwap.swapAmountRemaining -= dOutA;
                 oppositeSwap.amountOut += frontSwap.swapAmountRemaining;
-                
+
                 frontSwap.swapAmountRemaining = 0;
 
                 // TODO: Complete stream and send it to vault
@@ -607,7 +605,6 @@ contract Pool is IPool, Ownable {
                 frontSwap.amountOut += oppositeSwap.swapAmountRemaining;
 
                 oppositeSwap.swapAmountRemaining = 0;
-
 
                 oppositeSwap.completed = true;
                 oppositeSwap.streamsRemaining = 0;
@@ -668,10 +665,11 @@ contract Pool is IPool, Ownable {
                 frontSwap.swapAmountRemaining, poolInfo[tokenA].reserveA, poolInfo[tokenA].reserveD
             );
 
-            uint256 dOutB =
-                poolLogic.getDOut(oppositeSwap.swapAmountRemaining, poolInfo[tokenA].reserveA, poolInfo[tokenA].reserveD);
+            uint256 dOutB = poolLogic.getDOut(
+                oppositeSwap.swapAmountRemaining, poolInfo[tokenA].reserveA, poolInfo[tokenA].reserveD
+            );
             // B->A
-            
+
             /*
 
             Alice is withdrawing 15 D -> ??? TKN (30)
@@ -695,7 +693,7 @@ contract Pool is IPool, Ownable {
                 frontSwap.amountOut += amountOutA;
 
                 //update user vault info
-                userVaultInfo[tokenA][frontSwap.user].dAmount = 0; 
+                userVaultInfo[tokenA][frontSwap.user].dAmount = 0;
                 userVaultInfo[tokenA][frontSwap.user].tokenAmount += amountOutA;
 
                 frontSwap.completed = true;
@@ -705,7 +703,6 @@ contract Pool is IPool, Ownable {
                 oppositeSwap.amountOut += frontSwap.swapAmountRemaining;
 
                 frontSwap.swapAmountRemaining = 0;
-
 
                 // TODO: Complete stream and send it to vault
                 // // ----------- to set transfer
@@ -728,7 +725,6 @@ contract Pool is IPool, Ownable {
 
                 oppositeSwap.swapAmountRemaining = 0;
 
-
                 oppositeSwap.completed = true;
                 oppositeSwap.streamsRemaining = 0;
 
@@ -742,10 +738,8 @@ contract Pool is IPool, Ownable {
                 Queue.dequeue(poolStreamQueue[otherPairId]);
             }
         } else {
-
-            uint256 amountOutA = poolLogic.getTokenOut(
-                frontSwap.swapPerStream, poolInfo[tokenA].reserveA, poolInfo[tokenA].reserveD
-            );
+            uint256 amountOutA =
+                poolLogic.getTokenOut(frontSwap.swapPerStream, poolInfo[tokenA].reserveA, poolInfo[tokenA].reserveD);
 
             // uint256 dOutA =
             //     poolLogic.getDOut(frontSwap.swapPerStream, poolInfo[tokenA].reserveA, poolInfo[tokenA].reserveD);
@@ -773,7 +767,6 @@ contract Pool is IPool, Ownable {
             }
         }
     }
-
 
     function _removeSwap(uint256 swapId, Queue.QueueStruct storage swapQueue)
         internal
