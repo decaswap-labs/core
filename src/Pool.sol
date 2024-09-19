@@ -32,8 +32,14 @@ contract Pool is IPool, Ownable {
         address tokenAddress;
     }
 
+    struct VaultDepositInfo {
+        uint256 tokenAmount;
+        uint256 dAmount;
+    }
+
     mapping(address => PoolInfo) public override poolInfo;
     mapping(address => mapping(address => uint256)) public override userLpUnitInfo;
+    mapping(address => mapping(address => VaultDepositInfo)) public userVaultInfo;
     mapping(bytes32 => uint256) public override pairSlippage;
     // mapping(bytes32 => PoolSwapData) public override pairSwapHistory;
     mapping(bytes32 => Queue.QueueStruct) public pairStreamQueue;
@@ -116,12 +122,57 @@ contract Pool is IPool, Ownable {
             })
         );
 
+        userVaultInfo[tokenIn][user] = VaultDepositInfo({
+            tokenAmount: amountIn,
+            dAmount: 0
+        });
+
         emit StreamAdded(poolStreamQueue[pairId].front, amountIn, currentPrice, streamCount, pairId);
 
         _executeDepositVaultStream(pairId, tokenIn);
     }
 
-    function withdrawVault() external override onlyRouter {}
+    function withdrawVault(address user, uint256 amountIn, address tokenOut) external override onlyRouter {
+        if (poolInfo[tokenOut].tokenAddress == address(0)) revert InvalidPool();
+        if (userVaultInfo[tokenOut][user].dAmount < amountIn) revert InvalidTokenAmount();
+
+        uint256 streamCount;
+        uint256 swapPerStream;
+        uint256 minPoolDepth;
+
+        bytes32 poolId;
+        bytes32 pairId;
+
+        minPoolDepth = poolInfo[tokenOut].reserveD;
+
+        streamCount = poolLogic.calculateStreamCount(amountIn, globalSlippage, minPoolDepth);
+        swapPerStream = amountIn / streamCount;
+
+        pairId = keccak256(abi.encodePacked(D_TOKEN, tokenOut)); // for one direction
+
+        uint256 currentPrice = poolLogic.getExecutionPrice(poolInfo[tokenOut].reserveA, poolInfo[tokenOut].reserveA);
+
+        poolStreamQueue[pairId].enqueue(
+            Swap({
+                swapID: pairStreamQueue[pairId].back,
+                swapAmount: amountIn,
+                executionPrice: currentPrice,
+                swapAmountRemaining: amountIn,
+                streamsCount: streamCount,
+                streamsRemaining: streamCount,
+                swapPerStream: swapPerStream,
+                tokenIn: D_TOKEN,
+                tokenOut: tokenOut,
+                completed: false,
+                amountOut: 0,
+                user: user
+            })
+        );
+
+        emit StreamAdded(poolStreamQueue[pairId].front, amountIn, currentPrice, streamCount, pairId);
+
+        _executeWithdrawVaultStream(pairId, tokenOut);
+    }
 
     // neeed to add in interface
     function executeSwap(address user, uint256 amountIn, uint256 executionPrice, address tokenIn, address tokenOut)
@@ -390,7 +441,7 @@ contract Pool is IPool, Ownable {
                 poolInfo[tokenB].reserveD += dOutA;
 
                 oppositeSwap.amountOut += frontSwap.swapAmountRemaining;
-                frontSwap.amountOut = amountOutA;
+                frontSwap.amountOut += amountOutA;
                 oppositeSwap.swapAmountRemaining -= amountOutA;
                 frontSwap.swapAmountRemaining = 0;
 
@@ -414,7 +465,7 @@ contract Pool is IPool, Ownable {
                 poolInfo[tokenA].reserveD += dOutB;
 
                 frontSwap.amountOut += oppositeSwap.swapAmountRemaining;
-                oppositeSwap.amountOut = amountOutB;
+                oppositeSwap.amountOut += amountOutB;
                 frontSwap.swapAmountRemaining -= amountOutB;
                 oppositeSwap.swapAmountRemaining = 0;
 
@@ -521,14 +572,20 @@ contract Pool is IPool, Ownable {
             if (frontSwap.swapAmountRemaining < amountOutB) {
                 // update pool
 
-                frontSwap.swapAmountRemaining = 0;
+
                 frontSwap.amountOut = dOutA;
+
+                //update user vault info
+                userVaultInfo[tokenA][frontSwap.user].dAmount = dOutA; 
+                userVaultInfo[tokenA][frontSwap.user].tokenAmount = 0;
 
                 frontSwap.completed = true;
                 frontSwap.streamsRemaining = 0;
 
                 oppositeSwap.swapAmountRemaining -= dOutA;
                 oppositeSwap.amountOut += frontSwap.swapAmountRemaining;
+                
+                frontSwap.swapAmountRemaining = 0;
 
                 // TODO: Complete stream and send it to vault
                 // // ----------- to set transfer
@@ -540,11 +597,17 @@ contract Pool is IPool, Ownable {
                 poolStreamQueue[pairId].data[poolStream.front] = frontSwap;
                 Queue.dequeue(poolStreamQueue[pairId]);
             } else {
-                oppositeSwap.swapAmountRemaining = 0;
                 oppositeSwap.amountOut = amountOutB;
+
+                //update user vault info
+                userVaultInfo[tokenA][oppositeSwap.user].tokenAmount = amountOutB;
+                userVaultInfo[tokenA][oppositeSwap.user].dAmount = 0;
 
                 frontSwap.swapAmountRemaining -= amountOutB;
                 frontSwap.amountOut += oppositeSwap.swapAmountRemaining;
+
+                oppositeSwap.swapAmountRemaining = 0;
+
 
                 oppositeSwap.completed = true;
                 oppositeSwap.streamsRemaining = 0;
@@ -567,6 +630,10 @@ contract Pool is IPool, Ownable {
             frontSwap.amountOut += dOutA;
             frontSwap.streamsRemaining--;
 
+            // update user info
+            userVaultInfo[tokenA][frontSwap.user].tokenAmount -= frontSwap.swapPerStream;
+            userVaultInfo[tokenA][frontSwap.user].dAmount += dOutA;
+
             if (frontSwap.streamsRemaining == 0) {
                 frontSwap.completed = true;
                 // completedSwapToken = frontSwap.tokenIn;
@@ -581,6 +648,132 @@ contract Pool is IPool, Ownable {
             }
         }
     }
+
+    function _executeWithdrawVaultStream(bytes32 pairId, address tokenA) internal {
+        // loading the front swap from the stream queue
+        Swap storage frontSwap;
+        Queue.QueueStruct storage poolStream = poolStreamQueue[pairId];
+        frontSwap = poolStream.data[poolStream.front];
+
+        // ------------------------ CHECK OPP DIR SWAP --------------------------- //
+        //TODO: Deduct fees from amount out = 5BPS.
+        bytes32 otherPairId = keccak256(abi.encodePacked(tokenA, D_TOKEN));
+        Queue.QueueStruct storage oppositePoolStream = poolStreamQueue[otherPairId];
+
+        if (oppositePoolStream.data.length != 0) {
+            Swap storage oppositeSwap = oppositePoolStream.data[oppositePoolStream.front];
+            // A->B , dout1 is D1, amountOut1 is B
+
+            uint256 amountOutA = poolLogic.getTokenOut(
+                frontSwap.swapAmountRemaining, poolInfo[tokenA].reserveA, poolInfo[tokenA].reserveD
+            );
+
+            uint256 dOutB =
+                poolLogic.getDOut(oppositeSwap.swapAmountRemaining, poolInfo[tokenA].reserveA, poolInfo[tokenA].reserveD);
+            // B->A
+            
+            /*
+
+            Alice is withdrawing 15 D -> ??? TKN (30)
+            if I am depositing 60TKN -> ??? D (30)
+            
+
+            Alice's order should be fulfilled completely by mine. 
+
+            AmountIn1 = AmountIn1 - AmountIn1
+            AmountOut1 = amountOut1
+
+            AmountIn2 = AmountIn2 - AmountOut1
+            AmountOut2 = AmountOut2 + AmountIn1
+
+            */
+
+            // TKN , TKN
+            if (frontSwap.swapAmountRemaining < dOutB) {
+                // update pool
+
+                frontSwap.amountOut += amountOutA;
+
+                //update user vault info
+                userVaultInfo[tokenA][frontSwap.user].dAmount = 0; 
+                userVaultInfo[tokenA][frontSwap.user].tokenAmount += amountOutA;
+
+                frontSwap.completed = true;
+                frontSwap.streamsRemaining = 0;
+
+                oppositeSwap.swapAmountRemaining -= amountOutA;
+                oppositeSwap.amountOut += frontSwap.swapAmountRemaining;
+
+                frontSwap.swapAmountRemaining = 0;
+
+
+                // TODO: Complete stream and send it to vault
+                // // ----------- to set transfer
+                // completedSwapToken = frontSwap.tokenIn;
+                // swapUser = frontSwap.user;
+                // amountOutSwap = frontSwap.amountOut;
+                // // -----------
+
+                poolStreamQueue[pairId].data[poolStream.front] = frontSwap;
+                Queue.dequeue(poolStreamQueue[pairId]);
+            } else {
+                oppositeSwap.amountOut += dOutB;
+
+                //update user vault info
+                userVaultInfo[tokenA][oppositeSwap.user].tokenAmount = 0;
+                userVaultInfo[tokenA][oppositeSwap.user].dAmount += dOutB;
+
+                frontSwap.swapAmountRemaining -= dOutB;
+                frontSwap.amountOut += oppositeSwap.swapAmountRemaining;
+
+                oppositeSwap.swapAmountRemaining = 0;
+
+
+                oppositeSwap.completed = true;
+                oppositeSwap.streamsRemaining = 0;
+
+                // // ----------- to set transfer
+                // completedSwapToken = oppositeSwap.tokenIn;
+                // swapUser = oppositeSwap.user;
+                // amountOutSwap = oppositeSwap.amountOut;
+                // // -----------
+
+                poolStreamQueue[otherPairId].data[oppositePoolStream.front] = oppositeSwap;
+                Queue.dequeue(poolStreamQueue[otherPairId]);
+            }
+        } else {
+
+            uint256 amountOutA = poolLogic.getTokenOut(
+                frontSwap.swapPerStream, poolInfo[tokenA].reserveA, poolInfo[tokenA].reserveD
+            );
+
+            // uint256 dOutA =
+            //     poolLogic.getDOut(frontSwap.swapPerStream, poolInfo[tokenA].reserveA, poolInfo[tokenA].reserveD);
+
+            //TODO: Deduct fees from amount out = 5BPS.
+            frontSwap.swapAmountRemaining -= frontSwap.swapPerStream;
+            frontSwap.amountOut += amountOutA;
+            frontSwap.streamsRemaining--;
+
+            // update user info
+            userVaultInfo[tokenA][frontSwap.user].tokenAmount += amountOutA;
+            userVaultInfo[tokenA][frontSwap.user].dAmount -= frontSwap.swapPerStream;
+
+            if (frontSwap.streamsRemaining == 0) {
+                frontSwap.completed = true;
+                // completedSwapToken = frontSwap.tokenIn;
+                // swapUser = frontSwap.user;
+                // amountOutSwap = frontSwap.amountOut;
+            }
+
+            poolStreamQueue[pairId].data[poolStream.front] = frontSwap;
+
+            if (poolStreamQueue[pairId].data[poolStream.front].streamsCount == 0) {
+                Queue.dequeue(poolStreamQueue[pairId]);
+            }
+        }
+    }
+
 
     function _removeSwap(uint256 swapId, Queue.QueueStruct storage swapQueue)
         internal
