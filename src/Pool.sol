@@ -62,6 +62,8 @@ contract Pool is IPool, Ownable {
         emit PoolLogicAddressUpdated(address(0), POOL_LOGIC);
     }
 
+    event AmountOut(uint256 amount);
+
     function createPool(
         address token,
         uint256 minLaunchReserveA,
@@ -464,7 +466,7 @@ contract Pool is IPool, Ownable {
                 frontSwap.amountOut += oppositeSwap.swapAmountRemaining;
                 oppositeSwap.amountOut += amountOutB;
                 frontSwap.swapAmountRemaining -= amountOutB;
-                oppositeSwap.swapAmountRemaining = 0;
+                 oppositeSwap.swapAmountRemaining = 0;
 
                 oppositeSwap.completed = true;
                 oppositeSwap.streamsRemaining = 0;
@@ -472,7 +474,8 @@ contract Pool is IPool, Ownable {
                 // ----------- to set transfer
                 completedSwapToken = oppositeSwap.tokenIn;
                 swapUser = oppositeSwap.user;
-                amountOutSwap = oppositeSwap.amountOut;
+                amountOutSwap = oppositeSwap.amountOut; // error for opp dir swap
+                emit AmountOut(amountOutSwap);
                 // -----------
 
                 pairStreamQueue[otherPairId].data[oppositePairStream.front] = oppositeSwap;
@@ -512,7 +515,7 @@ contract Pool is IPool, Ownable {
                 Queue.dequeue(pairStreamQueue[pairId]);
             }
         }
-        if (completedSwapToken != address(0)) IERC20(completedSwapToken).transfer(swapUser, amountOutSwap);
+      //  if (completedSwapToken != address(0)) IERC20(completedSwapToken).transfer(swapUser, amountOutSwap);
 
         // --------------------------- HANDLE PENDING SWAP INSERTION ----------------------------- //
         if (pairPendingQueue[pairId].data.length > 0) {
@@ -780,8 +783,8 @@ contract Pool is IPool, Ownable {
         address token = swapQueue.data[swapId].tokenIn;
         address tokenOut = swapQueue.data[swapId].tokenOut;
 
-        IERC20(token).transfer(user, amountIn);
-        IERC20(tokenOut).transfer(user, amountOut);
+        //  IERC20(token).transfer(user, amountIn);
+        //  IERC20(tokenOut).transfer(user, amountOut);
 
         if (swapId == 0) {
             swapQueue.front++;
