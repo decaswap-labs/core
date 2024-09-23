@@ -247,26 +247,76 @@ contract PoolTest is Test {
     }
 
     // Test: Pending queue swap insertion
-    //  function testPendingQueueSwap() public {
-    //     vm.prank(user);
-    //     pool.createPool(address(tokenA), 100 * 1e18, 1 * 1e18, 100 * 1e18, 1 * 1e18);
-    //     vm.prank(user);
-    //     pool.createPool(address(tokenB), 100 * 1e18, 1 * 1e18, 100 * 1e18, 1 * 1e18);
+     function testPendingQueueSwap() public {
+        vm.prank(user);
+        pool.createPool(address(tokenA), 100 * 1e18, 1 * 1e18, 100 * 1e18, 1 * 1e18);
+                (
+        uint256 A_poolOwnershipUnitsTotal,
+        uint256 A_reserveD,
+        uint256 A_reserveA,
+        uint256 A_minLaunchReserveA,
+        uint256 A_minLaunchReserveD,
+        uint256 A_initialDToMint,
+        uint256 A_poolFeeCollected,
+        address A_tokenAddress
+        ) = pool.poolInfo(address(tokenA));
 
-    //     vm.prank(router);
-    //     pool.executeSwap(user,10 * 1e18,1,address(tokenA),address(tokenB)); //A->B
+        vm.prank(user);
+        pool.createPool(address(tokenB), 100 * 1e18, 1 * 1e18, 100 * 1e18, 1 * 1e18);
+        (
+        uint256 B_reserveD,
+        uint256 B_poolOwnershipUnitsTotal,
+        uint256 B_reserveA,
+        uint256 B_minLaunchReserveA,
+        uint256 B_minLaunchReserveD,
+        uint256 B_initialDToMint,
+        uint256 B_poolFeeCollected,
+        address B_tokenAddress
+        ) = pool.poolInfo(address(tokenB));
 
-    //     vm.prank(router);
-    //     pool.executeSwap(user,10 * 1e18,2,address(tokenA),address(tokenB)); //A->B
+        uint256 before_Current_price = (A_reserveA * 1e18 / B_reserveA);
+        console.log("before_Current_price: ",before_Current_price);
 
-    //     bytes32 id = keccak256(abi.encodePacked(address(tokenA), address(tokenB)));
-    //     Queue.QueueStruct memory queue = pool.getPendingStruct(id);
+        vm.prank(router);
+        pool.executeSwap(user,10 * 1e18,1e18,address(tokenA),address(tokenB)); //A->B
 
-    //     uint256 streamsCount = queue.data[queue.front].streamsCount;    
+         (
+        A_poolOwnershipUnitsTotal,
+        A_reserveD,
+        A_reserveA,
+        A_minLaunchReserveA,
+        A_minLaunchReserveD,
+        A_initialDToMint,
+        A_poolFeeCollected,
+        A_tokenAddress
+        ) = pool.poolInfo(address(tokenA));
 
-    //    console.log("streamsCount",streamsCount);
+        (
+        B_reserveD,
+        B_poolOwnershipUnitsTotal,
+        B_reserveA,
+        B_minLaunchReserveA,
+        B_minLaunchReserveD,
+        B_initialDToMint,
+        B_poolFeeCollected,
+        B_tokenAddress
+        ) = pool.poolInfo(address(tokenB));
 
-    // }
+
+        uint256 After_Current_price = (A_reserveA * 1e18 / B_reserveA);
+        console.log("after_Current_price: ",After_Current_price);
+
+        vm.prank(router);
+        pool.executeSwap(user,10 * 1e18,1.02e18,address(tokenA),address(tokenB)); //A->B
+
+       bytes32 id = keccak256(abi.encodePacked(address(tokenA), address(tokenB)));
+
+       Queue.QueueStruct memory queue = pool.getPendingStruct(id);   
+
+       console.log("queue.data.length: ",queue.data.length);
+
+
+    }
 
     // // Test: Cancellation of a swap in the stream queue
     function testCancelSwap() public {
@@ -337,42 +387,72 @@ contract PoolTest is Test {
         vm.prank(router);
         pool.executeSwap(user,10 * 1e18,1,address(tokenA),address(tokenB)); //A->B
 
-    //    vm.expectEmit(true, true, true, true);
-    //    emit AmountOut(10 * 1e18);
-
         vm.prank(router);
         pool.executeSwap(user,10 * 1e18,1,address(tokenB),address(tokenA)); //B->A
  
         console.log(tokenA.balanceOf(address(pool)));
         console.log(tokenB.balanceOf(address(pool)));
 
-       // assertEq(tokenA.balanceOf(user), 500 ether, "Opposite direction swap failed.");
     }
 
     // // Test: Failing stream swap execution (insufficient liquidity)
     // function testFailExecuteSwap_InsufficientLiquidity() public {
     //     vm.prank(user);
-    //     pool.createPool(address(tokenA), address(tokenB));
+    //     pool.createPool(address(tokenA), 1 * 1e18, 1 * 1e18, 100 * 1e18, 1 * 1e18);
+    //     vm.prank(user);
+    //     pool.createPool(address(tokenB), 1 * 1e18, 1 * 1e18, 100 * 1e18, 1 * 1e18);
 
-    //     vm.expectRevert("Insufficient liquidity");
-    //     pool.executeSwap(address(tokenA), address(tokenB), 1000 ether);
+        
+    //     vm.prank(router);
+    //     vm.expectRevert();
+    //     pool.executeSwap(user,10 * 1e18,1,address(tokenA),address(tokenB)); //A->B
     // }
 
     // // Test: Failing pending queue swap insertion (invalid price)
     // function testFailPendingQueueSwap_InvalidPrice() public {
     //     vm.prank(user);
-    //     pool.createPool(address(tokenA), address(tokenB));
+    //     pool.createPool(address(tokenA), 100 * 1e18, 1 * 1e18, 100 * 1e18, 1 * 1e18);
 
-    //     vm.expectRevert("Invalid price");
-    //     pool.executeSwap(address(tokenA), address(tokenB), 100 ether, 0);
-    // }
-
-    // // Test: Failing swap between two tokens (mismatched amounts)
-    // function testFailSwap_MismatchedAmounts() public {
     //     vm.prank(user);
-    //     pool.createPool(address(tokenA), address(tokenB));
+    //     pool.createPool(address(tokenB), 100 * 1e18, 1 * 1e18, 100 * 1e18, 1 * 1e18);
 
-    //     vm.expectRevert("Mismatched amounts");
-    //     pool.executeSwap(address(tokenA), address(tokenB), 100 ether, 200 ether);
+
+    //     vm.prank(router);
+    //     pool.executeSwap(user,10 * 1e18,1e18,address(tokenA),address(tokenB));
+
+    //             (
+    //     uint256 A_poolOwnershipUnitsTotal,
+    //     uint256 A_reserveD,
+    //     uint256 A_reserveA,
+    //     uint256 A_minLaunchReserveA,
+    //     uint256 A_minLaunchReserveD,
+    //     uint256 A_initialDToMint,
+    //     uint256 A_poolFeeCollected,
+    //     address A_tokenAddress
+    //     ) = pool.poolInfo(address(tokenA));
+
+    //     (
+    //     uint256 B_reserveD,
+    //     uint256 B_poolOwnershipUnitsTotal,
+    //     uint256 B_reserveA,
+    //     uint256 B_minLaunchReserveA,
+    //     uint256 B_minLaunchReserveD,
+    //     uint256 B_initialDToMint,
+    //     uint256 B_poolFeeCollected,
+    //     address B_tokenAddress
+    //     ) = pool.poolInfo(address(tokenB));
+
+    //     uint256 before_Current_price = (A_reserveA * 1e18 / B_reserveA);
+    //     console.log("before_Current_price: ",before_Current_price);
+
+    //     vm.prank(router);
+    //     pool.executeSwap(user,10 * 1e18,1009999999999999998,address(tokenA),address(tokenB));
+
+    //    bytes32 id = keccak256(abi.encodePacked(address(tokenA), address(tokenB)));
+
+    //    Queue.QueueStruct memory queue = pool.getPendingStruct(id);
+
+    //    console.log("queue.data.length: ",queue.data.length);
+
     // }
 }
