@@ -61,7 +61,9 @@ contract PoolLogic is Initializable, OwnableUpgradeable, IPoolLogic {
 
         // (10e18 * 10000) / (10000-15 * 15e18)
 
-        return (amount * 10000) / (((10000 - poolSlippage) * reserveD));
+       uint256 result =((amount * 10000) / (((10000 - poolSlippage) * reserveD)));
+       return result < 1 ? 1 : result;
+
     }
 
     function calculateAssetTransfer(uint256 lpUnits, uint256 reserveA, uint256 totalLpUnits)
