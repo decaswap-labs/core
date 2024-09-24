@@ -35,7 +35,7 @@ contract PoolTest is Test {
 //     // ------------------------ Test Cases ------------------------
 
 
-   // Test: Successfully create a pool
+   //Test: Successfully create a pool
     function testCreatePool_Success() public {
         vm.prank(user);
 
@@ -395,66 +395,66 @@ contract PoolTest is Test {
 
     }
 
-//     // // Test: Failing stream swap execution (insufficient liquidity)
-//     // function testFailExecuteSwap_InsufficientLiquidity() public {
-//     //     vm.prank(user);
-//     //     pool.createPool(address(tokenA), 1 * 1e18, 1 * 1e18, 100 * 1e18, 1 * 1e18);
-//     //     vm.prank(user);
-//     //     pool.createPool(address(tokenB), 1 * 1e18, 1 * 1e18, 100 * 1e18, 1 * 1e18);
+    //Test: Failing stream swap execution (insufficient liquidity)
+    // function testExecuteSwap_InsufficientLiquidity() public {
+    //     vm.prank(user);
+    //     pool.createPool(address(tokenA), 1 * 1e18, 1 * 1e18, 100 * 1e18, 1 * 1e18);
+    //     vm.prank(user);
+    //     pool.createPool(address(tokenB), 1 * 1e18, 1 * 1e18, 100 * 1e18, 1 * 1e18);
 
         
-//     //     vm.prank(router);
-//     //     vm.expectRevert();
-//     //     pool.executeSwap(user,10 * 1e18,1,address(tokenA),address(tokenB)); //A->B
-//     // }
+    //     vm.prank(router);
+    //     vm.expectRevert();
+    //     pool.executeSwap(user, 1000e18,1e18,address(tokenA),address(tokenB)); //A->B
+    // }
 
-//     // // Test: Failing pending queue swap insertion (invalid price)
-//     // function testFailPendingQueueSwap_InvalidPrice() public {
-//     //     vm.prank(user);
-//     //     pool.createPool(address(tokenA), 100 * 1e18, 1 * 1e18, 100 * 1e18, 1 * 1e18);
+    //Test: Failing pending queue swap insertion (invalid price)
+    function testPendingQueueSwap_InvalidPrice() public {
+        vm.prank(user);
+        pool.createPool(address(tokenA), 100 * 1e18, 1 * 1e18, 100 * 1e18, 1 * 1e18);
 
-//     //     vm.prank(user);
-//     //     pool.createPool(address(tokenB), 100 * 1e18, 1 * 1e18, 100 * 1e18, 1 * 1e18);
+        vm.prank(user);
+        pool.createPool(address(tokenB), 100 * 1e18, 1 * 1e18, 100 * 1e18, 1 * 1e18);
 
 
-//     //     vm.prank(router);
-//     //     pool.executeSwap(user,10 * 1e18,1e18,address(tokenA),address(tokenB));
+        vm.prank(router);
+        pool.executeSwap(user,10 * 1e18,1e18,address(tokenA),address(tokenB));
 
-//     //             (
-//     //     uint256 A_poolOwnershipUnitsTotal,
-//     //     uint256 A_reserveD,
-//     //     uint256 A_reserveA,
-//     //     uint256 A_minLaunchReserveA,
-//     //     uint256 A_minLaunchReserveD,
-//     //     uint256 A_initialDToMint,
-//     //     uint256 A_poolFeeCollected,
-//     //     address A_tokenAddress
-//     //     ) = pool.poolInfo(address(tokenA));
+                (
+        uint256 A_poolOwnershipUnitsTotal,
+        uint256 A_reserveD,
+        uint256 A_reserveA,
+        uint256 A_minLaunchReserveA,
+        uint256 A_minLaunchReserveD,
+        uint256 A_initialDToMint,
+        uint256 A_poolFeeCollected,
+        address A_tokenAddress
+        ) = pool.poolInfo(address(tokenA));
 
-//     //     (
-//     //     uint256 B_reserveD,
-//     //     uint256 B_poolOwnershipUnitsTotal,
-//     //     uint256 B_reserveA,
-//     //     uint256 B_minLaunchReserveA,
-//     //     uint256 B_minLaunchReserveD,
-//     //     uint256 B_initialDToMint,
-//     //     uint256 B_poolFeeCollected,
-//     //     address B_tokenAddress
-//     //     ) = pool.poolInfo(address(tokenB));
+        (
+        uint256 B_reserveD,
+        uint256 B_poolOwnershipUnitsTotal,
+        uint256 B_reserveA,
+        uint256 B_minLaunchReserveA,
+        uint256 B_minLaunchReserveD,
+        uint256 B_initialDToMint,
+        uint256 B_poolFeeCollected,
+        address B_tokenAddress
+        ) = pool.poolInfo(address(tokenB));
 
-//     //     uint256 before_Current_price = (A_reserveA * 1e18 / B_reserveA);
-//     //     console.log("before_Current_price: ",before_Current_price);
+        uint256 before_Current_price = (A_reserveA * 1e18 / B_reserveA);
+        console.log("before_Current_price: ",before_Current_price);
 
-//     //     vm.prank(router);
-//     //     pool.executeSwap(user,10 * 1e18,1009999999999999998,address(tokenA),address(tokenB));
+        vm.prank(router);
+        pool.executeSwap(user,10 * 1e18,1009999999999999998,address(tokenA),address(tokenB));
 
-//     //    bytes32 id = keccak256(abi.encodePacked(address(tokenA), address(tokenB)));
+       bytes32 id = keccak256(abi.encodePacked(address(tokenA), address(tokenB)));
 
-//     //    Queue.QueueStruct memory queue = pool.getPendingStruct(id);
+       Queue.QueueStruct memory queue = pool.getPendingStruct(id);
 
-//     //    console.log("queue.data.length: ",queue.data.length);
+       assertEq(queue.data.length, 0);
 
-//     // }
+    }
 
         function testDepositVault_Success() public {
         vm.prank(user);
@@ -474,16 +474,17 @@ contract PoolTest is Test {
         assertEq(dAmount, 9900990099009900); // Initially, the deposited D token amount should be zero
     }
 
-        // function testFail_DepositInvalidToken() public {
-        //     vm.prank(user);
-        //  // pool.createPool(address(tokenA), 100 * 1e18, 1 * 1e18, 100 * 1e18, 1 * 1e18);
-        //     vm.prank(router);
-        //     pool.depositVault(user, 1e18, address(0));
-        //     // Simulate the depositVault function
-        //     // vm.expectRevert();
-        // }
+    function testDepositInvalidToken() public {
+           
+            vm.prank(user);
+            pool.createPool(address(tokenA), 100 * 1e18, 1 * 1e18, 100 * 1e18, 1 * 1e18);
+            vm.expectRevert();
+            vm.prank(router);  
+            pool.depositVault(user, 1e18, address(0));
 
-        function testWithdrawVault() public {
+    }
+
+        function testWithdrawVaultSuccessful() public {
 
         vm.prank(user);
         pool.createPool(address(tokenA), 100 * 1e18, 1 * 1e18, 100 * 1e18, 1 * 1e18);
@@ -501,6 +502,22 @@ contract PoolTest is Test {
 
         assertEq(tokenAmount, 0);
         assertEq(dAmount, 9900990099009900);
-
     }
+
+
+    function testWithdrawVaultwithInsufficientAmount() public {
+
+        vm.prank(user);
+        pool.createPool(address(tokenA), 100 * 1e18, 1 * 1e18, 100 * 1e18, 1 * 1e18);
+
+        // Simulate the depositVault function
+        vm.prank(router);
+        pool.depositVault(user, 1e18, address(tokenA));
+
+        // Simulate the withdrawVault function
+        vm.expectRevert();
+        vm.prank(router);
+        pool.withdrawVault(user, 1e18, address(tokenA));
+
+    }    
 }
