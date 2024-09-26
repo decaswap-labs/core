@@ -13,11 +13,7 @@ contract PoolLogic is Initializable, OwnableUpgradeable, IPoolLogic {
     address public override POOL_ADDRESS;
     IPoolStates pool;
 
-    modifier onlyPool() {
-        if (getPoolAddress(msg.sender) == address(0)) revert NotAPool();
-        _;
-    }
-
+    
     function initialize(address poolAddress, address owner) public initializer {
         __Ownable_init(owner);
 
@@ -135,10 +131,10 @@ contract PoolLogic is Initializable, OwnableUpgradeable, IPoolLogic {
         pool = IPoolStates(POOL_ADDRESS);
     }
 
-    function getPoolAddress(address poolAddress) private view returns (address) {
+    function poolExist(address tokenAddress) private view returns (bool) {
         // TODO : Resolve this tuple unbundling issue
-        (uint256 a, uint256 b, uint256 c, uint256 d, uint256 f, uint256 g, uint256 h, address tokenAddress) =
-            pool.poolInfo(poolAddress);
-        return tokenAddress;
+        (uint256 a, uint256 b, uint256 c, uint256 d, uint256 f, uint256 g, uint256 h, bool initialized) =
+            pool.poolInfo(tokenAddress);
+        return initialized;
     }
 }

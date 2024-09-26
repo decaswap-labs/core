@@ -49,7 +49,7 @@ contract PoolTest is Test {
         uint256 minLaunchReserveD,
         uint256 initialDToMint,
         uint256 poolFeeCollected,
-        address tokenAddress
+        bool initialized
         ) = pool.poolInfo(address(tokenA));
 
         assertEq(reserveD, 10 * 1e18);
@@ -92,7 +92,7 @@ contract PoolTest is Test {
         uint256 minLaunchReserveD,
         uint256 initialDToMint,
         uint256 poolFeeCollected,
-        address tokenAddress
+        bool initialized
         ) = pool.poolInfo(address(tokenA));
 
         console.log("Before ReserveA: ",reserveA);
@@ -258,7 +258,7 @@ contract PoolTest is Test {
         uint256 A_minLaunchReserveD,
         uint256 A_initialDToMint,
         uint256 A_poolFeeCollected,
-        address A_tokenAddress
+        bool A_initlialized
         ) = pool.poolInfo(address(tokenA));
 
         vm.prank(user);
@@ -271,7 +271,7 @@ contract PoolTest is Test {
         uint256 B_minLaunchReserveD,
         uint256 B_initialDToMint,
         uint256 B_poolFeeCollected,
-        address B_tokenAddress
+        bool B_initlialized
         ) = pool.poolInfo(address(tokenB));
 
         uint256 before_Current_price = (A_reserveA * 1e18 / B_reserveA);
@@ -288,7 +288,7 @@ contract PoolTest is Test {
         A_minLaunchReserveD,
         A_initialDToMint,
         A_poolFeeCollected,
-        A_tokenAddress
+        A_initlialized
         ) = pool.poolInfo(address(tokenA));
 
         (
@@ -299,7 +299,7 @@ contract PoolTest is Test {
         B_minLaunchReserveD,
         B_initialDToMint,
         B_poolFeeCollected,
-        B_tokenAddress
+        B_initlialized
         ) = pool.poolInfo(address(tokenB));
 
 
@@ -428,7 +428,7 @@ contract PoolTest is Test {
         uint256 A_minLaunchReserveD,
         uint256 A_initialDToMint,
         uint256 A_poolFeeCollected,
-        address A_tokenAddress
+        bool A_initlialized
         ) = pool.poolInfo(address(tokenA));
 
         (
@@ -439,7 +439,7 @@ contract PoolTest is Test {
         uint256 B_minLaunchReserveD,
         uint256 B_initialDToMint,
         uint256 B_poolFeeCollected,
-        address B_tokenAddress
+        bool B_initlialized
         ) = pool.poolInfo(address(tokenB));
 
         uint256 before_Current_price = (A_reserveA * 1e18 / B_reserveA);

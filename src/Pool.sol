@@ -29,7 +29,7 @@ contract Pool is IPool, Ownable {
         uint256 minLaunchReserveD;
         uint256 initialDToMint;
         uint256 poolFeeCollected;
-        address tokenAddress;
+        bool initialized;
     }
 
     struct VaultDepositInfo {
@@ -38,6 +38,17 @@ contract Pool is IPool, Ownable {
     }
 
     mapping(address => PoolInfo) public override poolInfo;
+
+    // PoolInfo struct
+    mapping(address token => uint reserveD) private mapToken_reserveD;
+    mapping(address token => uint poolOwnershipUnitsTotal) private mapToken_poolOwnershipUnitsTotal;
+    mapping(address token => uint reserveA) private mapToken_reserveA;
+    mapping(address token => uint minLaunchReserveA) private mapToken_minLaunchReserveA;
+    mapping(address token => uint minLaunchReserveD) private mapToken_minLaunchReserveD;
+    mapping(address token => uint initialDToMint) private mapToken_initialDToMint;
+    mapping(address token => uint poolFeeCollected) private mapToken_poolFeeCollected;
+    mapping(address token => uint initialized) private mapToken_initialized;
+
     mapping(address => mapping(address => uint256)) public override userLpUnitInfo;
     mapping(address => mapping(address => VaultDepositInfo)) public userVaultInfo;
     mapping(bytes32 => uint256) public override pairSlippage;
@@ -89,7 +100,7 @@ contract Pool is IPool, Ownable {
 
     function depositVault(address user, uint256 amountIn, address tokenIn) external override onlyRouter {
         if (amountIn == 0) revert InvalidTokenAmount();
-        if (poolInfo[tokenIn].tokenAddress == address(0)) revert InvalidPool();
+        if (!poolInfo[tokenIn].initialized) revert InvalidPool();
 
         uint256 streamCount;
         uint256 swapPerStream;
@@ -132,7 +143,7 @@ contract Pool is IPool, Ownable {
     }
 
     function withdrawVault(address user, uint256 amountIn, address tokenOut) external override onlyRouter {
-        if (poolInfo[tokenOut].tokenAddress == address(0)) revert InvalidPool();
+        if (!poolInfo[tokenOut].initialized) revert InvalidPool();
         if (userVaultInfo[tokenOut][user].dAmount < amountIn) revert InvalidTokenAmount();
 
         uint256 streamCount;
@@ -181,7 +192,7 @@ contract Pool is IPool, Ownable {
     {
         if (amountIn == 0) revert InvalidTokenAmount();
         if (executionPrice == 0) revert InvalidExecutionPrice();
-        if (poolInfo[tokenIn].tokenAddress == address(0) || poolInfo[tokenOut].tokenAddress == address(0)) {
+        if (!poolInfo[tokenIn].initialized || !poolInfo[tokenOut].initialized) {
             revert InvalidPool();
         }
 
@@ -319,7 +330,7 @@ contract Pool is IPool, Ownable {
 
         if (initialDToMint == 0) revert InvalidInitialDAmount();
 
-        poolInfo[token].tokenAddress = token;
+        poolInfo[token].initialized = true;
         poolInfo[token].minLaunchReserveA = minLaunchReserveA;
         poolInfo[token].minLaunchReserveD = minLaunchReserveD;
         poolInfo[token].initialDToMint = initialDToMint;
@@ -328,7 +339,7 @@ contract Pool is IPool, Ownable {
     }
 
     function _addLiquidity(address user, address token, uint256 amount) internal {
-        if (poolInfo[token].tokenAddress == address(0)) revert InvalidToken();
+        if (!poolInfo[token].initialized) revert InvalidToken();
 
         if (amount == 0) revert InvalidTokenAmount();
 
@@ -351,7 +362,7 @@ contract Pool is IPool, Ownable {
     }
 
     function _removeLiquidity(address user, address token, uint256 lpUnits) internal {
-        if (poolInfo[token].tokenAddress == address(0)) revert InvalidToken();
+        if (!poolInfo[token].initialized) revert InvalidToken();
 
         if (lpUnits == 0) revert InvalidTokenAmount();
 

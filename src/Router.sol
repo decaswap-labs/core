@@ -24,7 +24,7 @@ contract Router is Initializable, OwnableUpgradeable, IRouter {
     }
 
     function addLiquidity(address token, uint256 amount) external override {
-        if (getPoolAddress(token) == address(0)) revert InvalidPool();
+        if (!poolExist(token)) revert InvalidPool();
         if (amount == 0) revert InvalidAmount();
 
         IERC20(token).transferFrom(msg.sender, POOL_ADDRESS, amount);
@@ -34,7 +34,7 @@ contract Router is Initializable, OwnableUpgradeable, IRouter {
     }
 
     function removeLiquidity(address token, uint256 lpUnits) external override {
-        if (getPoolAddress(token) == address(0)) revert InvalidPool();
+        if (!poolExist(token)) revert InvalidPool();
 
         if (lpUnits == 0 || lpUnits > poolStates.userLpUnitInfo(msg.sender, token)) revert InvalidAmount();
 
@@ -50,10 +50,10 @@ contract Router is Initializable, OwnableUpgradeable, IRouter {
         poolStates = IPoolStates(POOL_ADDRESS);
     }
 
-    function getPoolAddress(address token) internal returns (address) {
+    function poolExist(address tokenAddress) internal returns (bool) {
         // TODO : Resolve this tuple unbundling issue
-        (uint256 a, uint256 b, uint256 c, uint256 d, uint256 f, uint256 g, uint256 h, address tokenAddress) =
-            poolStates.poolInfo(token);
-        return tokenAddress;
+        (uint256 a, uint256 b, uint256 c, uint256 d, uint256 f, uint256 g, uint256 h, bool initialized) =
+            poolStates.poolInfo(tokenAddress);
+        return initialized;
     }
 }

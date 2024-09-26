@@ -7,7 +7,7 @@ interface IPoolStates {
     function poolInfo(address)
         external
         view
-        returns (uint256, uint256, uint256, uint256, uint256, uint256, uint256, address);
+        returns (uint256, uint256, uint256, uint256, uint256, uint256, uint256, bool);
     function userLpUnitInfo(address, address) external view returns (uint256);
     function VAULT_ADDRESS() external view returns (address);
     function ROUTER_ADDRESS() external view returns (address);
