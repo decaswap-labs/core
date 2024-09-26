@@ -37,7 +37,6 @@ contract Pool is IPool, Ownable {
         uint256 dAmount;
     }
 
-    mapping(address => PoolInfo) public override poolInfo;
 
     // PoolInfo struct
     mapping(address token => uint reserveD) private mapToken_reserveD;
@@ -47,7 +46,7 @@ contract Pool is IPool, Ownable {
     mapping(address token => uint minLaunchReserveD) private mapToken_minLaunchReserveD;
     mapping(address token => uint initialDToMint) private mapToken_initialDToMint;
     mapping(address token => uint poolFeeCollected) private mapToken_poolFeeCollected;
-    mapping(address token => uint initialized) private mapToken_initialized;
+    mapping(address token => bool initialized) private mapToken_initialized;
 
     mapping(address => mapping(address => uint256)) public override userLpUnitInfo;
     mapping(address => mapping(address => VaultDepositInfo)) public userVaultInfo;
@@ -62,6 +61,12 @@ contract Pool is IPool, Ownable {
         _;
     }
 
+    // @todo use a mapping and allow multiple logic contracts may be e.g lending/vault etc may be?
+    modifier onlyPoolLogic() {
+        if (msg.sender != POOL_LOGIC) revert NotPoolLogic(msg.sender);
+        _;
+    }
+
     constructor(address vaultAddress, address routerAddress, address poolLogicAddress) Ownable(msg.sender) {
         VAULT_ADDRESS = vaultAddress;
         ROUTER_ADDRESS = routerAddress;
@@ -73,7 +78,76 @@ contract Pool is IPool, Ownable {
         emit PoolLogicAddressUpdated(address(0), POOL_LOGIC);
     }
 
-    event AmountOut(uint256 amount);
+    // will be called from allowed logic contract with updated PoolInfoStruct
+    // @dev validations should be done on logic contract
+    function updatePoolInfo(address tokenAddress, PoolInfo calldata updatedPoolInfo) external onlyPoolLogic {
+        mapToken_reserveD[tokenAddress] = updatedPoolInfo.reserveD;
+        mapToken_poolOwnershipUnitsTotal[tokenAddress] = updatedPoolInfo.poolOwnershipUnitsTotal; 
+        mapToken_reserveA[tokenAddress] = updatedPoolInfo.reserveA;
+        mapToken_minLaunchReserveA[tokenAddress] = updatedPoolInfo.minLaunchReserveA; 
+        mapToken_minLaunchReserveD[tokenAddress] = updatedPoolInfo.minLaunchReserveD; 
+        mapToken_initialDToMint[tokenAddress] = updatedPoolInfo.initialDToMint; 
+        mapToken_poolFeeCollected[tokenAddress] = updatedPoolInfo.poolFeeCollected; 
+        mapToken_initialized[tokenAddress] = updatedPoolInfo.initialized; 
+    }
+
+    ////// inidividual setters for each field of PoolInfo due to gas efficiency ////////
+
+    function updateReserveD(address tokenAddress, uint updatedReserveD ) external onlyPoolLogic {
+        mapToken_reserveD[tokenAddress] = updatedReserveD;
+    }
+
+    function updatePoolOwnershipUnitsTotal(address tokenAddress, uint updatedPoolOwnershipUnitsTotal) external onlyPoolLogic {
+        mapToken_poolOwnershipUnitsTotal[tokenAddress] = updatedPoolOwnershipUnitsTotal;
+    }
+
+    function updateReserveA(address tokenAddress, uint updatedReserveA) external onlyPoolLogic {
+        mapToken_reserveA[tokenAddress] = updatedReserveA;
+    }
+
+    function updateMinLaunchReserveA(address tokenAddress, uint updatedMinLaunchReserveA) external onlyPoolLogic {
+        mapToken_minLaunchReserveA[tokenAddress] = updatedMinLaunchReserveA;
+    }
+
+    function updateMinLaunchReserveD(address tokenAddress, uint updatedMinLaunchReserveD) external onlyPoolLogic {
+        mapToken_minLaunchReserveD[tokenAddress] = updatedMinLaunchReserveD;
+    }
+
+    function updateInitialDToMint(address tokenAddress, uint updatedInitialDToMint) external onlyPoolLogic {
+        mapToken_initialDToMint[tokenAddress] = updatedInitialDToMint;
+    }
+
+    function updatePoolFeeCollected(address tokenAddress, uint updatedPoolFeeCollected) external onlyPoolLogic {
+        mapToken_poolFeeCollected[tokenAddress] = updatedPoolFeeCollected; 
+    }
+
+    function updateInitialized(address tokenAddress, bool updatedInitialized) external onlyPoolLogic {
+        mapToken_initialized[tokenAddress] = updatedInitialized;
+    }
+
+    function poolInfo(address tokenAddress) external view returns(uint256, uint256, uint256, uint256, uint256, uint256, uint256, bool) {
+         return (
+
+            mapToken_reserveD[tokenAddress],
+            mapToken_poolOwnershipUnitsTotal[tokenAddress],
+            mapToken_reserveA[tokenAddress],
+            mapToken_minLaunchReserveA[tokenAddress],
+            mapToken_minLaunchReserveD[tokenAddress],
+            mapToken_initialDToMint[tokenAddress],
+            mapToken_poolFeeCollected[tokenAddress],
+            mapToken_initialized[tokenAddress]
+         
+         );
+    }
+
+    //////////////////////////////////////////////////////////////////////////////
+    // NOTE ignore code below for as all will be refactored after storage variable are set
+    // commented logic so that code compiles with current tests
+    ///////////////////////////////////////////////////////////////////////////////
+
+    
+
+    // event AmountOut(uint256 amount);
 
     function createPool(
         address token,
@@ -99,89 +173,89 @@ contract Pool is IPool, Ownable {
     }
 
     function depositVault(address user, uint256 amountIn, address tokenIn) external override onlyRouter {
-        if (amountIn == 0) revert InvalidTokenAmount();
-        if (!poolInfo[tokenIn].initialized) revert InvalidPool();
+        // if (amountIn == 0) revert InvalidTokenAmount();
+        // if (!poolInfo[tokenIn].initialized) revert InvalidPool();
 
-        uint256 streamCount;
-        uint256 swapPerStream;
-        uint256 minPoolDepth;
+        // uint256 streamCount;
+        // uint256 swapPerStream;
+        // uint256 minPoolDepth;
 
-        bytes32 poolId;
-        bytes32 pairId;
+        // bytes32 poolId;
+        // bytes32 pairId;
 
-        minPoolDepth = poolInfo[tokenIn].reserveD;
+        // minPoolDepth = poolInfo[tokenIn].reserveD;
 
-        streamCount = poolLogic.calculateStreamCount(amountIn, globalSlippage, minPoolDepth);
-        swapPerStream = amountIn / streamCount;
+        // streamCount = poolLogic.calculateStreamCount(amountIn, globalSlippage, minPoolDepth);
+        // swapPerStream = amountIn / streamCount;
 
-        pairId = keccak256(abi.encodePacked(tokenIn, D_TOKEN)); // for one direction
+        // pairId = keccak256(abi.encodePacked(tokenIn, D_TOKEN)); // for one direction
 
-        uint256 currentPrice = poolLogic.getExecutionPrice(poolInfo[tokenIn].reserveA, poolInfo[tokenIn].reserveA);
+        // uint256 currentPrice = poolLogic.getExecutionPrice(poolInfo[tokenIn].reserveA, poolInfo[tokenIn].reserveA);
 
-        poolStreamQueue[pairId].enqueue(
-            Swap({
-                swapID: pairStreamQueue[pairId].back,
-                swapAmount: amountIn,
-                executionPrice: currentPrice,
-                swapAmountRemaining: amountIn,
-                streamsCount: streamCount,
-                streamsRemaining: streamCount,
-                swapPerStream: swapPerStream,
-                tokenIn: tokenIn,
-                tokenOut: D_TOKEN,
-                completed: false,
-                amountOut: 0,
-                user: user
-            })
-        );
+        // poolStreamQueue[pairId].enqueue(
+        //     Swap({
+        //         swapID: pairStreamQueue[pairId].back,
+        //         swapAmount: amountIn,
+        //         executionPrice: currentPrice,
+        //         swapAmountRemaining: amountIn,
+        //         streamsCount: streamCount,
+        //         streamsRemaining: streamCount,
+        //         swapPerStream: swapPerStream,
+        //         tokenIn: tokenIn,
+        //         tokenOut: D_TOKEN,
+        //         completed: false,
+        //         amountOut: 0,
+        //         user: user
+        //     })
+        // );
 
-        userVaultInfo[tokenIn][user] = VaultDepositInfo({tokenAmount: amountIn, dAmount: 0});
+        // userVaultInfo[tokenIn][user] = VaultDepositInfo({tokenAmount: amountIn, dAmount: 0});
 
-        emit StreamAdded(poolStreamQueue[pairId].front, amountIn, currentPrice, streamCount, pairId);
+        // emit StreamAdded(poolStreamQueue[pairId].front, amountIn, currentPrice, streamCount, pairId);
 
-        _executeDepositVaultStream(pairId, tokenIn);
+        // _executeDepositVaultStream(pairId, tokenIn);
     }
 
     function withdrawVault(address user, uint256 amountIn, address tokenOut) external override onlyRouter {
-        if (!poolInfo[tokenOut].initialized) revert InvalidPool();
-        if (userVaultInfo[tokenOut][user].dAmount < amountIn) revert InvalidTokenAmount();
+        // if (!poolInfo[tokenOut].initialized) revert InvalidPool();
+        // if (userVaultInfo[tokenOut][user].dAmount < amountIn) revert InvalidTokenAmount();
 
-        uint256 streamCount;
-        uint256 swapPerStream;
-        uint256 minPoolDepth;
+        // uint256 streamCount;
+        // uint256 swapPerStream;
+        // uint256 minPoolDepth;
 
-        bytes32 poolId;
-        bytes32 pairId;
+        // bytes32 poolId;
+        // bytes32 pairId;
 
-        minPoolDepth = poolInfo[tokenOut].reserveD;
+        // minPoolDepth = poolInfo[tokenOut].reserveD;
 
-        streamCount = poolLogic.calculateStreamCount(amountIn, globalSlippage, minPoolDepth);
-        swapPerStream = amountIn / streamCount;
+        // streamCount = poolLogic.calculateStreamCount(amountIn, globalSlippage, minPoolDepth);
+        // swapPerStream = amountIn / streamCount;
 
-        pairId = keccak256(abi.encodePacked(D_TOKEN, tokenOut)); // for one direction
+        // pairId = keccak256(abi.encodePacked(D_TOKEN, tokenOut)); // for one direction
 
-        uint256 currentPrice = poolLogic.getExecutionPrice(poolInfo[tokenOut].reserveA, poolInfo[tokenOut].reserveA);
+        // uint256 currentPrice = poolLogic.getExecutionPrice(poolInfo[tokenOut].reserveA, poolInfo[tokenOut].reserveA);
 
-        poolStreamQueue[pairId].enqueue(
-            Swap({
-                swapID: pairStreamQueue[pairId].back,
-                swapAmount: amountIn,
-                executionPrice: currentPrice,
-                swapAmountRemaining: amountIn,
-                streamsCount: streamCount,
-                streamsRemaining: streamCount,
-                swapPerStream: swapPerStream,
-                tokenIn: D_TOKEN,
-                tokenOut: tokenOut,
-                completed: false,
-                amountOut: 0,
-                user: user
-            })
-        );
+        // poolStreamQueue[pairId].enqueue(
+        //     Swap({
+        //         swapID: pairStreamQueue[pairId].back,
+        //         swapAmount: amountIn,
+        //         executionPrice: currentPrice,
+        //         swapAmountRemaining: amountIn,
+        //         streamsCount: streamCount,
+        //         streamsRemaining: streamCount,
+        //         swapPerStream: swapPerStream,
+        //         tokenIn: D_TOKEN,
+        //         tokenOut: tokenOut,
+        //         completed: false,
+        //         amountOut: 0,
+        //         user: user
+        //     })
+        // );
 
-        emit StreamAdded(poolStreamQueue[pairId].front, amountIn, currentPrice, streamCount, pairId);
+    //     emit StreamAdded(poolStreamQueue[pairId].front, amountIn, currentPrice, streamCount, pairId);
 
-        _executeWithdrawVaultStream(pairId, tokenOut);
+    //     _executeWithdrawVaultStream(pairId, tokenOut);
     }
 
     // neeed to add in interface
@@ -190,92 +264,92 @@ contract Pool is IPool, Ownable {
         override
         onlyRouter
     {
-        if (amountIn == 0) revert InvalidTokenAmount();
-        if (executionPrice == 0) revert InvalidExecutionPrice();
-        if (!poolInfo[tokenIn].initialized || !poolInfo[tokenOut].initialized) {
-            revert InvalidPool();
-        }
+        // if (amountIn == 0) revert InvalidTokenAmount();
+        // if (executionPrice == 0) revert InvalidExecutionPrice();
+        // if (!poolInfo[tokenIn].initialized || !poolInfo[tokenOut].initialized) {
+        //     revert InvalidPool();
+        // }
 
-        uint256 streamCount;
-        uint256 swapPerStream;
-        uint256 minPoolDepth;
+        // uint256 streamCount;
+        // uint256 swapPerStream;
+        // uint256 minPoolDepth;
 
-        bytes32 poolId;
-        bytes32 pairId;
+        // bytes32 poolId;
+        // bytes32 pairId;
 
-        // TODO: Need to handle same vault deposit withdraw streams
-        // break into streams
-        minPoolDepth = poolInfo[tokenIn].reserveD <= poolInfo[tokenOut].reserveD
-            ? poolInfo[tokenIn].reserveD
-            : poolInfo[tokenOut].reserveD;
-        poolId = getPoolId(tokenIn, address(0xD)); // for pair slippage only. Not an ID for pair direction queue
-        streamCount = poolLogic.calculateStreamCount(amountIn, pairSlippage[poolId], minPoolDepth);
-        swapPerStream = amountIn / streamCount;
+        // // TODO: Need to handle same vault deposit withdraw streams
+        // // break into streams
+        // minPoolDepth = poolInfo[tokenIn].reserveD <= poolInfo[tokenOut].reserveD
+        //     ? poolInfo[tokenIn].reserveD
+        //     : poolInfo[tokenOut].reserveD;
+        // poolId = getPoolId(tokenIn, address(0xD)); // for pair slippage only. Not an ID for pair direction queue
+        // streamCount = poolLogic.calculateStreamCount(amountIn, pairSlippage[poolId], minPoolDepth);
+        // swapPerStream = amountIn / streamCount;
 
-        // initiate swapqueue per direction
-        pairId = keccak256(abi.encodePacked(tokenIn, tokenOut)); // for one direction
+        // // initiate swapqueue per direction
+        // pairId = keccak256(abi.encodePacked(tokenIn, tokenOut)); // for one direction
 
-        uint256 currentPrice = poolLogic.getExecutionPrice(poolInfo[tokenIn].reserveA, poolInfo[tokenOut].reserveA);
+        // uint256 currentPrice = poolLogic.getExecutionPrice(poolInfo[tokenIn].reserveA, poolInfo[tokenOut].reserveA);
 
-        // if execution price 0 (stream queue) , otherwise another queue
-        // add into queue
-        if (executionPrice <= currentPrice) {
-            pairStreamQueue[pairId].enqueue(
-                Swap({
-                    swapID: pairStreamQueue[pairId].back,
-                    swapAmount: amountIn,
-                    executionPrice: executionPrice,
-                    swapAmountRemaining: amountIn,
-                    streamsCount: streamCount,
-                    streamsRemaining: streamCount,
-                    swapPerStream: swapPerStream,
-                    tokenIn: tokenIn,
-                    tokenOut: tokenOut,
-                    completed: false,
-                    amountOut: 0,
-                    user: user
-                })
-            );
+        // // if execution price 0 (stream queue) , otherwise another queue
+        // // add into queue
+        // if (executionPrice <= currentPrice) {
+        //     pairStreamQueue[pairId].enqueue(
+        //         Swap({
+        //             swapID: pairStreamQueue[pairId].back,
+        //             swapAmount: amountIn,
+        //             executionPrice: executionPrice,
+        //             swapAmountRemaining: amountIn,
+        //             streamsCount: streamCount,
+        //             streamsRemaining: streamCount,
+        //             swapPerStream: swapPerStream,
+        //             tokenIn: tokenIn,
+        //             tokenOut: tokenOut,
+        //             completed: false,
+        //             amountOut: 0,
+        //             user: user
+        //         })
+        //     );
 
-            emit StreamAdded(pairStreamQueue[pairId].front, amountIn, executionPrice, streamCount, pairId);
-        } else {
-            // adding to pending queue
-            pairPendingQueue[pairId].enqueue(
-                Swap({
-                    swapID: pairPendingQueue[pairId].back,
-                    swapAmount: amountIn,
-                    executionPrice: executionPrice,
-                    swapAmountRemaining: amountIn,
-                    streamsCount: streamCount,
-                    swapPerStream: swapPerStream,
-                    streamsRemaining: streamCount,
-                    tokenIn: tokenIn,
-                    tokenOut: tokenOut,
-                    completed: false,
-                    amountOut: 0,
-                    user: user
-                })
-            );
+        //     emit StreamAdded(pairStreamQueue[pairId].front, amountIn, executionPrice, streamCount, pairId);
+        // } else {
+        //     // adding to pending queue
+        //     pairPendingQueue[pairId].enqueue(
+        //         Swap({
+        //             swapID: pairPendingQueue[pairId].back,
+        //             swapAmount: amountIn,
+        //             executionPrice: executionPrice,
+        //             swapAmountRemaining: amountIn,
+        //             streamsCount: streamCount,
+        //             swapPerStream: swapPerStream,
+        //             streamsRemaining: streamCount,
+        //             tokenIn: tokenIn,
+        //             tokenOut: tokenOut,
+        //             completed: false,
+        //             amountOut: 0,
+        //             user: user
+        //         })
+        //     );
 
-            // Sort the array w.r.t price
-            SwapSorter.quickSort(pairPendingQueue[pairId].data);
+        //     // Sort the array w.r.t price
+        //     SwapSorter.quickSort(pairPendingQueue[pairId].data);
 
-            emit PendingStreamAdded(pairPendingQueue[pairId].front, amountIn, executionPrice, streamCount, pairId);
-        }
-        // execute pending streams
-        _executeStream(pairId, tokenIn, tokenOut);
+        //     emit PendingStreamAdded(pairPendingQueue[pairId].front, amountIn, executionPrice, streamCount, pairId);
+        // }
+        // // execute pending streams
+        // _executeStream(pairId, tokenIn, tokenOut);
     }
 
     function cancelSwap(uint256 swapId, bytes32 pairId, bool isStreaming) external {
-        uint256 amountIn;
-        uint256 amountOut;
-        if (isStreaming) {
-            (pairStreamQueue[pairId], amountIn, amountOut) = _removeSwap(swapId, pairStreamQueue[pairId]);
-        } else {
-            (pairPendingQueue[pairId], amountIn, amountOut) = _removeSwap(swapId, pairPendingQueue[pairId]);
-        }
+        // uint256 amountIn;
+        // uint256 amountOut;
+        // if (isStreaming) {
+        //     (pairStreamQueue[pairId], amountIn, amountOut) = _removeSwap(swapId, pairStreamQueue[pairId]);
+        // } else {
+        //     (pairPendingQueue[pairId], amountIn, amountOut) = _removeSwap(swapId, pairPendingQueue[pairId]);
+        // }
 
-        emit SwapCancelled(swapId, pairId, amountIn, amountOut);
+        // emit SwapCancelled(swapId, pairId, amountIn, amountOut);
     }
 
     function updateRouterAddress(address routerAddress) external override onlyOwner {
@@ -294,10 +368,10 @@ contract Pool is IPool, Ownable {
         poolLogic = IPoolLogicActions(POOL_LOGIC);
     }
 
-    function updateMinLaunchReserveA(address token, uint256 newMinLaunchReserveA) external override onlyOwner {
-        emit MinLaunchReserveUpdated(token, poolInfo[token].minLaunchReserveA, newMinLaunchReserveA);
-        poolInfo[token].minLaunchReserveA = newMinLaunchReserveA;
-    }
+    // function updateMinLaunchReserveA(address token, uint256 newMinLaunchReserveA) external override onlyOwner {
+    //     // emit MinLaunchReserveUpdated(token, poolInfo[token].minLaunchReserveA, newMinLaunchReserveA);
+    //     // poolInfo[token].minLaunchReserveA = newMinLaunchReserveA;
+    // }
 
     function updatePairSlippage(address tokenA, address tokenB, uint256 newSlippage) external override onlyOwner {
         bytes32 poolId = getPoolId(tokenA, tokenB);
@@ -326,460 +400,460 @@ contract Pool is IPool, Ownable {
     function _createPool(address token, uint256 minLaunchReserveA, uint256 minLaunchReserveD, uint256 initialDToMint)
         internal
     {
-        if (token == address(0)) revert InvalidToken();
+        // if (token == address(0)) revert InvalidToken();
 
-        if (initialDToMint == 0) revert InvalidInitialDAmount();
+        // if (initialDToMint == 0) revert InvalidInitialDAmount();
 
-        poolInfo[token].initialized = true;
-        poolInfo[token].minLaunchReserveA = minLaunchReserveA;
-        poolInfo[token].minLaunchReserveD = minLaunchReserveD;
-        poolInfo[token].initialDToMint = initialDToMint;
+        // poolInfo[token].initialized = true;
+        // poolInfo[token].minLaunchReserveA = minLaunchReserveA;
+        // poolInfo[token].minLaunchReserveD = minLaunchReserveD;
+        // poolInfo[token].initialDToMint = initialDToMint;
 
-        emit PoolCreated(token, minLaunchReserveA, minLaunchReserveD);
+        // emit PoolCreated(token, minLaunchReserveA, minLaunchReserveD);
     }
 
     function _addLiquidity(address user, address token, uint256 amount) internal {
-        if (!poolInfo[token].initialized) revert InvalidToken();
+        // if (!poolInfo[token].initialized) revert InvalidToken();
 
-        if (amount == 0) revert InvalidTokenAmount();
+        // if (amount == 0) revert InvalidTokenAmount();
 
-        // lp units
-        uint256 newLpUnits =
-            poolLogic.calculateLpUnitsToMint(amount, poolInfo[token].reserveA, poolInfo[token].poolOwnershipUnitsTotal);
-        poolInfo[token].reserveA += amount;
-        poolInfo[token].poolOwnershipUnitsTotal += newLpUnits;
+        // // lp units
+        // uint256 newLpUnits =
+        //     poolLogic.calculateLpUnitsToMint(amount, poolInfo[token].reserveA, poolInfo[token].poolOwnershipUnitsTotal);
+        // poolInfo[token].reserveA += amount;
+        // poolInfo[token].poolOwnershipUnitsTotal += newLpUnits;
 
-        // d units
-        uint256 newDUnits = poolLogic.calculateDUnitsToMint(
-            amount, poolInfo[token].reserveA, poolInfo[token].reserveD, poolInfo[token].initialDToMint
-        );
-        poolInfo[token].reserveD += newDUnits;
+        // // d units
+        // uint256 newDUnits = poolLogic.calculateDUnitsToMint(
+        //     amount, poolInfo[token].reserveA, poolInfo[token].reserveD, poolInfo[token].initialDToMint
+        // );
+        // poolInfo[token].reserveD += newDUnits;
 
-        //mint D
-        userLpUnitInfo[user][token] += newDUnits;
+        // //mint D
+        // userLpUnitInfo[user][token] += newDUnits;
 
-        emit LiquidityAdded(user, token, amount, newLpUnits, newDUnits);
+        // emit LiquidityAdded(user, token, amount, newLpUnits, newDUnits);
     }
 
     function _removeLiquidity(address user, address token, uint256 lpUnits) internal {
-        if (!poolInfo[token].initialized) revert InvalidToken();
+        // if (!poolInfo[token].initialized) revert InvalidToken();
 
-        if (lpUnits == 0) revert InvalidTokenAmount();
+        // if (lpUnits == 0) revert InvalidTokenAmount();
 
-        // deduct lp from user
-        userLpUnitInfo[user][token] -= lpUnits;
-        // calculate asset to transfer
-        uint256 assetToTransfer =
-            poolLogic.calculateAssetTransfer(lpUnits, poolInfo[token].reserveA, poolInfo[token].poolOwnershipUnitsTotal);
-        // minus d amount from reserve
-        uint256 dAmountToDeduct =
-            poolLogic.calculateDToDeduct(lpUnits, poolInfo[token].reserveD, poolInfo[token].poolOwnershipUnitsTotal);
+        // // deduct lp from user
+        // userLpUnitInfo[user][token] -= lpUnits;
+        // // calculate asset to transfer
+        // uint256 assetToTransfer =
+        //     poolLogic.calculateAssetTransfer(lpUnits, poolInfo[token].reserveA, poolInfo[token].poolOwnershipUnitsTotal);
+        // // minus d amount from reserve
+        // uint256 dAmountToDeduct =
+        //     poolLogic.calculateDToDeduct(lpUnits, poolInfo[token].reserveD, poolInfo[token].poolOwnershipUnitsTotal);
 
-        poolInfo[token].reserveD -= dAmountToDeduct;
-        poolInfo[token].reserveA -= assetToTransfer;
-        poolInfo[token].poolOwnershipUnitsTotal -= lpUnits;
+        // poolInfo[token].reserveD -= dAmountToDeduct;
+        // poolInfo[token].reserveA -= assetToTransfer;
+        // poolInfo[token].poolOwnershipUnitsTotal -= lpUnits;
 
-        // IERC20(token).transfer(user,assetToTransfer); // commented for test to run
-        emit LiquidityRemoved(user, token, lpUnits, assetToTransfer, dAmountToDeduct);
+        // // IERC20(token).transfer(user,assetToTransfer); // commented for test to run
+        // emit LiquidityRemoved(user, token, lpUnits, assetToTransfer, dAmountToDeduct);
     }
 
     function _executeStream(bytes32 pairId, address tokenA, address tokenB) internal {
-        //check if the reserves are greater than min launch
-        if (
-            poolInfo[tokenA].minLaunchReserveA > poolInfo[tokenA].reserveA
-                || poolInfo[tokenB].minLaunchReserveD > poolInfo[tokenB].reserveD
-        ) revert MinLaunchReservesNotReached();
+    //     //check if the reserves are greater than min launch
+    //     if (
+    //         poolInfo[tokenA].minLaunchReserveA > poolInfo[tokenA].reserveA
+    //             || poolInfo[tokenB].minLaunchReserveD > poolInfo[tokenB].reserveD
+    //     ) revert MinLaunchReservesNotReached();
 
-        address completedSwapToken;
-        address swapUser;
-        uint256 amountOutSwap;
-        // loading the front swap from the stream queue
+    //     address completedSwapToken;
+    //     address swapUser;
+    //     uint256 amountOutSwap;
+    //     // loading the front swap from the stream queue
 
-        Swap storage frontSwap;
-        Queue.QueueStruct storage pairStream = pairStreamQueue[pairId];
-        frontSwap = pairStream.data[pairStream.front];
+    //     Swap storage frontSwap;
+    //     Queue.QueueStruct storage pairStream = pairStreamQueue[pairId];
+    //     frontSwap = pairStream.data[pairStream.front];
 
-        // ------------------------ CHECK OPP DIR SWAP --------------------------- //
-        //TODO: Deduct fees from amount out = 5BPS.
-        bytes32 otherPairId = keccak256(abi.encodePacked(tokenB, tokenA));
-        Queue.QueueStruct storage oppositePairStream = pairStreamQueue[otherPairId];
+    //     // ------------------------ CHECK OPP DIR SWAP --------------------------- //
+    //     //TODO: Deduct fees from amount out = 5BPS.
+    //     bytes32 otherPairId = keccak256(abi.encodePacked(tokenB, tokenA));
+    //     Queue.QueueStruct storage oppositePairStream = pairStreamQueue[otherPairId];
 
-        if (oppositePairStream.data.length != 0) {
-            Swap storage oppositeSwap = oppositePairStream.data[oppositePairStream.front];
-            // A->B , dout1 is D1, amountOut1 is B
-            (uint256 dOutA, uint256 amountOutA) = poolLogic.getSwapAmountOut(
-                frontSwap.swapAmountRemaining,
-                poolInfo[tokenA].reserveA,
-                poolInfo[tokenB].reserveA,
-                poolInfo[tokenA].reserveD,
-                poolInfo[tokenB].reserveD
-            );
-            // B->A
-            (uint256 dOutB, uint256 amountOutB) = poolLogic.getSwapAmountOut(
-                oppositeSwap.swapAmountRemaining,
-                poolInfo[tokenB].reserveA,
-                poolInfo[tokenA].reserveA,
-                poolInfo[tokenB].reserveD,
-                poolInfo[tokenA].reserveD
-            );
+    //     if (oppositePairStream.data.length != 0) {
+    //         Swap storage oppositeSwap = oppositePairStream.data[oppositePairStream.front];
+    //         // A->B , dout1 is D1, amountOut1 is B
+    //         (uint256 dOutA, uint256 amountOutA) = poolLogic.getSwapAmountOut(
+    //             frontSwap.swapAmountRemaining,
+    //             poolInfo[tokenA].reserveA,
+    //             poolInfo[tokenB].reserveA,
+    //             poolInfo[tokenA].reserveD,
+    //             poolInfo[tokenB].reserveD
+    //         );
+    //         // B->A
+    //         (uint256 dOutB, uint256 amountOutB) = poolLogic.getSwapAmountOut(
+    //             oppositeSwap.swapAmountRemaining,
+    //             poolInfo[tokenB].reserveA,
+    //             poolInfo[tokenA].reserveA,
+    //             poolInfo[tokenB].reserveD,
+    //             poolInfo[tokenA].reserveD
+    //         );
 
-            /* 
-            I have taken out amountOut of both swap directions
-            Now one swap should consume the other one
-            How to define that?
+    //         /* 
+    //         I have taken out amountOut of both swap directions
+    //         Now one swap should consume the other one
+    //         How to define that?
 
-            I am selling 50 TKN for (10)-> Calculated USDC
-            Alice is buying 50 USDC for (250)-> Calculated TKN
+    //         I am selling 50 TKN for (10)-> Calculated USDC
+    //         Alice is buying 50 USDC for (250)-> Calculated TKN
 
-            I should be able to fill alice's order completely. By giving her 50 TKN, and take 10 USDC. 
+    //         I should be able to fill alice's order completely. By giving her 50 TKN, and take 10 USDC. 
 
-            AmountIn1 = AmountIn1 - AmountIn1 // 50-50 (Order fulfilled as I have given all the TKN to alice)
-            AmountOut1 = AmountOut1 // 10 (As Alice has given me 10 USDC, which equals to amount I have calculated)
+    //         AmountIn1 = AmountIn1 - AmountIn1 // 50-50 (Order fulfilled as I have given all the TKN to alice)
+    //         AmountOut1 = AmountOut1 // 10 (As Alice has given me 10 USDC, which equals to amount I have calculated)
 
-            AmountIn2 = AmountIn2 - AmountOut2 // 50-10, as alice has given me 10. So she has 40 left
-            AmountOut2 = AmountOut2 + AmountIn1 // 0+50, Alice wanted 250 tokens, but now she has only those 
-            tokens which I was selling. Which is 50
-            */
+    //         AmountIn2 = AmountIn2 - AmountOut2 // 50-10, as alice has given me 10. So she has 40 left
+    //         AmountOut2 = AmountOut2 + AmountIn1 // 0+50, Alice wanted 250 tokens, but now she has only those 
+    //         tokens which I was selling. Which is 50
+    //         */
 
-            // TKN , TKN
-            if (frontSwap.swapAmountRemaining < amountOutB) {
-                // update pool
-                poolInfo[tokenA].reserveA += frontSwap.swapAmountRemaining;
-                poolInfo[tokenA].reserveD -= dOutA;
+    //         // TKN , TKN
+    //         if (frontSwap.swapAmountRemaining < amountOutB) {
+    //             // update pool
+    //             poolInfo[tokenA].reserveA += frontSwap.swapAmountRemaining;
+    //             poolInfo[tokenA].reserveD -= dOutA;
 
-                poolInfo[tokenB].reserveA -= amountOutA;
-                poolInfo[tokenB].reserveD += dOutA;
+    //             poolInfo[tokenB].reserveA -= amountOutA;
+    //             poolInfo[tokenB].reserveD += dOutA;
 
-                oppositeSwap.amountOut += frontSwap.swapAmountRemaining;
-                frontSwap.amountOut += amountOutA;
-                oppositeSwap.swapAmountRemaining -= amountOutA;
-                frontSwap.swapAmountRemaining = 0;
+    //             oppositeSwap.amountOut += frontSwap.swapAmountRemaining;
+    //             frontSwap.amountOut += amountOutA;
+    //             oppositeSwap.swapAmountRemaining -= amountOutA;
+    //             frontSwap.swapAmountRemaining = 0;
 
-                frontSwap.completed = true;
-                frontSwap.streamsRemaining = 0;
+    //             frontSwap.completed = true;
+    //             frontSwap.streamsRemaining = 0;
 
-                // ----------- to set transfer
-                completedSwapToken = frontSwap.tokenIn;
-                swapUser = frontSwap.user;
-                amountOutSwap = frontSwap.amountOut;
-                // -----------
+    //             // ----------- to set transfer
+    //             completedSwapToken = frontSwap.tokenIn;
+    //             swapUser = frontSwap.user;
+    //             amountOutSwap = frontSwap.amountOut;
+    //             // -----------
 
-                pairStreamQueue[pairId].data[pairStream.front] = frontSwap;
-                Queue.dequeue(pairStreamQueue[pairId]);
-            } else {
-                // update pool
-                poolInfo[tokenB].reserveA += oppositeSwap.swapAmountRemaining;
-                poolInfo[tokenB].reserveD -= dOutB;
+    //             pairStreamQueue[pairId].data[pairStream.front] = frontSwap;
+    //             Queue.dequeue(pairStreamQueue[pairId]);
+    //         } else {
+    //             // update pool
+    //             poolInfo[tokenB].reserveA += oppositeSwap.swapAmountRemaining;
+    //             poolInfo[tokenB].reserveD -= dOutB;
 
-                poolInfo[tokenA].reserveA -= amountOutB;
-                poolInfo[tokenA].reserveD += dOutB;
+    //             poolInfo[tokenA].reserveA -= amountOutB;
+    //             poolInfo[tokenA].reserveD += dOutB;
 
-                frontSwap.amountOut += oppositeSwap.swapAmountRemaining;
-                oppositeSwap.amountOut += amountOutB;
-                frontSwap.swapAmountRemaining -= amountOutB;
-                 oppositeSwap.swapAmountRemaining = 0;
+    //             frontSwap.amountOut += oppositeSwap.swapAmountRemaining;
+    //             oppositeSwap.amountOut += amountOutB;
+    //             frontSwap.swapAmountRemaining -= amountOutB;
+    //              oppositeSwap.swapAmountRemaining = 0;
 
-                oppositeSwap.completed = true;
-                oppositeSwap.streamsRemaining = 0;
+    //             oppositeSwap.completed = true;
+    //             oppositeSwap.streamsRemaining = 0;
 
-                // ----------- to set transfer
-                completedSwapToken = oppositeSwap.tokenIn;
-                swapUser = oppositeSwap.user;
-                amountOutSwap = oppositeSwap.amountOut; // error for opp dir swap
-                emit AmountOut(amountOutSwap);
-                // -----------
+    //             // ----------- to set transfer
+    //             completedSwapToken = oppositeSwap.tokenIn;
+    //             swapUser = oppositeSwap.user;
+    //             amountOutSwap = oppositeSwap.amountOut; // error for opp dir swap
+    //             emit AmountOut(amountOutSwap);
+    //             // -----------
 
-                pairStreamQueue[otherPairId].data[oppositePairStream.front] = oppositeSwap;
-                Queue.dequeue(pairStreamQueue[otherPairId]);
-            }
-        } else {
-            (uint256 dToUpdate, uint256 amountOut) = poolLogic.getSwapAmountOut(
-                frontSwap.swapPerStream,
-                poolInfo[tokenA].reserveA,
-                poolInfo[tokenB].reserveA,
-                poolInfo[tokenA].reserveD,
-                poolInfo[tokenB].reserveD
-            );
-            // update pools
-            poolInfo[tokenA].reserveD -= dToUpdate;
-            poolInfo[tokenA].reserveA += frontSwap.swapPerStream;
+    //             pairStreamQueue[otherPairId].data[oppositePairStream.front] = oppositeSwap;
+    //             Queue.dequeue(pairStreamQueue[otherPairId]);
+    //         }
+    //     } else {
+    //         (uint256 dToUpdate, uint256 amountOut) = poolLogic.getSwapAmountOut(
+    //             frontSwap.swapPerStream,
+    //             poolInfo[tokenA].reserveA,
+    //             poolInfo[tokenB].reserveA,
+    //             poolInfo[tokenA].reserveD,
+    //             poolInfo[tokenB].reserveD
+    //         );
+    //         // update pools
+    //         poolInfo[tokenA].reserveD -= dToUpdate;
+    //         poolInfo[tokenA].reserveA += frontSwap.swapPerStream;
 
-            poolInfo[tokenB].reserveD += dToUpdate;
-            poolInfo[tokenB].reserveA -= amountOut;
-            // update swaps
+    //         poolInfo[tokenB].reserveD += dToUpdate;
+    //         poolInfo[tokenB].reserveA -= amountOut;
+    //         // update swaps
 
-            //TODO: Deduct fees from amount out = 5BPS.
-            frontSwap.swapAmountRemaining -= frontSwap.swapPerStream;
-            frontSwap.amountOut += amountOut;
-            frontSwap.streamsRemaining--;
+    //         //TODO: Deduct fees from amount out = 5BPS.
+    //         frontSwap.swapAmountRemaining -= frontSwap.swapPerStream;
+    //         frontSwap.amountOut += amountOut;
+    //         frontSwap.streamsRemaining--;
 
-            if (frontSwap.streamsRemaining == 0) {
-                frontSwap.completed = true;
-                completedSwapToken = frontSwap.tokenIn;
-                swapUser = frontSwap.user;
-                amountOutSwap = frontSwap.amountOut;
-            }
+    //         if (frontSwap.streamsRemaining == 0) {
+    //             frontSwap.completed = true;
+    //             completedSwapToken = frontSwap.tokenIn;
+    //             swapUser = frontSwap.user;
+    //             amountOutSwap = frontSwap.amountOut;
+    //         }
 
-            pairStreamQueue[pairId].data[pairStream.front] = frontSwap;
+    //         pairStreamQueue[pairId].data[pairStream.front] = frontSwap;
 
-            if (pairStreamQueue[pairId].data[pairStream.front].streamsCount == 0) {
-                Queue.dequeue(pairStreamQueue[pairId]);
-            }
-        }
-      //  if (completedSwapToken != address(0)) IERC20(completedSwapToken).transfer(swapUser, amountOutSwap);
+    //         if (pairStreamQueue[pairId].data[pairStream.front].streamsCount == 0) {
+    //             Queue.dequeue(pairStreamQueue[pairId]);
+    //         }
+    //     }
+    //   //  if (completedSwapToken != address(0)) IERC20(completedSwapToken).transfer(swapUser, amountOutSwap);
 
-        // --------------------------- HANDLE PENDING SWAP INSERTION ----------------------------- //
-        if (pairPendingQueue[pairId].data.length > 0) {
-            Swap storage frontPendingSwap;
-            Queue.QueueStruct storage pairPending = pairPendingQueue[pairId];
-            frontPendingSwap = pairPending.data[pairPending.front];
+    //     // --------------------------- HANDLE PENDING SWAP INSERTION ----------------------------- //
+    //     if (pairPendingQueue[pairId].data.length > 0) {
+    //         Swap storage frontPendingSwap;
+    //         Queue.QueueStruct storage pairPending = pairPendingQueue[pairId];
+    //         frontPendingSwap = pairPending.data[pairPending.front];
 
-            uint256 executionPriceInOrder = frontPendingSwap.executionPrice;
-            uint256 executionPriceLatest = poolLogic.getExecutionPrice(
-                poolInfo[frontPendingSwap.tokenIn].reserveA, poolInfo[frontPendingSwap.tokenOut].reserveA
-            );
+    //         uint256 executionPriceInOrder = frontPendingSwap.executionPrice;
+    //         uint256 executionPriceLatest = poolLogic.getExecutionPrice(
+    //             poolInfo[frontPendingSwap.tokenIn].reserveA, poolInfo[frontPendingSwap.tokenOut].reserveA
+    //         );
 
-            if (executionPriceLatest >= executionPriceInOrder) {
-                pairStreamQueue[pairId].enqueue(frontPendingSwap);
-                pairPendingQueue[pairId].dequeue();
-            }
-        }
+    //         if (executionPriceLatest >= executionPriceInOrder) {
+    //             pairStreamQueue[pairId].enqueue(frontPendingSwap);
+    //             pairPendingQueue[pairId].dequeue();
+    //         }
+    //     }
     }
 
     function _executeDepositVaultStream(bytes32 pairId, address tokenA) internal {
-        // loading the front swap from the stream queue
-        Swap storage frontSwap;
-        Queue.QueueStruct storage poolStream = poolStreamQueue[pairId];
-        frontSwap = poolStream.data[poolStream.front];
+    //     // loading the front swap from the stream queue
+    //     Swap storage frontSwap;
+    //     Queue.QueueStruct storage poolStream = poolStreamQueue[pairId];
+    //     frontSwap = poolStream.data[poolStream.front];
 
-        // ------------------------ CHECK OPP DIR SWAP --------------------------- //
-        //TODO: Deduct fees from amount out = 5BPS.
-        bytes32 otherPairId = keccak256(abi.encodePacked(D_TOKEN, tokenA));
-        Queue.QueueStruct storage oppositePoolStream = poolStreamQueue[otherPairId];
+    //     // ------------------------ CHECK OPP DIR SWAP --------------------------- //
+    //     //TODO: Deduct fees from amount out = 5BPS.
+    //     bytes32 otherPairId = keccak256(abi.encodePacked(D_TOKEN, tokenA));
+    //     Queue.QueueStruct storage oppositePoolStream = poolStreamQueue[otherPairId];
 
-        if (oppositePoolStream.data.length != 0) {
-            Swap storage oppositeSwap = oppositePoolStream.data[oppositePoolStream.front];
-            // A->B , dout1 is D1, amountOut1 is B
-            uint256 dOutA =
-                poolLogic.getDOut(frontSwap.swapAmountRemaining, poolInfo[tokenA].reserveA, poolInfo[tokenA].reserveD);
-            // B->A
-            uint256 amountOutB = poolLogic.getTokenOut(
-                oppositeSwap.swapAmountRemaining, poolInfo[tokenA].reserveA, poolInfo[tokenA].reserveD
-            );
-            /*
+    //     if (oppositePoolStream.data.length != 0) {
+    //         Swap storage oppositeSwap = oppositePoolStream.data[oppositePoolStream.front];
+    //         // A->B , dout1 is D1, amountOut1 is B
+    //         uint256 dOutA =
+    //             poolLogic.getDOut(frontSwap.swapAmountRemaining, poolInfo[tokenA].reserveA, poolInfo[tokenA].reserveD);
+    //         // B->A
+    //         uint256 amountOutB = poolLogic.getTokenOut(
+    //             oppositeSwap.swapAmountRemaining, poolInfo[tokenA].reserveA, poolInfo[tokenA].reserveD
+    //         );
+    //         /*
 
-            if I am depositing 10TKN -> ??? D (5)
-            Alice is withdrawing 15 D -> ??? TKN (30)
+    //         if I am depositing 10TKN -> ??? D (5)
+    //         Alice is withdrawing 15 D -> ??? TKN (30)
 
-            My order should be fulfilled completely by alice's. 
+    //         My order should be fulfilled completely by alice's. 
 
-            AmountIn1 = AmountIn1 - AmountIn1
-            AmountOut1 = amountOut1
+    //         AmountIn1 = AmountIn1 - AmountIn1
+    //         AmountOut1 = amountOut1
 
-            AmountIn2 = AmountIn2 - AmountOut1
-            AmountOut2 = AmountOut2 + AmountIn1
+    //         AmountIn2 = AmountIn2 - AmountOut1
+    //         AmountOut2 = AmountOut2 + AmountIn1
 
-            */
+    //         */
 
-            // TKN , TKN
-            if (frontSwap.swapAmountRemaining < amountOutB) {
-                // update pool
+    //         // TKN , TKN
+    //         if (frontSwap.swapAmountRemaining < amountOutB) {
+    //             // update pool
 
-                frontSwap.amountOut = dOutA;
+    //             frontSwap.amountOut = dOutA;
 
-                //update user vault info
-                userVaultInfo[tokenA][frontSwap.user].dAmount = dOutA;
-                userVaultInfo[tokenA][frontSwap.user].tokenAmount = 0;
+    //             //update user vault info
+    //             userVaultInfo[tokenA][frontSwap.user].dAmount = dOutA;
+    //             userVaultInfo[tokenA][frontSwap.user].tokenAmount = 0;
 
-                frontSwap.completed = true;
-                frontSwap.streamsRemaining = 0;
+    //             frontSwap.completed = true;
+    //             frontSwap.streamsRemaining = 0;
 
-                oppositeSwap.swapAmountRemaining -= dOutA;
-                oppositeSwap.amountOut += frontSwap.swapAmountRemaining;
+    //             oppositeSwap.swapAmountRemaining -= dOutA;
+    //             oppositeSwap.amountOut += frontSwap.swapAmountRemaining;
 
-                frontSwap.swapAmountRemaining = 0;
+    //             frontSwap.swapAmountRemaining = 0;
 
-                // TODO: Complete stream and send it to vault
-                // // ----------- to set transfer
-                // completedSwapToken = frontSwap.tokenIn;
-                // swapUser = frontSwap.user;
-                // amountOutSwap = frontSwap.amountOut;
-                // // -----------
+    //             // TODO: Complete stream and send it to vault
+    //             // // ----------- to set transfer
+    //             // completedSwapToken = frontSwap.tokenIn;
+    //             // swapUser = frontSwap.user;
+    //             // amountOutSwap = frontSwap.amountOut;
+    //             // // -----------
 
-                poolStreamQueue[pairId].data[poolStream.front] = frontSwap;
-                Queue.dequeue(poolStreamQueue[pairId]);
-            } else {
-                oppositeSwap.amountOut = amountOutB;
+    //             poolStreamQueue[pairId].data[poolStream.front] = frontSwap;
+    //             Queue.dequeue(poolStreamQueue[pairId]);
+    //         } else {
+    //             oppositeSwap.amountOut = amountOutB;
 
-                //update user vault info
-                userVaultInfo[tokenA][oppositeSwap.user].tokenAmount = amountOutB;
-                userVaultInfo[tokenA][oppositeSwap.user].dAmount = 0;
+    //             //update user vault info
+    //             userVaultInfo[tokenA][oppositeSwap.user].tokenAmount = amountOutB;
+    //             userVaultInfo[tokenA][oppositeSwap.user].dAmount = 0;
 
-                frontSwap.swapAmountRemaining -= amountOutB;
-                frontSwap.amountOut += oppositeSwap.swapAmountRemaining;
+    //             frontSwap.swapAmountRemaining -= amountOutB;
+    //             frontSwap.amountOut += oppositeSwap.swapAmountRemaining;
 
-                oppositeSwap.swapAmountRemaining = 0;
+    //             oppositeSwap.swapAmountRemaining = 0;
 
-                oppositeSwap.completed = true;
-                oppositeSwap.streamsRemaining = 0;
+    //             oppositeSwap.completed = true;
+    //             oppositeSwap.streamsRemaining = 0;
 
-                // // ----------- to set transfer
-                // completedSwapToken = oppositeSwap.tokenIn;
-                // swapUser = oppositeSwap.user;
-                // amountOutSwap = oppositeSwap.amountOut;
-                // // -----------
+    //             // // ----------- to set transfer
+    //             // completedSwapToken = oppositeSwap.tokenIn;
+    //             // swapUser = oppositeSwap.user;
+    //             // amountOutSwap = oppositeSwap.amountOut;
+    //             // // -----------
 
-                poolStreamQueue[otherPairId].data[oppositePoolStream.front] = oppositeSwap;
-                Queue.dequeue(poolStreamQueue[otherPairId]);
-            }
-        } else {
-            uint256 dOutA =
-                poolLogic.getDOut(frontSwap.swapPerStream, poolInfo[tokenA].reserveA, poolInfo[tokenA].reserveD);
+    //             poolStreamQueue[otherPairId].data[oppositePoolStream.front] = oppositeSwap;
+    //             Queue.dequeue(poolStreamQueue[otherPairId]);
+    //         }
+    //     } else {
+    //         uint256 dOutA =
+    //             poolLogic.getDOut(frontSwap.swapPerStream, poolInfo[tokenA].reserveA, poolInfo[tokenA].reserveD);
 
-            //TODO: Deduct fees from amount out = 5BPS.
-            frontSwap.swapAmountRemaining -= frontSwap.swapPerStream;
-            frontSwap.amountOut += dOutA;
-            frontSwap.streamsRemaining--;
+    //         //TODO: Deduct fees from amount out = 5BPS.
+    //         frontSwap.swapAmountRemaining -= frontSwap.swapPerStream;
+    //         frontSwap.amountOut += dOutA;
+    //         frontSwap.streamsRemaining--;
 
-            // update user info
-            userVaultInfo[tokenA][frontSwap.user].tokenAmount -= frontSwap.swapPerStream;
-            userVaultInfo[tokenA][frontSwap.user].dAmount += dOutA;
+    //         // update user info
+    //         userVaultInfo[tokenA][frontSwap.user].tokenAmount -= frontSwap.swapPerStream;
+    //         userVaultInfo[tokenA][frontSwap.user].dAmount += dOutA;
 
-            if (frontSwap.streamsRemaining == 0) {
-                frontSwap.completed = true;
-                // completedSwapToken = frontSwap.tokenIn;
-                // swapUser = frontSwap.user;
-                // amountOutSwap = frontSwap.amountOut;
-            }
+    //         if (frontSwap.streamsRemaining == 0) {
+    //             frontSwap.completed = true;
+    //             // completedSwapToken = frontSwap.tokenIn;
+    //             // swapUser = frontSwap.user;
+    //             // amountOutSwap = frontSwap.amountOut;
+    //         }
 
-            poolStreamQueue[pairId].data[poolStream.front] = frontSwap;
+    //         poolStreamQueue[pairId].data[poolStream.front] = frontSwap;
 
-            if (poolStreamQueue[pairId].data[poolStream.front].streamsCount == 0) {
-                Queue.dequeue(poolStreamQueue[pairId]);
-            }
-        }
+    //         if (poolStreamQueue[pairId].data[poolStream.front].streamsCount == 0) {
+    //             Queue.dequeue(poolStreamQueue[pairId]);
+    //         }
+    //     }
     }
 
     function _executeWithdrawVaultStream(bytes32 pairId, address tokenA) internal {
-        // loading the front swap from the stream queue
-        Swap storage frontSwap;
-        Queue.QueueStruct storage poolStream = poolStreamQueue[pairId];
-        frontSwap = poolStream.data[poolStream.front];
+    //     // loading the front swap from the stream queue
+    //     Swap storage frontSwap;
+    //     Queue.QueueStruct storage poolStream = poolStreamQueue[pairId];
+    //     frontSwap = poolStream.data[poolStream.front];
 
-        // ------------------------ CHECK OPP DIR SWAP --------------------------- //
-        //TODO: Deduct fees from amount out = 5BPS.
-        bytes32 otherPairId = keccak256(abi.encodePacked(tokenA, D_TOKEN));
-        Queue.QueueStruct storage oppositePoolStream = poolStreamQueue[otherPairId];
+    //     // ------------------------ CHECK OPP DIR SWAP --------------------------- //
+    //     //TODO: Deduct fees from amount out = 5BPS.
+    //     bytes32 otherPairId = keccak256(abi.encodePacked(tokenA, D_TOKEN));
+    //     Queue.QueueStruct storage oppositePoolStream = poolStreamQueue[otherPairId];
 
-        if (oppositePoolStream.data.length != 0) {
-            Swap storage oppositeSwap = oppositePoolStream.data[oppositePoolStream.front];
-            // A->B , dout1 is D1, amountOut1 is B
+    //     if (oppositePoolStream.data.length != 0) {
+    //         Swap storage oppositeSwap = oppositePoolStream.data[oppositePoolStream.front];
+    //         // A->B , dout1 is D1, amountOut1 is B
 
-            uint256 amountOutA = poolLogic.getTokenOut(
-                frontSwap.swapAmountRemaining, poolInfo[tokenA].reserveA, poolInfo[tokenA].reserveD
-            );
+    //         uint256 amountOutA = poolLogic.getTokenOut(
+    //             frontSwap.swapAmountRemaining, poolInfo[tokenA].reserveA, poolInfo[tokenA].reserveD
+    //         );
 
-            uint256 dOutB = poolLogic.getDOut(
-                oppositeSwap.swapAmountRemaining, poolInfo[tokenA].reserveA, poolInfo[tokenA].reserveD
-            );
-            // B->A
+    //         uint256 dOutB = poolLogic.getDOut(
+    //             oppositeSwap.swapAmountRemaining, poolInfo[tokenA].reserveA, poolInfo[tokenA].reserveD
+    //         );
+    //         // B->A
 
-            /*
+    //         /*
 
-            Alice is withdrawing 15 D -> ??? TKN (30)
-            if I am depositing 60TKN -> ??? D (30)
+    //         Alice is withdrawing 15 D -> ??? TKN (30)
+    //         if I am depositing 60TKN -> ??? D (30)
             
 
-            Alice's order should be fulfilled completely by mine. 
+    //         Alice's order should be fulfilled completely by mine. 
 
-            AmountIn1 = AmountIn1 - AmountIn1
-            AmountOut1 = amountOut1
+    //         AmountIn1 = AmountIn1 - AmountIn1
+    //         AmountOut1 = amountOut1
 
-            AmountIn2 = AmountIn2 - AmountOut1
-            AmountOut2 = AmountOut2 + AmountIn1
+    //         AmountIn2 = AmountIn2 - AmountOut1
+    //         AmountOut2 = AmountOut2 + AmountIn1
 
-            */
+    //         */
 
-            // TKN , TKN
-            if (frontSwap.swapAmountRemaining < dOutB) {
-                // update pool
+    //         // TKN , TKN
+    //         if (frontSwap.swapAmountRemaining < dOutB) {
+    //             // update pool
 
-                frontSwap.amountOut += amountOutA;
+    //             frontSwap.amountOut += amountOutA;
 
-                //update user vault info
-                userVaultInfo[tokenA][frontSwap.user].dAmount = 0;
-                userVaultInfo[tokenA][frontSwap.user].tokenAmount += amountOutA;
+    //             //update user vault info
+    //             userVaultInfo[tokenA][frontSwap.user].dAmount = 0;
+    //             userVaultInfo[tokenA][frontSwap.user].tokenAmount += amountOutA;
 
-                frontSwap.completed = true;
-                frontSwap.streamsRemaining = 0;
+    //             frontSwap.completed = true;
+    //             frontSwap.streamsRemaining = 0;
 
-                oppositeSwap.swapAmountRemaining -= amountOutA;
-                oppositeSwap.amountOut += frontSwap.swapAmountRemaining;
+    //             oppositeSwap.swapAmountRemaining -= amountOutA;
+    //             oppositeSwap.amountOut += frontSwap.swapAmountRemaining;
 
-                frontSwap.swapAmountRemaining = 0;
+    //             frontSwap.swapAmountRemaining = 0;
 
-                // TODO: Complete stream and send it to vault
-                // // ----------- to set transfer
-                // completedSwapToken = frontSwap.tokenIn;
-                // swapUser = frontSwap.user;
-                // amountOutSwap = frontSwap.amountOut;
-                // // -----------
+    //             // TODO: Complete stream and send it to vault
+    //             // // ----------- to set transfer
+    //             // completedSwapToken = frontSwap.tokenIn;
+    //             // swapUser = frontSwap.user;
+    //             // amountOutSwap = frontSwap.amountOut;
+    //             // // -----------
 
-                poolStreamQueue[pairId].data[poolStream.front] = frontSwap;
-                Queue.dequeue(poolStreamQueue[pairId]);
-            } else {
-                oppositeSwap.amountOut += dOutB;
+    //             poolStreamQueue[pairId].data[poolStream.front] = frontSwap;
+    //             Queue.dequeue(poolStreamQueue[pairId]);
+    //         } else {
+    //             oppositeSwap.amountOut += dOutB;
 
-                //update user vault info
-                userVaultInfo[tokenA][oppositeSwap.user].tokenAmount = 0;
-                userVaultInfo[tokenA][oppositeSwap.user].dAmount += dOutB;
+    //             //update user vault info
+    //             userVaultInfo[tokenA][oppositeSwap.user].tokenAmount = 0;
+    //             userVaultInfo[tokenA][oppositeSwap.user].dAmount += dOutB;
 
-                frontSwap.swapAmountRemaining -= dOutB;
-                frontSwap.amountOut += oppositeSwap.swapAmountRemaining;
+    //             frontSwap.swapAmountRemaining -= dOutB;
+    //             frontSwap.amountOut += oppositeSwap.swapAmountRemaining;
 
-                oppositeSwap.swapAmountRemaining = 0;
+    //             oppositeSwap.swapAmountRemaining = 0;
 
-                oppositeSwap.completed = true;
-                oppositeSwap.streamsRemaining = 0;
+    //             oppositeSwap.completed = true;
+    //             oppositeSwap.streamsRemaining = 0;
 
-                // // ----------- to set transfer
-                // completedSwapToken = oppositeSwap.tokenIn;
-                // swapUser = oppositeSwap.user;
-                // amountOutSwap = oppositeSwap.amountOut;
-                // // -----------
+    //             // // ----------- to set transfer
+    //             // completedSwapToken = oppositeSwap.tokenIn;
+    //             // swapUser = oppositeSwap.user;
+    //             // amountOutSwap = oppositeSwap.amountOut;
+    //             // // -----------
 
-                poolStreamQueue[otherPairId].data[oppositePoolStream.front] = oppositeSwap;
-                Queue.dequeue(poolStreamQueue[otherPairId]);
-            }
-        } else {
-            uint256 amountOutA =
-                poolLogic.getTokenOut(frontSwap.swapPerStream, poolInfo[tokenA].reserveA, poolInfo[tokenA].reserveD);
+    //             poolStreamQueue[otherPairId].data[oppositePoolStream.front] = oppositeSwap;
+    //             Queue.dequeue(poolStreamQueue[otherPairId]);
+    //         }
+    //     } else {
+    //         uint256 amountOutA =
+    //             poolLogic.getTokenOut(frontSwap.swapPerStream, poolInfo[tokenA].reserveA, poolInfo[tokenA].reserveD);
 
-            // uint256 dOutA =
-            //     poolLogic.getDOut(frontSwap.swapPerStream, poolInfo[tokenA].reserveA, poolInfo[tokenA].reserveD);
+    //         // uint256 dOutA =
+    //         //     poolLogic.getDOut(frontSwap.swapPerStream, poolInfo[tokenA].reserveA, poolInfo[tokenA].reserveD);
 
-            //TODO: Deduct fees from amount out = 5BPS.
-            frontSwap.swapAmountRemaining -= frontSwap.swapPerStream;
-            frontSwap.amountOut += amountOutA;
-            frontSwap.streamsRemaining--;
+    //         //TODO: Deduct fees from amount out = 5BPS.
+    //         frontSwap.swapAmountRemaining -= frontSwap.swapPerStream;
+    //         frontSwap.amountOut += amountOutA;
+    //         frontSwap.streamsRemaining--;
 
-            // update user info
-            userVaultInfo[tokenA][frontSwap.user].tokenAmount += amountOutA;
-            userVaultInfo[tokenA][frontSwap.user].dAmount -= frontSwap.swapPerStream;
+    //         // update user info
+    //         userVaultInfo[tokenA][frontSwap.user].tokenAmount += amountOutA;
+    //         userVaultInfo[tokenA][frontSwap.user].dAmount -= frontSwap.swapPerStream;
 
-            if (frontSwap.streamsRemaining == 0) {
-                frontSwap.completed = true;
-                // completedSwapToken = frontSwap.tokenIn;
-                // swapUser = frontSwap.user;
-                // amountOutSwap = frontSwap.amountOut;
-            }
+    //         if (frontSwap.streamsRemaining == 0) {
+    //             frontSwap.completed = true;
+    //             // completedSwapToken = frontSwap.tokenIn;
+    //             // swapUser = frontSwap.user;
+    //             // amountOutSwap = frontSwap.amountOut;
+    //         }
 
-            poolStreamQueue[pairId].data[poolStream.front] = frontSwap;
+    //         poolStreamQueue[pairId].data[poolStream.front] = frontSwap;
 
-            if (poolStreamQueue[pairId].data[poolStream.front].streamsCount == 0) {
-                Queue.dequeue(poolStreamQueue[pairId]);
-            }
-        }
+    //         if (poolStreamQueue[pairId].data[poolStream.front].streamsCount == 0) {
+    //             Queue.dequeue(poolStreamQueue[pairId]);
+    //         }
+    //     }
     }
 
     function _removeSwap(uint256 swapId, Queue.QueueStruct storage swapQueue)
