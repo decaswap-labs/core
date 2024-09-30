@@ -77,95 +77,48 @@ contract Pool is IPool, Ownable {
         emit RouterAddressUpdated(address(0), ROUTER_ADDRESS);
         emit PoolLogicAddressUpdated(address(0), POOL_LOGIC);
     }
-
-    // will be called from allowed logic contract with updated PoolInfoStruct
-    // @dev validations should be done on logic contract
-    function updatePoolInfo(address tokenAddress, PoolInfo calldata updatedPoolInfo) external onlyPoolLogic {
-        mapToken_reserveD[tokenAddress] = updatedPoolInfo.reserveD;
-        mapToken_poolOwnershipUnitsTotal[tokenAddress] = updatedPoolInfo.poolOwnershipUnitsTotal; 
-        mapToken_reserveA[tokenAddress] = updatedPoolInfo.reserveA;
-        mapToken_minLaunchReserveA[tokenAddress] = updatedPoolInfo.minLaunchReserveA; 
-        mapToken_minLaunchReserveD[tokenAddress] = updatedPoolInfo.minLaunchReserveD; 
-        mapToken_initialDToMint[tokenAddress] = updatedPoolInfo.initialDToMint; 
-        mapToken_poolFeeCollected[tokenAddress] = updatedPoolInfo.poolFeeCollected; 
-        mapToken_initialized[tokenAddress] = updatedPoolInfo.initialized; 
-    }
-
-    ////// inidividual setters for each field of PoolInfo due to gas efficiency ////////
-
-    function updateReserveD(address tokenAddress, uint updatedReserveD ) external onlyPoolLogic {
-        mapToken_reserveD[tokenAddress] = updatedReserveD;
-    }
-
-    function updatePoolOwnershipUnitsTotal(address tokenAddress, uint updatedPoolOwnershipUnitsTotal) external onlyPoolLogic {
-        mapToken_poolOwnershipUnitsTotal[tokenAddress] = updatedPoolOwnershipUnitsTotal;
-    }
-
-    function updateReserveA(address tokenAddress, uint updatedReserveA) external onlyPoolLogic {
-        mapToken_reserveA[tokenAddress] = updatedReserveA;
-    }
-
-    function updateMinLaunchReserveA(address tokenAddress, uint updatedMinLaunchReserveA) external onlyPoolLogic {
-        mapToken_minLaunchReserveA[tokenAddress] = updatedMinLaunchReserveA;
-    }
-
-    function updateMinLaunchReserveD(address tokenAddress, uint updatedMinLaunchReserveD) external onlyPoolLogic {
-        mapToken_minLaunchReserveD[tokenAddress] = updatedMinLaunchReserveD;
-    }
-
-    function updateInitialDToMint(address tokenAddress, uint updatedInitialDToMint) external onlyPoolLogic {
-        mapToken_initialDToMint[tokenAddress] = updatedInitialDToMint;
-    }
-
-    function updatePoolFeeCollected(address tokenAddress, uint updatedPoolFeeCollected) external onlyPoolLogic {
-        mapToken_poolFeeCollected[tokenAddress] = updatedPoolFeeCollected; 
-    }
-
-    function updateInitialized(address tokenAddress, bool updatedInitialized) external onlyPoolLogic {
-        mapToken_initialized[tokenAddress] = updatedInitialized;
-    }
-
-    function poolInfo(address tokenAddress) external view returns(uint256, uint256, uint256, uint256, uint256, uint256, uint256, bool) {
-         return (
-
-            mapToken_reserveD[tokenAddress],
-            mapToken_poolOwnershipUnitsTotal[tokenAddress],
-            mapToken_reserveA[tokenAddress],
-            mapToken_minLaunchReserveA[tokenAddress],
-            mapToken_minLaunchReserveD[tokenAddress],
-            mapToken_initialDToMint[tokenAddress],
-            mapToken_poolFeeCollected[tokenAddress],
-            mapToken_initialized[tokenAddress]
-         
-         );
-    }
+    
 
     //////////////////////////////////////////////////////////////////////////////
     // NOTE ignore code below for as all will be refactored after storage variable are set
     // commented logic so that code compiles with current tests
     ///////////////////////////////////////////////////////////////////////////////
 
-    
 
-    // event AmountOut(uint256 amount);
-
-    function createPool(
-        address token,
-        uint256 minLaunchReserveA,
-        uint256 minLaunchReserveD,
-        uint256 tokenAmount,
-        uint256 initialDToMint
-    ) external override onlyOwner {
+    // creatPoolParams encoding format => (address token, address user, uint256 amount, uint256 minLaunchReserveA, uint256 minLaunchReserveD, uint256 initialDToMint, uint newLpUnits, uint newDUnits, uint256 poolFeeCollected)
+    // @todo token transfer?? waiting for confirmation from Shakeib (might need to change modifier)
+    function createPool(bytes calldata creatPoolParams) external onlyPoolLogic {
+        (address token, address user, uint256 amount, uint256 minLaunchReserveA, uint256 minLaunchReserveD, uint256 initialDToMint, uint newLpUnits, uint newDUnits, uint poolFeeCollected) = abi.decode(creatPoolParams,(address,address,uint256,uint256,uint256,uint256,uint256,uint256,uint256));
         _createPool(token, minLaunchReserveA, minLaunchReserveD, initialDToMint);
-        _addLiquidity(msg.sender, token, tokenAmount);
+        bytes memory addLiqParam = abi.encode(token,user,amount,newLpUnits,newDUnits,poolFeeCollected);
+        _addLiquidity(addLiqParam);
+    }
+
+    // addLiqParams encoding format => (address token, address user, uint amount, uint256 newLpUnits, uint256 newDUnits, uint256 poolFeeCollected)
+    function _addLiquidity(bytes memory addLiqParams) internal {
+        (address token, address user, uint amount, uint256 newLpUnits, uint256 newDUnits, uint256 poolFeeCollected) = abi.decode(addLiqParams,(address,address,uint256,uint256,uint256,uint256));
+        if(!mapToken_initialized[token]) revert InvalidToken();
+        if (amount == 0) revert InvalidTokenAmount();
+
+        mapToken_minLaunchReserveA[token] += amount;
+        mapToken_poolOwnershipUnitsTotal[token] += newLpUnits;
+        mapToken_reserveD[token] += newDUnits;
+        // @note may or may not be needed here. 
+        mapToken_poolFeeCollected[token] += poolFeeCollected;
+
+        // mint D
+        userLpUnitInfo[user][token] += newDUnits;
+
+        emit LiquidityAdded(user, token, amount, newLpUnits, newDUnits);
     }
 
     function disablePool(address token) external override onlyOwner {
         // TODO
     }
 
-    function add(address user, address token, uint256 amountA) external override onlyRouter {
-        _addLiquidity(user, token, amountA);
+    // addLiqParams encoding format => (address token, address user, uint amount, uint256 newLpUnits, uint256 newDUnits, uint256 poolFeeCollected)
+    function addLiquidity(bytes memory addLiqParams) external onlyPoolLogic {
+        _addLiquidity(addLiqParams);
     }
 
     function remove(address user, address token, uint256 lpUnits) external override onlyRouter {
@@ -368,10 +321,10 @@ contract Pool is IPool, Ownable {
         poolLogic = IPoolLogicActions(POOL_LOGIC);
     }
 
-    // function updateMinLaunchReserveA(address token, uint256 newMinLaunchReserveA) external override onlyOwner {
-    //     // emit MinLaunchReserveUpdated(token, poolInfo[token].minLaunchReserveA, newMinLaunchReserveA);
-    //     // poolInfo[token].minLaunchReserveA = newMinLaunchReserveA;
-    // }
+    function updateMinLaunchReserveA(address token, uint256 newMinLaunchReserveA) external override onlyOwner {
+        // emit MinLaunchReserveUpdated(token, poolInfo[token].minLaunchReserveA, newMinLaunchReserveA);
+        // poolInfo[token].minLaunchReserveA = newMinLaunchReserveA;
+    }
 
     function updatePairSlippage(address tokenA, address tokenB, uint256 newSlippage) external override onlyOwner {
         bytes32 poolId = getPoolId(tokenA, tokenB);
@@ -400,16 +353,16 @@ contract Pool is IPool, Ownable {
     function _createPool(address token, uint256 minLaunchReserveA, uint256 minLaunchReserveD, uint256 initialDToMint)
         internal
     {
-        // if (token == address(0)) revert InvalidToken();
+        if (mapToken_initialized[token]) revert DuplicatePool();
+        if (token == address(0)) revert InvalidToken();
+        if (initialDToMint == 0) revert InvalidInitialDAmount();
 
-        // if (initialDToMint == 0) revert InvalidInitialDAmount();
+        mapToken_initialized[token] = true;
+        mapToken_minLaunchReserveA[token] = minLaunchReserveA;
+        mapToken_minLaunchReserveD[token] = minLaunchReserveD;
+        mapToken_initialDToMint[token] = initialDToMint;
 
-        // poolInfo[token].initialized = true;
-        // poolInfo[token].minLaunchReserveA = minLaunchReserveA;
-        // poolInfo[token].minLaunchReserveD = minLaunchReserveD;
-        // poolInfo[token].initialDToMint = initialDToMint;
-
-        // emit PoolCreated(token, minLaunchReserveA, minLaunchReserveD);
+        emit PoolCreated(token, minLaunchReserveA, minLaunchReserveD);
     }
 
     function _addLiquidity(address user, address token, uint256 amount) internal {
@@ -887,5 +840,19 @@ contract Pool is IPool, Ownable {
         }
 
         return (swapQueue, amountIn, amountOut);
+    }
+
+    function poolInfo(address tokenAddress) external view 
+    returns (uint256 reserveD, uint256 poolOwnershipUnitsTotal, uint256 reserveA, uint256 minLaunchReserveA, uint256 minLaunchReserveD, uint256 initialDToMint, uint256 poolFeeCollected, bool initialized){
+        return (
+            mapToken_reserveD[tokenAddress],
+            mapToken_poolOwnershipUnitsTotal[tokenAddress],
+            mapToken_reserveA[tokenAddress],
+            mapToken_minLaunchReserveA[tokenAddress],
+            mapToken_minLaunchReserveD[tokenAddress],
+            mapToken_initialDToMint[tokenAddress],
+            mapToken_poolFeeCollected[tokenAddress],
+            mapToken_initialized[tokenAddress]
+        );
     }
 }

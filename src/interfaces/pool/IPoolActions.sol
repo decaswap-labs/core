@@ -2,9 +2,11 @@
 pragma solidity ^0.8.13;
 
 interface IPoolActions {
-    function createPool(address, uint256, uint256, uint256, uint256) external;
+    // creatPoolParams encoding format => (address token, address user, uint256 amount, uint256 minLaunchReserveA, uint256 minLaunchReserveD, uint256 initialDToMint, uint newLpUnits, uint newDUnits, uint256 poolFeeCollected)
+    function createPool(bytes calldata creatPoolParams) external;
     function disablePool(address) external;
-    function add(address, address, uint256) external;
+    // addLiqParams encoding format => (address token, address user, uint amount, uint256 newLpUnits, uint256 newDUnits, uint256 poolFeeCollected)
+    function addLiquidity(bytes memory addLiqParams) external;
     function remove(address, address, uint256) external;
     function executeSwap(address, uint256, uint256, address, address) external;
     function depositVault(address, uint256, address) external;

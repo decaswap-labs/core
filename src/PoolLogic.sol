@@ -3,6 +3,7 @@ pragma solidity ^0.8.20;
 
 import {IPoolStates} from "./interfaces/pool/IPoolStates.sol";
 import {IPoolLogic} from "./interfaces/IPoolLogic.sol";
+import {IPoolActions} from "./interfaces/pool/IPoolActions.sol";
 import "../lib/openzeppelin-contracts-upgradeable/contracts/proxy/utils/Initializable.sol";
 import "../lib/openzeppelin-contracts-upgradeable/contracts/access/OwnableUpgradeable.sol";
 
@@ -11,9 +12,12 @@ contract PoolLogic is Initializable, OwnableUpgradeable, IPoolLogic {
     uint256 internal DECIMAL = 1e18;
 
     address public override POOL_ADDRESS;
-    IPoolStates pool;
+    IPoolStates public pool;
 
-    
+    modifier onlyRouter() {
+        if (msg.sender != pool.ROUTER_ADDRESS()) revert NotRouter(msg.sender);
+        _;
+    }
     function initialize(address poolAddress, address owner) public initializer {
         __Ownable_init(owner);
 
@@ -22,8 +26,33 @@ contract PoolLogic is Initializable, OwnableUpgradeable, IPoolLogic {
         emit PoolAddressUpdated(address(0), POOL_ADDRESS);
     }
 
+    function createPool(address token, address user, uint256  amount, uint256 minLaunchReserveA, uint256 minLaunchReserveD,uint256 initialDToMint) external onlyRouter {
+        // hardcoding `poolFeeCollected` to zero as pool is just being created
+        // reserveA == amount for 1st deposit
+        bytes memory createPoolParams = abi.encode(token,user,amount,minLaunchReserveA,minLaunchReserveD,initialDToMint,calculateLpUnitsToMint(amount,0,0),calculateDUnitsToMint(amount,amount,0, initialDToMint),0); 
+        IPoolActions(POOL_ADDRESS).createPool(createPoolParams);
+    }
+
+    function addLiquidity(address token, address user, uint256  amount) external onlyRouter {
+        (
+        uint256 reserveD,
+        uint256 poolOwnershipUnitsTotal,
+        uint256 reserveA,
+        uint256 minLaunchReserveA,
+        uint256 minLaunchReserveD,
+        uint256 initialDToMint,
+        uint256 poolFeeCollected,
+        bool initialized
+        ) = pool.poolInfo(address(token));
+        uint newLpUnits = calculateLpUnitsToMint(amount,reserveA,poolOwnershipUnitsTotal);
+        reserveA += amount;
+        uint newDUnits = calculateDUnitsToMint(amount,reserveA,reserveD, initialDToMint);
+        bytes memory addLiqParams = abi.encode(token,user,amount,newLpUnits,newDUnits,0); // poolFeeCollected = 0 until logic is finalized
+        IPoolActions(POOL_ADDRESS).addLiquidity(addLiqParams);
+    }
+
     function calculateLpUnitsToMint(uint256 amount, uint256 reserveA, uint256 totalLpUnits)
-        external
+        public
         pure
         returns (uint256)
     {
@@ -35,7 +64,7 @@ contract PoolLogic is Initializable, OwnableUpgradeable, IPoolLogic {
     }
 
     function calculateDUnitsToMint(uint256 amount, uint256 reserveA, uint256 reserveD, uint256 initialDToMint)
-        external
+        public
         pure
         returns (uint256)
     {

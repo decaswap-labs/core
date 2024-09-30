@@ -11,4 +11,5 @@ interface IPoolErrors {
     error InvalidExecutionPrice();
     error InvalidPool();
     error InvalidSwap();
+    error DuplicatePool();
 }

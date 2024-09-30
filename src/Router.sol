@@ -5,9 +5,9 @@ import "../lib/openzeppelin-contracts-upgradeable/contracts/proxy/utils/Initiali
 import "../lib/openzeppelin-contracts-upgradeable/contracts/access/OwnableUpgradeable.sol";
 import {IPoolActions} from "./interfaces/pool/IPoolActions.sol";
 import {IPoolStates} from "./interfaces/pool/IPoolStates.sol";
+import {IPoolLogic} from "./interfaces/IPoolLogic.sol";
 import {IRouter} from "./interfaces/IRouter.sol";
 import {IERC20} from "./interfaces/utils/IERC20.sol";
-
 contract Router is Initializable, OwnableUpgradeable, IRouter {
     address public override POOL_ADDRESS;
     IPoolActions pool;
@@ -23,12 +23,23 @@ contract Router is Initializable, OwnableUpgradeable, IRouter {
         emit PoolAddressUpdated(address(0), POOL_ADDRESS);
     }
 
+    function createPool(address token, uint amount, uint256 minLaunchReserveA, uint256 minLaunchReserveD,uint256 initialDToMint) external onlyOwner {
+        if (poolExist(token)) revert InvalidPool();
+        if (amount == 0) revert InvalidAmount();
+        IERC20(token).transferFrom(msg.sender, address(this), amount);
+        IPoolLogic(poolStates.POOL_LOGIC()).createPool(token,msg.sender,amount,minLaunchReserveA,minLaunchReserveD,initialDToMint);
+    }
+
+    // @todo create a function for admin to create and add liq to the pool
+    // current one in Pool.sol has some issues as it assumes it has got the tokens
+
     function addLiquidity(address token, uint256 amount) external override {
+        // @todo confirm about the appoach, where to keep checks? PoolLogic/Pool/Router??Then refactor
         if (!poolExist(token)) revert InvalidPool();
         if (amount == 0) revert InvalidAmount();
 
         IERC20(token).transferFrom(msg.sender, POOL_ADDRESS, amount);
-        pool.add(msg.sender, token, amount);
+        IPoolLogic(poolStates.POOL_LOGIC()).addLiquidity(token,msg.sender,amount);
 
         emit LiquidityAdded(msg.sender, token, amount);
     }
@@ -50,7 +61,7 @@ contract Router is Initializable, OwnableUpgradeable, IRouter {
         poolStates = IPoolStates(POOL_ADDRESS);
     }
 
-    function poolExist(address tokenAddress) internal returns (bool) {
+    function poolExist(address tokenAddress) internal view returns (bool) {
         // TODO : Resolve this tuple unbundling issue
         (uint256 a, uint256 b, uint256 c, uint256 d, uint256 f, uint256 g, uint256 h, bool initialized) =
             poolStates.poolInfo(tokenAddress);
