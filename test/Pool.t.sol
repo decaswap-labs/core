@@ -6,10 +6,13 @@ import "forge-std/console.sol";
 import "../src/Pool.sol";
 import "../src/PoolLogic.sol";
 import "../src/Router.sol";
+import "../src/interfaces/router/IRouterErrors.sol";
+import "../src/interfaces/pool/IPoolErrors.sol";
 import "../src/MockERC20.sol"; // Mock token for testing
+import "./utils/Utils.t.sol";
 import "forge-std/console.sol";
 
-contract PoolTest is Test {
+contract PoolTest is Test, Utils {
     Pool public pool;
     PoolLogic poolLogic;
     MockERC20 public tokenA;
@@ -42,7 +45,7 @@ contract PoolTest is Test {
 
     }
 
-//     // ------------------------ Test Cases ------------------------
+    // ------------------------ Test Cases ------------------------
 
 
    //Test: Successfully create a pool
@@ -65,6 +68,7 @@ contract PoolTest is Test {
         assertEq(reserveD, 10 * 1e18);
         assertEq(poolOwnershipUnitsTotal, 100 * 1e18);
         assertEq(initialized, true);
+        assertEq(tokenA.balanceOf(address(pool)),100 * 1e18);
 
     }
 
@@ -73,23 +77,30 @@ contract PoolTest is Test {
         vm.startPrank(user);
         router.createPool(address(tokenA), 100 * 1e18, 100 * 1e18, 100 * 1e18, 10 * 1e18);
 
-        vm.expectRevert();
+        vm.expectRevert(IRouterErrors.InvalidPool.selector);
         router.createPool(address(tokenA), 100 * 1e18, 100 * 1e18, 100 * 1e18, 10 * 1e18);
         vm.stopPrank();
     }
 
     // Test: Creating a pool from an unauthorized address
-    function testCreatePool_UnauthorizedAddress() public {
+    function testCreatePoolFromRouter_UnauthorizedAddress() public {
         vm.startPrank(nonAuthorized);
-        vm.expectRevert();
+        vm.expectRevert(abi.encodeWithSelector(getOwnableUnauthorizedAccountSelector(),nonAuthorized));
         router.createPool(address(tokenA), 100 * 1e18, 100 * 1e18, 100 * 1e18, 10 * 1e18);
+        vm.stopPrank();
+    }
+
+    function testCreatePoolFromPool_UnauthorizedAddress() public {
+        vm.startPrank(nonAuthorized);
+        vm.expectRevert(abi.encodeWithSelector(IPoolErrors.NotPoolLogic.selector,nonAuthorized));
+        pool.createPool("0x");
         vm.stopPrank();
     }
 
     // Test: Creating pool with invalid token address
     function testCreatePool_InvalidTokenAddress() public {
         vm.startPrank(user);
-        vm.expectRevert();
+        vm.expectRevert(); // transferFrom on 0 address will revert
         router.createPool(address(0), 100 * 1e18, 100 * 1e18, 100 * 1e18, 10 * 1e18);
         vm.stopPrank();
     }
@@ -120,8 +131,10 @@ contract PoolTest is Test {
 
         assertEq(initialReserveD, 10 * 1e18);
         assertEq(initialOwnershipUnits, 100 * 1e18);
+        assertEq(tokenA.balanceOf(address(pool)),100 * 1e18);   
 
-        vm.startPrank(user); // Use router address to add liquidity
+        uint beforeTokenABalance = tokenA.balanceOf(address(pool));
+        vm.startPrank(user);
         router.addLiquidity(address(tokenA), 100 * 1e18);
         vm.stopPrank();
 
@@ -133,24 +146,37 @@ contract PoolTest is Test {
 
         assertGt(reserveD, initialReserveD, "ReserveA should increase");
         assertGt(poolOwnershipUnitsTotal, initialOwnershipUnits, "Pool ownership units should increase");
+        assertEq(tokenA.balanceOf(address(pool)),beforeTokenABalance + 100 * 1e18);
     }
 
-    // // //Test: Adding liquidity by unauthorized addresses
-    // function testadd_Unauthorized() public {
-    //     vm.prank(user);
-    //     pool.createPool(address(tokenA), 100 * 1e18, 100 * 1e18, 100 * 1e18, 10 * 1e18);
-    //     vm.expectRevert();
-    //     pool.add(user, address(tokenA), 100 * 1e18);
-    // }
+    // Test: Adding 0 amount liquidity
+    function testadd_InvalidAmount() public {
+        vm.startPrank(user);
+        router.createPool(address(tokenA), 100 * 1e18, 100 * 1e18, 100 * 1e18, 10 * 1e18);
+        vm.expectRevert(IRouterErrors.InvalidAmount.selector);
+        router.addLiquidity(address(tokenA),0); // 0 amount
+        vm.stopPrank();
+    }
 
-    // // // Test: Adding liquidity to a pool that doesn't exist
-    // function testadd_NonExistentPool() public {
-    //     vm.prank(user);
-    //     pool.createPool(address(tokenA), 100 * 1e18, 100 * 1e18, 100 * 1e18, 10 * 1e18);
-    //     vm.prank(router);
-    //     vm.expectRevert();
-    //     pool.add(user, address(0xDEADBEEF), 100 * 1e18);
-    // }
+    //Test: Adding liquidity in POOL by unauthorized addresses
+    function testadd_Unauthorized() public {
+        vm.startPrank(user);
+        router.createPool(address(tokenA), 100 * 1e18, 100 * 1e18, 100 * 1e18, 10 * 1e18);
+        vm.stopPrank();
+        vm.startPrank(nonAuthorized);
+        vm.expectRevert(abi.encodeWithSelector(IPoolErrors.NotPoolLogic.selector,nonAuthorized));
+        pool.addLiquidity("0x");
+        vm.stopPrank();
+    }
+
+    // Test: Adding liquidity to a pool that doesn't exist
+    function testadd_NonExistentPool() public {
+        vm.startPrank(user);
+        router.createPool(address(tokenA), 100 * 1e18, 100 * 1e18, 100 * 1e18, 10 * 1e18);
+        vm.expectRevert(IRouterErrors.InvalidPool.selector);
+        router.addLiquidity(address(0xDEADBEEF), 100 * 1e18);
+        vm.stopPrank();
+    }
 
     // // Test: Successfully remove liquidity
     // function testRemoveLiquidity_Success() public {
