@@ -26,12 +26,10 @@ contract Router is Initializable, OwnableUpgradeable, IRouter {
     function createPool(address token, uint amount, uint256 minLaunchReserveA, uint256 minLaunchReserveD,uint256 initialDToMint) external onlyOwner {
         if (poolExist(token)) revert InvalidPool();
         if (amount == 0) revert InvalidAmount();
-        IERC20(token).transferFrom(msg.sender, address(this), amount);
+        IERC20(token).transferFrom(msg.sender, POOL_ADDRESS, amount);
         IPoolLogic(poolStates.POOL_LOGIC()).createPool(token,msg.sender,amount,minLaunchReserveA,minLaunchReserveD,initialDToMint);
     }
 
-    // @todo create a function for admin to create and add liq to the pool
-    // current one in Pool.sol has some issues as it assumes it has got the tokens
 
     function addLiquidity(address token, uint256 amount) external override {
         // @todo confirm about the appoach, where to keep checks? PoolLogic/Pool/Router??Then refactor
