@@ -1,20 +1,18 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.13;
 
-import "../lib/openzeppelin-contracts-upgradeable/contracts/proxy/utils/Initializable.sol";
 import "../lib/openzeppelin-contracts-upgradeable/contracts/access/OwnableUpgradeable.sol";
 import {IPoolActions} from "./interfaces/pool/IPoolActions.sol";
 import {IPoolStates} from "./interfaces/pool/IPoolStates.sol";
 import {IPoolLogic} from "./interfaces/IPoolLogic.sol";
 import {IRouter} from "./interfaces/IRouter.sol";
 import {IERC20} from "./interfaces/utils/IERC20.sol";
-contract Router is Initializable, OwnableUpgradeable, IRouter {
+contract Router is Ownable, IRouter {
     address public override POOL_ADDRESS;
     IPoolActions pool;
     IPoolStates poolStates;
 
-    function initialize(address owner, address poolAddress) public initializer {
-        __Ownable_init(owner);
+    constructor(address owner, address poolAddress) Ownable(owner) {
 
         POOL_ADDRESS = poolAddress;
         pool = IPoolActions(POOL_ADDRESS);

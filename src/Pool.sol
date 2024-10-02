@@ -360,6 +360,7 @@ contract Pool is IPool, Ownable {
         mapToken_initialized[token] = true;
         mapToken_minLaunchReserveA[token] = minLaunchReserveA;
         mapToken_minLaunchReserveD[token] = minLaunchReserveD;
+        // @todo need confirmation on that. hardcoded? 
         mapToken_initialDToMint[token] = initialDToMint;
 
         emit PoolCreated(token, minLaunchReserveA, minLaunchReserveD);
