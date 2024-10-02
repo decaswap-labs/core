@@ -45,7 +45,7 @@ contract Router is Ownable, IRouter {
 
         if (lpUnits == 0 || lpUnits > poolStates.userLpUnitInfo(msg.sender, token)) revert InvalidAmount();
 
-        pool.remove(msg.sender, token, lpUnits);
+        IPoolLogic(poolStates.POOL_LOGIC()).removeLiquidity(token,msg.sender,lpUnits);
 
         emit LiquidityRemoved(msg.sender, token, lpUnits);
     }

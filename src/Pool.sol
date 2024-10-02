@@ -86,7 +86,6 @@ contract Pool is IPool, Ownable {
 
 
     // creatPoolParams encoding format => (address token, address user, uint256 amount, uint256 minLaunchReserveA, uint256 minLaunchReserveD, uint256 initialDToMint, uint newLpUnits, uint newDUnits, uint256 poolFeeCollected)
-    // @todo token transfer?? waiting for confirmation from Shakeib (might need to change modifier)
     function createPool(bytes calldata creatPoolParams) external onlyPoolLogic {
         (address token, address user, uint256 amount, uint256 minLaunchReserveA, uint256 minLaunchReserveD, uint256 initialDToMint, uint newLpUnits, uint newDUnits, uint poolFeeCollected) = abi.decode(creatPoolParams,(address,address,uint256,uint256,uint256,uint256,uint256,uint256,uint256));
         _createPool(token, minLaunchReserveA, minLaunchReserveD, initialDToMint);
@@ -112,6 +111,23 @@ contract Pool is IPool, Ownable {
         emit LiquidityAdded(user, token, amount, newLpUnits, newDUnits);
     }
 
+    // removeLiqParams encoding format => (address token, address user, uint lpUnits, uint256 assetToTransfer, uint256 dAmountToDeduct, uint256 poolFeeCollected)
+    function _removeLiquidity(bytes memory removeLiqParams) internal {
+        (address token, address user, uint256 lpUnits, uint256 assetToTransfer, uint256 dAmountToDeduct, uint256 poolFeeCollected) = abi.decode(removeLiqParams,(address,address,uint256,uint256,uint256,uint256));
+        // deduct lp from user
+        userLpUnitInfo[user][token] -= lpUnits;    
+        
+        // updating pool state
+        mapToken_reserveA[token] -= assetToTransfer;
+        mapToken_reserveD[token] -= dAmountToDeduct;
+        mapToken_poolOwnershipUnitsTotal[token] -= lpUnits;
+        // @note may or may not be needed here. 
+        mapToken_poolFeeCollected[token] += poolFeeCollected;
+
+        emit LiquidityRemoved(user, token, lpUnits, assetToTransfer, dAmountToDeduct);
+
+    }
+
     function disablePool(address token) external override onlyOwner {
         // TODO
     }
@@ -119,6 +135,11 @@ contract Pool is IPool, Ownable {
     // addLiqParams encoding format => (address token, address user, uint amount, uint256 newLpUnits, uint256 newDUnits, uint256 poolFeeCollected)
     function addLiquidity(bytes memory addLiqParams) external onlyPoolLogic {
         _addLiquidity(addLiqParams);
+    }
+
+    // removeLiqParams encoding format => (address token, address user, uint lpUnits, uint256 assetToTransfer, uint256 dAmountToDeduct, uint256 poolFeeCollected)
+    function removeLiquidity(bytes memory removeLiqParams) external onlyPoolLogic {
+        _removeLiquidity(removeLiqParams);
     }
 
     function remove(address user, address token, uint256 lpUnits) external override onlyRouter {

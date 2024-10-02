@@ -23,7 +23,7 @@ contract PoolLogic is Ownable, IPoolLogic {
         POOL_ADDRESS = poolAddress;
         pool = IPoolStates(POOL_ADDRESS);
         emit PoolAddressUpdated(address(0), POOL_ADDRESS);
-        
+
     }
 
     function createPool(address token, address user, uint256  amount, uint256 minLaunchReserveA, uint256 minLaunchReserveD,uint256 initialDToMint) external onlyRouter {
@@ -49,6 +49,23 @@ contract PoolLogic is Ownable, IPoolLogic {
         uint newDUnits = calculateDUnitsToMint(amount,reserveA,reserveD, initialDToMint);
         bytes memory addLiqParams = abi.encode(token,user,amount,newLpUnits,newDUnits,0); // poolFeeCollected = 0 until logic is finalized
         IPoolActions(POOL_ADDRESS).addLiquidity(addLiqParams);
+    }
+
+    function removeLiquidity(address token, address user, uint256 lpUnits) external onlyRouter {
+        (
+        uint256 reserveD,
+        uint256 poolOwnershipUnitsTotal,
+        uint256 reserveA,
+        uint256 minLaunchReserveA,
+        uint256 minLaunchReserveD,
+        uint256 initialDToMint,
+        uint256 poolFeeCollected,
+        bool initialized
+        ) = pool.poolInfo(address(token));
+        uint256 assetToTransfer = calculateAssetTransfer(lpUnits,reserveA,poolOwnershipUnitsTotal);
+        uint256 dAmountToDeduct = calculateDToDeduct(lpUnits,reserveD,poolOwnershipUnitsTotal);
+        bytes memory removeLiqParams = abi.encode(token,user,lpUnits,assetToTransfer,dAmountToDeduct,0); // poolFeeCollected = 0 until logic is finalized
+        IPoolActions(POOL_ADDRESS).addLiquidity(removeLiqParams);
     }
 
     function calculateLpUnitsToMint(uint256 amount, uint256 reserveA, uint256 totalLpUnits)
@@ -92,7 +109,7 @@ contract PoolLogic is Ownable, IPoolLogic {
     }
 
     function calculateAssetTransfer(uint256 lpUnits, uint256 reserveA, uint256 totalLpUnits)
-        external
+        public
         pure
         override
         returns (uint256)
@@ -101,7 +118,7 @@ contract PoolLogic is Ownable, IPoolLogic {
     }
 
     function calculateDToDeduct(uint256 lpUnits, uint256 reserveD, uint256 totalLpUnits)
-        external
+        public
         pure
         override
         returns (uint256)
