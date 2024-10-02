@@ -25,7 +25,7 @@ contract PoolTest is Test, Utils {
     function setUp() public {
         tokenA = new MockERC20("Token A", "TKA", 18);
         tokenB = new MockERC20("Token B", "TKB", 18);
-        poolLogic = new PoolLogic();
+        poolLogic = new PoolLogic(user,address(0)); // setting zero address for poolAddress as not deployed yet.
         vm.prank(user);
         pool = new Pool(vault, address(router), address(poolLogic));
         // Mint tokens for liquidity adding
@@ -37,11 +37,10 @@ contract PoolTest is Test, Utils {
         tokenA.approve(address(pool), 1000 ether);
         tokenB.approve(address(pool), 1000 ether);
 
-        router = new Router();
-        router.initialize(user,address(pool));
+        router = new Router(user,address(pool));
         vm.startPrank(user);
         pool.updateRouterAddress(address(router));
-        poolLogic.initialize(address(pool), user);
+        poolLogic.updatePoolAddress(address(pool)); // Setting poolAddress (kind of initialization)
 
     }
 

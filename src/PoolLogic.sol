@@ -4,10 +4,9 @@ pragma solidity ^0.8.20;
 import {IPoolStates} from "./interfaces/pool/IPoolStates.sol";
 import {IPoolLogic} from "./interfaces/IPoolLogic.sol";
 import {IPoolActions} from "./interfaces/pool/IPoolActions.sol";
-import "../lib/openzeppelin-contracts-upgradeable/contracts/proxy/utils/Initializable.sol";
-import "../lib/openzeppelin-contracts-upgradeable/contracts/access/OwnableUpgradeable.sol";
+import "@openzeppelin/contracts/access/Ownable.sol";
 
-contract PoolLogic is Initializable, OwnableUpgradeable, IPoolLogic {
+contract PoolLogic is Ownable, IPoolLogic {
     uint256 internal BASE_D_AMOUNT = 1e18;
     uint256 internal DECIMAL = 1e18;
 
@@ -18,12 +17,13 @@ contract PoolLogic is Initializable, OwnableUpgradeable, IPoolLogic {
         if (msg.sender != pool.ROUTER_ADDRESS()) revert NotRouter(msg.sender);
         _;
     }
-    function initialize(address poolAddress, address owner) public initializer {
-        __Ownable_init(owner);
+    
+    constructor(address ownerAddress,address poolAddress) Ownable(ownerAddress){
 
         POOL_ADDRESS = poolAddress;
         pool = IPoolStates(POOL_ADDRESS);
         emit PoolAddressUpdated(address(0), POOL_ADDRESS);
+        
     }
 
     function createPool(address token, address user, uint256  amount, uint256 minLaunchReserveA, uint256 minLaunchReserveD,uint256 initialDToMint) external onlyRouter {
