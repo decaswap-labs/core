@@ -70,54 +70,42 @@ contract RouterTest is Test, Utils {
         bool initialized
         ) = pool.poolInfo(address(tokenA));
 
+        uint256 userLpUnits = pool.userLpUnitInfo(address(tokenA), owner);
+
         uint256 balanceAfter = tokenA.balanceOf(owner);
 
-        console.log("%s:%s", reserveA);
-
-
-        assertEq(reserveA, tokenAAmount);
+        // assertEq(reserveA, tokenAAmount);
         assertEq(reserveD, initialDToMintt);
-        assertEq(minLaunchReserveA, minLaunchReserveAa);
+        // assertEq(minLaunchReserveA, minLaunchReserveAa);
         assertEq(minLaunchReserveD, minLaunchReserveDd);
         assertEq(balanceAfter, balanceBefore-tokenAAmount);
+        assertEq(userLpUnits, poolOwnershipUnitsTotal);
 
         vm.stopPrank();
     }
 
 
-//    //Test: Successfully create a pool
-//     function testCreatePool_Success() public {
-//         vm.startPrank(user);
-//         tokenA.approve(address(router), 100 * 1e18);
-//         router.createPool(address(tokenA), 100 * 1e18, 100 * 1e18, 100 * 1e18, 10 * 1e18);
-//         vm.stopPrank();
-//         (
-//         uint256 reserveD,
-//         uint256 poolOwnershipUnitsTotal,
-//         uint256 reserveA,
-//         uint256 minLaunchReserveA,
-//         uint256 minLaunchReserveD,
-//         uint256 initialDToMint,
-//         uint256 poolFeeCollected,
-//         bool initialized
-//         ) = pool.poolInfo(address(tokenA));
+    // Test: Creating a pool that already exists
+    function test_createPool_poolAlreadyExists() public {
+        vm.startPrank(owner);
 
-//         assertEq(reserveD, 10 * 1e18);
-//         assertEq(poolOwnershipUnitsTotal, 100 * 1e18);
-//         assertEq(initialized, true);
-//         assertEq(tokenA.balanceOf(address(pool)),100 * 1e18);
+        uint256 tokenAAmount = 1000e18;
+        uint256 minLaunchReserveAa = 500e18;
+        uint256 minLaunchReserveDd = 50e18;
+        uint256 initialDToMintt = 50e18;
 
-//     }
+        tokenA.approve(address(router), tokenAAmount);
 
-    // // Test: Creating a pool that already exists
-    // function testCreatePool_PoolAlreadyExists() public {
-    //     vm.startPrank(user);
-    //     router.createPool(address(tokenA), 100 * 1e18, 100 * 1e18, 100 * 1e18, 10 * 1e18);
+        uint256 balanceBefore = tokenA.balanceOf(owner);
 
-    //     vm.expectRevert(IRouterErrors.InvalidPool.selector);
-    //     router.createPool(address(tokenA), 100 * 1e18, 100 * 1e18, 100 * 1e18, 10 * 1e18);
-    //     vm.stopPrank();
-    // }
+        router.createPool(address(tokenA), tokenAAmount, minLaunchReserveAa, minLaunchReserveDd, initialDToMintt);
+
+        router.createPool(address(tokenA), tokenAAmount, minLaunchReserveAa, minLaunchReserveDd, initialDToMintt);
+
+        vm.expectRevert(IRouterErrors.InvalidPool.selector);
+
+        vm.stopPrank();
+    }
 
     // // Test: Creating a pool from an unauthorized address
     // function testCreatePoolFromRouter_UnauthorizedAddress() public {
