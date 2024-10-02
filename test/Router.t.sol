@@ -100,36 +100,27 @@ contract RouterTest is Test, Utils {
 
         router.createPool(address(tokenA), tokenAAmount, minLaunchReserveAa, minLaunchReserveDd, initialDToMintt);
 
+        vm.expectRevert(IRouterErrors.InvalidPool.selector);
+
         router.createPool(address(tokenA), tokenAAmount, minLaunchReserveAa, minLaunchReserveDd, initialDToMintt);
 
-        vm.expectRevert(IRouterErrors.InvalidPool.selector);
 
         vm.stopPrank();
     }
 
     // // Test: Creating a pool from an unauthorized address
-    // function testCreatePoolFromRouter_UnauthorizedAddress() public {
-    //     vm.startPrank(nonAuthorized);
-    //     vm.expectRevert(abi.encodeWithSelector(getOwnableUnauthorizedAccountSelector(),nonAuthorized));
-    //     router.createPool(address(tokenA), 100 * 1e18, 100 * 1e18, 100 * 1e18, 10 * 1e18);
-    //     vm.stopPrank();
-    // }
+    function test_createPoo_unauthorizedAddress() public {
+        vm.startPrank(nonAuthorized);
+        vm.expectRevert(abi.encodeWithSelector(getOwnableUnauthorizedAccountSelector(),nonAuthorized));
+        uint256 tokenAAmount = 1000e18;
+        uint256 minLaunchReserveAa = 500e18;
+        uint256 minLaunchReserveDd = 50e18;
+        uint256 initialDToMintt = 50e18;
 
-    // function testCreatePoolFromPool_UnauthorizedAddress() public {
-    //     vm.startPrank(nonAuthorized);
-    //     vm.expectRevert(abi.encodeWithSelector(IPoolErrors.NotPoolLogic.selector,nonAuthorized));
-    //     pool.createPool("0x");
-    //     vm.stopPrank();
-    // }
+        tokenA.approve(address(router), tokenAAmount);
 
-    // // Test: Creating pool with invalid token address
-    // function testCreatePool_InvalidTokenAddress() public {
-    //     vm.startPrank(user);
-    //     vm.expectRevert(); // transferFrom on 0 address will revert
-    //     router.createPool(address(0), 100 * 1e18, 100 * 1e18, 100 * 1e18, 10 * 1e18);
-    //     vm.stopPrank();
-    // }
+        uint256 balanceBefore = tokenA.balanceOf(owner);
 
-
-
+        router.createPool(address(tokenA), tokenAAmount, minLaunchReserveAa, minLaunchReserveDd, initialDToMintt);        vm.stopPrank();
+    }
 }
