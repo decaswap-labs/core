@@ -99,7 +99,7 @@ contract Pool is IPool, Ownable {
         if(!mapToken_initialized[token]) revert InvalidToken();
         if (amount == 0) revert InvalidTokenAmount();
 
-        mapToken_minLaunchReserveA[token] += amount;
+        mapToken_reserveA[token] += amount;
         mapToken_poolOwnershipUnitsTotal[token] += newLpUnits;
         mapToken_reserveD[token] += newDUnits;
         // @note may or may not be needed here. 
