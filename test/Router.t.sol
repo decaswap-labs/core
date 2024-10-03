@@ -292,4 +292,26 @@ contract RouterTest is Test, Utils {
 
         vm.stopPrank();
     }
+
+    // ------------ UPDATE POOL ADDRESS --------------- //
+
+    function test_updatePoolAddress_success() public {
+        vm.startPrank(owner);
+
+        Pool poolNew = new Pool(address(0), address(router), address(poolLogic));
+
+        router.updatePoolAddress(address(poolNew));
+
+        address poolAddress = router.POOL_ADDRESS();
+
+        assertEq(poolAddress, address(poolNew));
+    }
+
+    function test_updatePoolAddress_unauthorizedAddress() public {
+        vm.startPrank(nonAuthorized);
+
+        vm.expectRevert(abi.encodeWithSelector(getOwnableUnauthorizedAccountSelector(), nonAuthorized));
+
+        router.updatePoolAddress(address(0x123));
+    }
 }
