@@ -105,8 +105,7 @@ contract Pool is IPool, Ownable {
         // @note may or may not be needed here. 
         mapToken_poolFeeCollected[token] += poolFeeCollected;
 
-        // mint D
-        userLpUnitInfo[user][token] += newDUnits;
+        userLpUnitInfo[user][token] += newLpUnits;
 
         emit LiquidityAdded(user, token, amount, newLpUnits, newDUnits);
     }
