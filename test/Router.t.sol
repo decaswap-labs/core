@@ -91,7 +91,6 @@ contract RouterTest is Test, Utils {
         uint256 initialDToMintt = 50e18;
 
         tokenA.approve(address(router), tokenAAmount);
-        uint256 balanceBefore = tokenA.balanceOf(owner);
         router.createPool(address(tokenA), tokenAAmount, minLaunchReserveAa, minLaunchReserveDd, initialDToMintt);
 
         vm.expectRevert(IRouterErrors.InvalidPool.selector);
@@ -148,7 +147,6 @@ contract RouterTest is Test, Utils {
         uint256 lpUnitsToMint = poolLogic.calculateLpUnitsToMint(amountALiquidity, reserveABefore, poolOwnershipUnitsTotalBefore);
         uint256 dUnitsToMint = poolLogic.calculateDUnitsToMint(amountALiquidity, reserveABefore+amountALiquidity, reserveDBefore, 0);
         uint256 userLpUnitsBefore = pool.userLpUnitInfo(owner,address(tokenA));
-        console.log("%s", userLpUnitsBefore);
 
         tokenA.approve(address(router), amountALiquidity);
 
@@ -215,8 +213,9 @@ contract RouterTest is Test, Utils {
         uint256 initialDToMintt = 50e18;
 
         tokenA.approve(address(router), tokenAAmount);
-        uint256 balanceBefore = tokenA.balanceOf(owner);
         router.createPool(address(tokenA), tokenAAmount, minLaunchReserveAa, minLaunchReserveDd, initialDToMintt);
+
+        uint256 balanceBefore = tokenA.balanceOf(owner);
 
         (
         uint256 reserveDBefore,
@@ -231,6 +230,7 @@ contract RouterTest is Test, Utils {
 
 
         uint256 userLpAmount = pool.userLpUnitInfo(owner, address(tokenA));
+
         uint256 assetToTransfer = poolLogic.calculateAssetTransfer(userLpAmount, reserveABefore, poolOwnershipUnitsTotalBefore);
         uint256 dToDeduct = poolLogic.calculateDToDeduct(userLpAmount, reserveDBefore, poolOwnershipUnitsTotalBefore);
 
@@ -250,10 +250,6 @@ contract RouterTest is Test, Utils {
 
         uint256 userLpUnitsAfter = pool.userLpUnitInfo(address(tokenA), owner);
         uint256 balanceAfter = tokenA.balanceOf(owner);
-
-        // console.log("%s", balanceBefore);
-        // console.log("%s", assetToTransfer);
-        // console.log("%s", balanceAfter);
 
         assertEq(balanceAfter, balanceBefore+assetToTransfer);
         assertEq(reserveDAfter, reserveDBefore-dToDeduct);
