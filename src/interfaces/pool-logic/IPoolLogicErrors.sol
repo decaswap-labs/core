@@ -5,4 +5,7 @@ interface IPoolLogicErrors {
     error NotAPool();
     // @todo gather common errors in one file
     error NotRouter(address);
+    error InvalidTokenAmount();
+    error InvalidExecutionPrice();
+    error InvalidPool();
 }

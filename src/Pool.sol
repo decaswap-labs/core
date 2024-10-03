@@ -52,9 +52,24 @@ contract Pool is IPool, Ownable {
     mapping(address => mapping(address => VaultDepositInfo)) public userVaultInfo;
     mapping(bytes32 => uint256) public override pairSlippage;
     // mapping(bytes32 => PoolSwapData) public override pairSwapHistory;
-    mapping(bytes32 => Queue.QueueStruct) public pairStreamQueue;
-    mapping(bytes32 => Queue.QueueStruct) public pairPendingQueue;
-    mapping(bytes32 => Queue.QueueStruct) public poolStreamQueue;
+    // mapping(bytes32 => Queue.QueueStruct) public pairStreamQueue;
+    // mapping(bytes32 => Queue.QueueStruct) public pairPendingQueue;
+    // mapping(bytes32 => Queue.QueueStruct) public poolStreamQueue;
+
+    // poolStreamQueue struct
+    mapping(bytes32 pairId => Swap[] data) public mapPairId_poolStreamQueue_Swaps;
+    mapping(bytes32 pairId => uint front) public mapPairId_poolStreamQueue_front;
+    mapping(bytes32 pairId => uint back) public mapPairId_poolStreamQueue_back;
+
+    // pairStreamQueue struct
+    mapping(bytes32 pairId => Swap[] data) public mapPairId_pairStreamQueue_Swaps;
+    mapping(bytes32 pairId => uint front) public mapPairId_pairStreamQueue_front;
+    mapping(bytes32 pairId => uint back) public mapPairId_pairStreamQueue_back;
+
+    // pairPendingQueue struct
+    mapping(bytes32 pairId => Swap[] data) public mapPairId_pairPendingQueue_Swaps;
+    mapping(bytes32 pairId => uint front) public mapPairId_pairPendingQueue_front;
+    mapping(bytes32 pairId => uint back) public mapPairId_pairPendingQueue_back;
 
     modifier onlyRouter() {
         if (msg.sender != ROUTER_ADDRESS) revert NotRouter(msg.sender);
@@ -129,6 +144,20 @@ contract Pool is IPool, Ownable {
 
         emit LiquidityRemoved(user, token, lpUnits, assetToTransfer, dAmountToDeduct);
 
+    }
+
+    function enqueueSwap_poolStreamQueue(bytes32 pairId, Swap memory swap) external onlyPoolLogic {
+        mapPairId_poolStreamQueue_Swaps[pairId].push(swap);
+        mapPairId_poolStreamQueue_front[pairId]++;
+    }
+    function enqueueSwap_pairStreamQueue(bytes32 pairId, Swap memory swap) external onlyPoolLogic {
+        mapPairId_pairStreamQueue_Swaps[pairId].push(swap);
+        mapPairId_pairStreamQueue_front[pairId]++;
+    }
+
+    function enqueueSwap_pairPendingQueue(bytes32 pairId, Swap memory swap) external onlyPoolLogic {
+        mapPairId_pairPendingQueue_Swaps[pairId].push(swap);
+        mapPairId_pairPendingQueue_front[pairId]++;
     }
 
     function disablePool(address token) external override onlyOwner {
@@ -362,13 +391,13 @@ contract Pool is IPool, Ownable {
         return keccak256(abi.encodePacked(A, B));
     }
 
-    function getStreamStruct(bytes32 pairId) external view returns (Queue.QueueStruct memory) {
-        return pairStreamQueue[pairId];
-    }
+    // function getStreamStruct(bytes32 pairId) external view returns (Queue.QueueStruct memory) {
+    //     return pairStreamQueue[pairId];
+    // }
 
-    function getPendingStruct(bytes32 pairId) external view returns (Queue.QueueStruct memory) {
-        return pairPendingQueue[pairId];
-    }
+    // function getPendingStruct(bytes32 pairId) external view returns (Queue.QueueStruct memory) {
+    //     return pairPendingQueue[pairId];
+    // }
 
     function _createPool(address token, uint256 minLaunchReserveA, uint256 minLaunchReserveD, uint256 initialDToMint)
         internal
@@ -876,4 +905,29 @@ contract Pool is IPool, Ownable {
             mapToken_initialized[tokenAddress]
         );
     }
+
+    function poolStreamQueue(bytes32 pairId) external view returns(Swap[] memory swaps, uint256 front, uint256 back) {
+        return(
+            mapPairId_poolStreamQueue_Swaps[pairId],
+            mapPairId_poolStreamQueue_front[pairId],
+            mapPairId_poolStreamQueue_back[pairId]
+        );
+    }
+
+    function pairStreamQueue(bytes32 pairId) external view returns(Swap[] memory swaps, uint256 front, uint256 back) {
+        return(
+            mapPairId_pairStreamQueue_Swaps[pairId],
+            mapPairId_pairStreamQueue_front[pairId],
+            mapPairId_pairStreamQueue_back[pairId]
+        );
+    }
+
+    function pairPendingQueue(bytes32 pairId) external view returns(Swap[] memory swaps, uint256 front, uint256 back) {
+        return(
+            mapPairId_pairPendingQueue_Swaps[pairId],
+            mapPairId_pairPendingQueue_front[pairId],
+            mapPairId_pairPendingQueue_back[pairId]
+        );
+    }
+
 }

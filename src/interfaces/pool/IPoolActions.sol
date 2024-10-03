@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.13;
+import {Swap} from "../../lib/SwapQueue.sol";
 
 interface IPoolActions {
     // creatPoolParams encoding format => (address token, address user, uint256 amount, uint256 minLaunchReserveA, uint256 minLaunchReserveD, uint256 initialDToMint, uint newLpUnits, uint newDUnits, uint256 poolFeeCollected)
@@ -9,6 +10,9 @@ interface IPoolActions {
     function addLiquidity(bytes memory addLiqParams) external;
     // removeLiqParams encoding format => (address token, address user, uint lpUnits, uint256 assetToTransfer, uint256 dAmountToDeduct, uint256 poolFeeCollected)
     function removeLiquidity(bytes memory removeLiqParams) external;
+    function enqueueSwap_poolStreamQueue(bytes32 pairId, Swap memory swap) external;
+    function enqueueSwap_pairStreamQueue(bytes32 pairId, Swap memory swap) external;
+    function enqueueSwap_pairPendingQueue(bytes32 pairId, Swap memory swap) external;
     function executeSwap(address, uint256, uint256, address, address) external;
     function depositVault(address, uint256, address) external;
     function withdrawVault(address, uint256, address) external;

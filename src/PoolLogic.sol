@@ -5,6 +5,7 @@ import {IPoolStates} from "./interfaces/pool/IPoolStates.sol";
 import {IPoolLogic} from "./interfaces/IPoolLogic.sol";
 import {IPoolActions} from "./interfaces/pool/IPoolActions.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
+import {Swap} from "./lib/SwapQueue.sol";
 
 contract PoolLogic is Ownable, IPoolLogic {
     uint256 internal BASE_D_AMOUNT = 1e18;
@@ -68,6 +69,89 @@ contract PoolLogic is Ownable, IPoolLogic {
         IPoolActions(POOL_ADDRESS).removeLiquidity(removeLiqParams);
     }
 
+    function swap(address user, address tokenIn, address tokenOut, uint256 amountIn, uint256 executionPrice) external {
+        if (amountIn == 0) revert InvalidTokenAmount();
+        if (executionPrice == 0) revert InvalidExecutionPrice();
+        (
+        uint256 reserveD_In,
+        uint256 poolOwnershipUnitsTotal_In,
+        uint256 reserveA_In,
+        uint256 minLaunchReserveA_In,
+        uint256 minLaunchReserveD_In,
+        uint256 initialDToMint_In,
+        uint256 poolFeeCollected_In,
+        bool initialized_In
+        ) = pool.poolInfo(address(tokenIn));
+
+        (
+        uint256 reserveD_Out,
+        uint256 poolOwnershipUnitsTotal_Out,
+        uint256 reserveA_Out,
+        uint256 minLaunchReserveA_Out,
+        uint256 minLaunchReserveD_Out,
+        uint256 initialDToMint_Out,
+        uint256 poolFeeCollected_Out,
+        bool initialized_Out
+        ) = pool.poolInfo(address(tokenOut));
+
+        if (!initialized_In || !initialized_Out) {
+            revert InvalidPool();
+        }
+
+        uint256 streamCount;
+        uint256 swapPerStream;
+        uint256 minPoolDepth;
+
+        bytes32 poolId;
+        bytes32 pairId;
+
+        // TODO: Need to handle same vault deposit withdraw streams
+        // break into streams
+        minPoolDepth = reserveD_In <= reserveD_Out
+            ? reserveD_In
+            : reserveD_Out;
+        poolId = getPoolId(tokenIn, address(0xD)); // for pair slippage only. Not an ID for pair direction queue
+        streamCount = calculateStreamCount(amountIn, pool.pairSlippage(poolId), minPoolDepth);
+        swapPerStream = amountIn / streamCount;
+        
+        // initiate swapqueue per direction
+        pairId = keccak256(abi.encodePacked(tokenIn, tokenOut)); // for one direction
+
+        uint256 currentPrice = getExecutionPrice(reserveA_In,reserveA_Out);
+    
+        Swap memory swapDetails = Swap({
+            swapID: 0, // will be filled in if/else
+            swapAmount: amountIn,
+            executionPrice: executionPrice,
+            swapAmountRemaining: amountIn,
+            streamsCount: streamCount,
+            swapPerStream: swapPerStream,
+            streamsRemaining: streamCount,
+            tokenIn: tokenIn,
+            tokenOut: tokenOut,
+            completed: false,
+            amountOut: 0,
+            user: user
+        });
+        // if execution price 0 (stream queue) , otherwise another queue
+        // add into queue
+        if (executionPrice <= currentPrice) {
+            (,, uint back) = pool.pairStreamQueue(pairId);
+            swapDetails.swapID = back;
+            IPoolActions(POOL_ADDRESS).enqueueSwap_pairStreamQueue(pairId, swapDetails);
+        }
+        else {
+            (,, uint back) = pool.pairPendingQueue(pairId);
+            swapDetails.swapID = back;
+            IPoolActions(POOL_ADDRESS).enqueueSwap_pairPendingQueue(pairId, swapDetails);
+        }
+    }
+
+    function getPoolId(address tokenA, address tokenB) public pure returns (bytes32) {
+        (address A, address B) = tokenA < tokenB ? (tokenA, tokenB) : (tokenB, tokenA);
+        return keccak256(abi.encodePacked(A, B));
+    }
+
     function calculateLpUnitsToMint(uint256 amount, uint256 reserveA, uint256 totalLpUnits)
         public
         pure
@@ -94,7 +178,7 @@ contract PoolLogic is Ownable, IPoolLogic {
 
     // 0.15% will be 15 poolSlippage. 100% is 100000 units
     function calculateStreamCount(uint256 amount, uint256 poolSlippage, uint256 reserveD)
-        external
+        public
         pure
         override
         returns (uint256)
@@ -162,7 +246,7 @@ contract PoolLogic is Ownable, IPoolLogic {
         return (tokenAmount * reserveD) / (tokenAmount + reserveA);
     }
 
-    function getExecutionPrice(uint256 reserveA1, uint256 reserveA2) external pure override returns (uint256) {
+    function getExecutionPrice(uint256 reserveA1, uint256 reserveA2) public pure override returns (uint256) {
         return (reserveA1 * 1e18 / reserveA2);
     }
 
