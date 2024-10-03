@@ -124,6 +124,10 @@ contract Pool is IPool, Ownable {
         // @note may or may not be needed here. 
         mapToken_poolFeeCollected[token] += poolFeeCollected;
 
+        // @todo use OZ or custom safeERC20 implementation to transfer tokens
+        // transferring tokens to user
+        IERC20(token).transfer(user, assetToTransfer);
+
         emit LiquidityRemoved(user, token, lpUnits, assetToTransfer, dAmountToDeduct);
 
     }
