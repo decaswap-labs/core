@@ -65,7 +65,7 @@ contract PoolLogic is Ownable, IPoolLogic {
         uint256 assetToTransfer = calculateAssetTransfer(lpUnits,reserveA,poolOwnershipUnitsTotal);
         uint256 dAmountToDeduct = calculateDToDeduct(lpUnits,reserveD,poolOwnershipUnitsTotal);
         bytes memory removeLiqParams = abi.encode(token,user,lpUnits,assetToTransfer,dAmountToDeduct,0); // poolFeeCollected = 0 until logic is finalized
-        IPoolActions(POOL_ADDRESS).addLiquidity(removeLiqParams);
+        IPoolActions(POOL_ADDRESS).removeLiquidity(removeLiqParams);
     }
 
     function calculateLpUnitsToMint(uint256 amount, uint256 reserveA, uint256 totalLpUnits)

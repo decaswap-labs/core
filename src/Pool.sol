@@ -145,10 +145,6 @@ contract Pool is IPool, Ownable {
         _removeLiquidity(removeLiqParams);
     }
 
-    function remove(address user, address token, uint256 lpUnits) external override onlyRouter {
-        _removeLiquidity(user, token, lpUnits);
-    }
-
     function depositVault(address user, uint256 amountIn, address tokenIn) external override onlyRouter {
         // if (amountIn == 0) revert InvalidTokenAmount();
         // if (!poolInfo[tokenIn].initialized) revert InvalidPool();

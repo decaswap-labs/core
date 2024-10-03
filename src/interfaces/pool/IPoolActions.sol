@@ -7,7 +7,8 @@ interface IPoolActions {
     function disablePool(address) external;
     // addLiqParams encoding format => (address token, address user, uint amount, uint256 newLpUnits, uint256 newDUnits, uint256 poolFeeCollected)
     function addLiquidity(bytes memory addLiqParams) external;
-    function remove(address, address, uint256) external;
+    // removeLiqParams encoding format => (address token, address user, uint lpUnits, uint256 assetToTransfer, uint256 dAmountToDeduct, uint256 poolFeeCollected)
+    function removeLiquidity(bytes memory removeLiqParams) external;
     function executeSwap(address, uint256, uint256, address, address) external;
     function depositVault(address, uint256, address) external;
     function withdrawVault(address, uint256, address) external;
