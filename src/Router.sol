@@ -24,6 +24,7 @@ contract Router is Ownable, IRouter {
     function createPool(address token, uint amount, uint256 minLaunchReserveA, uint256 minLaunchReserveD,uint256 initialDToMint) external onlyOwner {
         if (poolExist(token)) revert InvalidPool();
         if (amount == 0) revert InvalidAmount();
+
         IERC20(token).transferFrom(msg.sender, POOL_ADDRESS, amount);
         IPoolLogic(poolStates.POOL_LOGIC()).createPool(token,msg.sender,amount,minLaunchReserveA,minLaunchReserveD,initialDToMint);
     }
@@ -42,7 +43,6 @@ contract Router is Ownable, IRouter {
 
     function removeLiquidity(address token, uint256 lpUnits) external override {
         if (!poolExist(token)) revert InvalidPool();
-
         if (lpUnits == 0 || lpUnits > poolStates.userLpUnitInfo(msg.sender, token)) revert InvalidAmount();
 
         IPoolLogic(poolStates.POOL_LOGIC()).removeLiquidity(token,msg.sender,lpUnits);
