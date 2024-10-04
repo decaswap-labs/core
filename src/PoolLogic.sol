@@ -69,9 +69,7 @@ contract PoolLogic is Ownable, IPoolLogic {
         IPoolActions(POOL_ADDRESS).removeLiquidity(removeLiqParams);
     }
 
-    function swap(address user, address tokenIn, address tokenOut, uint256 amountIn, uint256 executionPrice) external {
-        if (amountIn == 0) revert InvalidTokenAmount();
-        if (executionPrice == 0) revert InvalidExecutionPrice();
+    function swap(address user, address tokenIn, address tokenOut, uint256 amountIn, uint256 executionPrice) external onlyRouter {
         (
         uint256 reserveD_In,
         uint256 poolOwnershipUnitsTotal_In,
@@ -93,10 +91,6 @@ contract PoolLogic is Ownable, IPoolLogic {
         uint256 poolFeeCollected_Out,
         bool initialized_Out
         ) = pool.poolInfo(address(tokenOut));
-
-        if (!initialized_In || !initialized_Out) {
-            revert InvalidPool();
-        }
 
         uint256 streamCount;
         uint256 swapPerStream;

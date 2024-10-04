@@ -7,6 +7,9 @@ import {IPoolStates} from "./interfaces/pool/IPoolStates.sol";
 import {IPoolLogic} from "./interfaces/IPoolLogic.sol";
 import {IRouter} from "./interfaces/IRouter.sol";
 import {IERC20} from "./interfaces/utils/IERC20.sol";
+// @todo decide where to keep events. Router/Pool?
+// @todo OZ safeERC20 or custom implementation?
+// @todo ERC777 supported or not? (For reentrancy).
 contract Router is Ownable, IRouter {
     address public override POOL_ADDRESS;
     IPoolActions pool;
@@ -48,6 +51,15 @@ contract Router is Ownable, IRouter {
         IPoolLogic(poolStates.POOL_LOGIC()).removeLiquidity(token,msg.sender,lpUnits);
 
         emit LiquidityRemoved(msg.sender, token, lpUnits);
+    }
+
+    function swap(address tokenIn, address tokenOut, uint256 amountIn, uint256 executionPrice) external {
+        if (amountIn == 0) revert InvalidAmount();
+        if (executionPrice == 0) revert InvalidExecutionPrice();
+        if(!poolExist(tokenIn) || !poolExist(tokenOut)) revert InvalidPool();
+        
+        IERC20(tokenIn).transferFrom(msg.sender, POOL_ADDRESS, amountIn);
+        IPoolLogic(poolStates.POOL_LOGIC()).swap(msg.sender,tokenIn,tokenOut,amountIn,executionPrice);
     }
 
     function updatePoolAddress(address newPoolAddress) external override onlyOwner {
