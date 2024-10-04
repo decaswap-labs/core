@@ -10,6 +10,7 @@ import {IERC20} from "./interfaces/utils/IERC20.sol";
 // @todo decide where to keep events. Router/Pool?
 // @todo OZ safeERC20 or custom implementation?
 // @todo ERC777 supported or not? (For reentrancy).
+// @todo remove unused errors
 contract Router is Ownable, IRouter {
     address public override POOL_ADDRESS;
     IPoolActions pool;
@@ -25,8 +26,9 @@ contract Router is Ownable, IRouter {
     }
 
     function createPool(address token, uint amount, uint256 minLaunchReserveA, uint256 minLaunchReserveD,uint256 initialDToMint) external onlyOwner {
-        if (poolExist(token)) revert InvalidPool();
         if (amount == 0) revert InvalidAmount();
+        if (token == address(0)) revert InvalidToken();
+        if (initialDToMint == 0) revert InvalidInitialDAmount();
 
         IERC20(token).transferFrom(msg.sender, POOL_ADDRESS, amount);
         IPoolLogic(poolStates.POOL_LOGIC()).createPool(token,msg.sender,amount,minLaunchReserveA,minLaunchReserveD,initialDToMint);

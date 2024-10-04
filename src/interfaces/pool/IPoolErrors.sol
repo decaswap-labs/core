@@ -5,7 +5,6 @@ interface IPoolErrors {
     error NotRouter(address);
     error NotPoolLogic(address);
     error InvalidToken();
-    error InvalidInitialDAmount();
     error InvalidTokenAmount();
     error MinLaunchReservesNotReached();
     error InvalidExecutionPrice();

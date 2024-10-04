@@ -111,8 +111,6 @@ contract Pool is IPool, Ownable {
     // addLiqParams encoding format => (address token, address user, uint amount, uint256 newLpUnits, uint256 newDUnits, uint256 poolFeeCollected)
     function _addLiquidity(bytes memory addLiqParams) internal {
         (address token, address user, uint amount, uint256 newLpUnits, uint256 newDUnits, uint256 poolFeeCollected) = abi.decode(addLiqParams,(address,address,uint256,uint256,uint256,uint256));
-        if(!mapToken_initialized[token]) revert InvalidToken();
-        if (amount == 0) revert InvalidTokenAmount();
 
         mapToken_reserveA[token] += amount;
         mapToken_poolOwnershipUnitsTotal[token] += newLpUnits;
@@ -403,8 +401,6 @@ contract Pool is IPool, Ownable {
         internal
     {
         if (mapToken_initialized[token]) revert DuplicatePool();
-        if (token == address(0)) revert InvalidToken();
-        if (initialDToMint == 0) revert InvalidInitialDAmount();
 
         mapToken_initialized[token] = true;
         mapToken_minLaunchReserveA[token] = minLaunchReserveA;

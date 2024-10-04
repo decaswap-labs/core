@@ -5,4 +5,6 @@ interface IRouterErrors {
     error InvalidAmount();
     error InvalidPool();
     error InvalidExecutionPrice();
+    error InvalidInitialDAmount();
+    error InvalidToken();
 }
