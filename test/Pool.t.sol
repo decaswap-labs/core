@@ -76,7 +76,7 @@ contract PoolTest is Test, Utils {
         vm.startPrank(user);
         router.createPool(address(tokenA), 100 * 1e18, 100 * 1e18, 100 * 1e18, 10 * 1e18);
 
-        vm.expectRevert(IRouterErrors.InvalidPool.selector);
+        vm.expectRevert(IPoolErrors.DuplicatePool.selector);
         router.createPool(address(tokenA), 100 * 1e18, 100 * 1e18, 100 * 1e18, 10 * 1e18);
         vm.stopPrank();
     }

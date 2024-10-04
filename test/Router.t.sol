@@ -7,6 +7,7 @@ import "../src/Pool.sol";
 import "../src/PoolLogic.sol";
 import "../src/Router.sol";
 import "../src/interfaces/router/IRouterErrors.sol";
+import "../src/interfaces/pool/IPoolErrors.sol";
 import "../src/MockERC20.sol"; // Mock token for testing
 import "./utils/Utils.t.sol";
 
@@ -93,7 +94,7 @@ contract RouterTest is Test, Utils {
         tokenA.approve(address(router), tokenAAmount);
         router.createPool(address(tokenA), tokenAAmount, minLaunchReserveAa, minLaunchReserveDd, initialDToMintt);
 
-        vm.expectRevert(IRouterErrors.InvalidPool.selector);
+        vm.expectRevert(IPoolErrors.DuplicatePool.selector);
         router.createPool(address(tokenA), tokenAAmount, minLaunchReserveAa, minLaunchReserveDd, initialDToMintt);
 
         vm.stopPrank();
