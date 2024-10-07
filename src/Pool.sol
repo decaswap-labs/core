@@ -146,16 +146,16 @@ contract Pool is IPool, Ownable {
 
     function enqueueSwap_poolStreamQueue(bytes32 pairId, Swap memory swap) external onlyPoolLogic {
         mapPairId_poolStreamQueue_Swaps[pairId].push(swap);
-        mapPairId_poolStreamQueue_front[pairId]++;
+        mapPairId_poolStreamQueue_back[pairId]++;
     }
     function enqueueSwap_pairStreamQueue(bytes32 pairId, Swap memory swap) external onlyPoolLogic {
         mapPairId_pairStreamQueue_Swaps[pairId].push(swap);
-        mapPairId_pairStreamQueue_front[pairId]++;
+        mapPairId_pairStreamQueue_back[pairId]++;
     }
 
     function enqueueSwap_pairPendingQueue(bytes32 pairId, Swap memory swap) external onlyPoolLogic {
         mapPairId_pairPendingQueue_Swaps[pairId].push(swap);
-        mapPairId_pairPendingQueue_front[pairId]++;
+        mapPairId_pairPendingQueue_back[pairId]++;
     }
 
     function disablePool(address token) external override onlyOwner {
