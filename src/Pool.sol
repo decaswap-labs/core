@@ -172,6 +172,31 @@ contract Pool is IPool, Ownable {
         _removeLiquidity(removeLiqParams);
     }
 
+    // updateReservesParams encoding format => (bool aToB, address tokenA, address tokenB, uint256 reserveA_A, uint256 reserveD_A,uint256 reserveA_B, uint256 reserveD_B)
+    function updateReserves(bytes memory updateReservesParams) external onlyPoolLogic {
+        (bool aToB, address tokenA, address tokenB, uint256 reserveA_A, uint256 reserveD_A,uint256 reserveA_B, uint256 reserveD_B) = abi.decode(updateReservesParams,(bool,address,address,uint256,uint256,uint256,uint256));
+        if(aToB){
+            mapToken_reserveA[tokenA] += reserveA_A;
+            mapToken_reserveD[tokenA] -= reserveD_A;
+
+            mapToken_reserveA[tokenB] -= reserveA_B;
+            mapToken_reserveD[tokenB] += reserveD_B;
+        }
+        else {
+            mapToken_reserveA[tokenB] += reserveA_B;
+            mapToken_reserveD[tokenB] -= reserveD_B;
+
+            mapToken_reserveA[tokenA] -= reserveA_A;
+            mapToken_reserveD[tokenA] += reserveD_A;
+        }
+    }
+
+    // @todo ask if we should sort it here, or pass sorted array from logic and just save
+    function sortPairPendingQueue(bytes32 pairId) external onlyPoolLogic {
+        // Sort the array w.r.t price
+        SwapSorter.quickSort(mapPairId_pairPendingQueue_Swaps[pairId]);
+    }
+
     function depositVault(address user, uint256 amountIn, address tokenIn) external override onlyRouter {
         // if (amountIn == 0) revert InvalidTokenAmount();
         // if (!poolInfo[tokenIn].initialized) revert InvalidPool();

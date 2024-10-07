@@ -5,7 +5,7 @@ import {Swap} from "./SwapQueue.sol";
 
 library SwapSorter {
     // Function to sort an array of Swaps based on swapAmount using iterative QuickSort
-    function quickSort(Swap[] memory arr) public pure returns (Swap[] memory) {
+    function quickSort(Swap[] storage arr) public returns (Swap[] storage) {
         if (arr.length <= 1) {
             return arr; // Already sorted
         }

@@ -92,6 +92,12 @@ contract PoolLogic is Ownable, IPoolLogic {
         bool initialized_Out
         ) = pool.poolInfo(address(tokenOut));
 
+        //check if the reserves are greater than min launch
+        if (
+            minLaunchReserveA_In > reserveA_In || minLaunchReserveD_Out > reserveD_Out
+        ) 
+        revert MinLaunchReservesNotReached();
+
         uint256 streamCount;
         uint256 swapPerStream;
         uint256 minPoolDepth;
@@ -113,23 +119,136 @@ contract PoolLogic is Ownable, IPoolLogic {
 
         uint256 currentPrice = getExecutionPrice(reserveA_In,reserveA_Out);
     
-        Swap memory swapDetails = Swap({
-            swapID: 0, // will be filled in if/else
-            swapAmount: amountIn,
-            executionPrice: executionPrice,
-            swapAmountRemaining: amountIn,
-            streamsCount: streamCount,
-            swapPerStream: swapPerStream,
-            streamsRemaining: streamCount,
-            tokenIn: tokenIn,
-            tokenOut: tokenOut,
-            completed: false,
-            amountOut: 0,
-            user: user
-        });
+        _maintainQueue(
+            pairId, 
+            Swap({
+                swapID: 0, // will be filled in if/else
+                swapAmount: amountIn,
+                executionPrice: executionPrice,
+                swapAmountRemaining: amountIn,
+                streamsCount: streamCount,
+                swapPerStream: swapPerStream,
+                streamsRemaining: streamCount,
+                tokenIn: tokenIn,
+                tokenOut: tokenOut,
+                completed: false,
+                amountOut: 0,
+                user: user
+            }),
+            currentPrice
+        );    
+
+        _executeStream(pairId,tokenIn,tokenOut);
+
+    }
+    
+    function _executeStream(bytes32 pairId, address tokenIn, address tokenOut) internal {
+        (
+        uint256 reserveD_In,
+        uint256 poolOwnershipUnitsTotal_In,
+        uint256 reserveA_In,
+        uint256 minLaunchReserveA_In,
+        uint256 minLaunchReserveD_In,
+        uint256 initialDToMint_In,
+        uint256 poolFeeCollected_In,
+        bool initialized_In
+        ) = pool.poolInfo(address(tokenIn));
+
+        (
+        uint256 reserveD_Out,
+        uint256 poolOwnershipUnitsTotal_Out,
+        uint256 reserveA_Out,
+        uint256 minLaunchReserveA_Out,
+        uint256 minLaunchReserveD_Out,
+        uint256 initialDToMint_Out,
+        uint256 poolFeeCollected_Out,
+        bool initialized_Out
+        ) = pool.poolInfo(address(tokenOut));
+        
+        address completedSwapToken;
+        address swapUser;
+        uint256 amountOutSwap;
+
+        // loading the front swap from the stream queue
+        (Swap[] memory swaps,uint256 front,uint256 back) = pool.pairStreamQueue(pairId);
+        Swap memory frontSwap = swaps[front];
+
+        // ------------------------ CHECK OPP DIR SWAP --------------------------- //
+
+        //TODO: Deduct fees from amount out = 5BPS.
+        bytes32 otherPairId = keccak256(abi.encodePacked(tokenOut, tokenIn));
+        (Swap[] memory oppositeSwaps,uint256 oppositeFront,uint256 oppositeBack) = pool.pairStreamQueue(otherPairId);
+
+        if (oppositeSwaps.length != 0) {
+            Swap memory oppositeSwap = oppositeSwaps[oppositeFront];
+            // A->B , dout1 is D1, amountOut1 is B
+            (uint256 dOutA, uint256 amountOutA) = getSwapAmountOut(
+                frontSwap.swapAmountRemaining,
+                reserveA_In,
+                reserveA_Out,
+                reserveD_In,
+                reserveD_Out
+            );
+            // B->A
+            (uint256 dOutB, uint256 amountOutB) = getSwapAmountOut(
+                oppositeSwap.swapAmountRemaining,
+                reserveA_Out,
+                reserveA_In,
+                reserveD_Out,
+                reserveD_In
+            );
+        
+
+        /* 
+            I have taken out amountOut of both swap directions
+            Now one swap should consume the other one
+            How to define that?
+
+            I am selling 50 TKN for (10)-> Calculated USDC
+            Alice is buying 50 USDC for (250)-> Calculated TKN
+
+            I should be able to fill alice's order completely. By giving her 50 TKN, and take 10 USDC. 
+
+            AmountIn1 = AmountIn1 - AmountIn1 // 50-50 (Order fulfilled as I have given all the TKN to alice)
+            AmountOut1 = AmountOut1 // 10 (As Alice has given me 10 USDC, which equals to amount I have calculated)
+
+            AmountIn2 = AmountIn2 - AmountOut2 // 50-10, as alice has given me 10. So she has 40 left
+            AmountOut2 = AmountOut2 + AmountIn1 // 0+50, Alice wanted 250 tokens, but now she has only those 
+            tokens which I was selling. Which is 50
+        */
+
+            // TKN , TKN
+            if (frontSwap.swapAmountRemaining < amountOutB) {
+                bytes memory updateReservesParams = abi.encode(true,tokenIn,tokenOut,frontSwap.swapAmountRemaining,dOutA,amountOutA,dOutA);
+                IPoolActions(POOL_ADDRESS).updateReserves(updateReservesParams);
+            }
+            else {
+                bytes memory updateReservesParams = abi.encode(true,tokenIn,tokenOut,amountOutB,dOutB,oppositeSwap.swapAmountRemaining,dOutB);
+                IPoolActions(POOL_ADDRESS).updateReserves(updateReservesParams);
+            }
+
+        } else {
+
+                (uint256 dToUpdate, uint256 amountOut) = getSwapAmountOut(
+                    frontSwap.swapPerStream,
+                    reserveA_In,
+                    reserveA_Out,
+                    reserveD_In,
+                    reserveD_Out
+                );
+
+                bytes memory updateReservesParams = abi.encode(false,tokenIn,tokenOut,frontSwap.swapPerStream,dToUpdate,amountOut,dToUpdate);
+                IPoolActions(POOL_ADDRESS).updateReserves(updateReservesParams);
+
+            }
+
+
+    }
+
+    function _maintainQueue(bytes32 pairId, Swap memory swapDetails, uint256 currentPrice) internal {
         // if execution price 0 (stream queue) , otherwise another queue
         // add into queue
-        if (executionPrice <= currentPrice) {
+        if (swapDetails.executionPrice <= currentPrice) {
             (,, uint back) = pool.pairStreamQueue(pairId);
             swapDetails.swapID = back;
             IPoolActions(POOL_ADDRESS).enqueueSwap_pairStreamQueue(pairId, swapDetails);
@@ -138,6 +257,7 @@ contract PoolLogic is Ownable, IPoolLogic {
             (,, uint back) = pool.pairPendingQueue(pairId);
             swapDetails.swapID = back;
             IPoolActions(POOL_ADDRESS).enqueueSwap_pairPendingQueue(pairId, swapDetails);
+            IPoolActions(POOL_ADDRESS).sortPairPendingQueue(pairId);
         }
     }
 
@@ -210,7 +330,7 @@ contract PoolLogic is Ownable, IPoolLogic {
         uint256 reserveB,
         uint256 reserveD1,
         uint256 reserveD2
-    ) external pure override returns (uint256, uint256) {
+    ) public pure override returns (uint256, uint256) {
         // d1 = a * D1 / a + A
         // return d1 -> this will be updated in the pool
         // b = d * B / d + D2 -> this will be returned to the pool

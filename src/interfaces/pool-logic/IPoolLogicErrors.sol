@@ -7,4 +7,5 @@ interface IPoolLogicErrors {
     error NotRouter(address);
     error InvalidTokenAmount();
     error InvalidPool();
+    error MinLaunchReservesNotReached();
 }
