@@ -337,11 +337,17 @@ contract PoolLogic is Ownable, IPoolLogic {
             IPoolActions(POOL_ADDRESS).enqueueSwap_pairStreamQueue(pairId, swapDetails);
         }
         else {
-            (,, uint back) = pool.pairPendingQueue(pairId);
+            (Swap[] memory swaps_pending,, uint back) = pool.pairPendingQueue(pairId);
             swapDetails.swapID = back;
-            IPoolActions(POOL_ADDRESS).enqueueSwap_pairPendingQueue(pairId, swapDetails);
-            // @todo check prices before sorting (discord thread)
-            IPoolActions(POOL_ADDRESS).sortPairPendingQueue(pairId);
+
+            if(swapDetails.executionPrice >= swaps_pending[back].executionPrice) {
+                IPoolActions(POOL_ADDRESS).enqueueSwap_pairPendingQueue(pairId, swapDetails);
+            }
+            else {
+                IPoolActions(POOL_ADDRESS).enqueueSwap_pairPendingQueue(pairId, swapDetails);
+                IPoolActions(POOL_ADDRESS).sortPairPendingQueue(pairId);
+            }
+            
         }
     }
 
