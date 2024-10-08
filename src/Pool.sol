@@ -144,6 +144,17 @@ contract Pool is IPool, Ownable {
 
     }
 
+    function dequeueSwap_poolStreamQueue(bytes32 pairId) external onlyPoolLogic {
+        mapPairId_poolStreamQueue_front[pairId]++;
+    }
+    function dequeueSwap_pairStreamQueue(bytes32 pairId) external onlyPoolLogic {
+        mapPairId_pairStreamQueue_front[pairId]++;
+    }
+
+    function dequeueSwap_pairPendingQueue(bytes32 pairId) external onlyPoolLogic {
+        mapPairId_pairPendingQueue_front[pairId]++;
+    }
+
     function enqueueSwap_poolStreamQueue(bytes32 pairId, Swap memory swap) external onlyPoolLogic {
         mapPairId_poolStreamQueue_Swaps[pairId].push(swap);
         mapPairId_poolStreamQueue_back[pairId]++;
@@ -173,8 +184,8 @@ contract Pool is IPool, Ownable {
     }
 
     // updateReservesParams encoding format => (bool aToB, address tokenA, address tokenB, uint256 reserveA_A, uint256 reserveD_A,uint256 reserveA_B, uint256 reserveD_B)
-    function updateReserves(bytes memory updateReservesParams) external onlyPoolLogic {
-        (bool aToB, address tokenA, address tokenB, uint256 reserveA_A, uint256 reserveD_A,uint256 reserveA_B, uint256 reserveD_B) = abi.decode(updateReservesParams,(bool,address,address,uint256,uint256,uint256,uint256));
+    function updateReserves(bytes memory updatedReservesParams) external onlyPoolLogic {
+        (bool aToB, address tokenA, address tokenB, uint256 reserveA_A, uint256 reserveD_A,uint256 reserveA_B, uint256 reserveD_B) = abi.decode(updatedReservesParams,(bool,address,address,uint256,uint256,uint256,uint256));
         if(aToB){
             mapToken_reserveA[tokenA] += reserveA_A;
             mapToken_reserveD[tokenA] -= reserveD_A;
@@ -189,6 +200,16 @@ contract Pool is IPool, Ownable {
             mapToken_reserveA[tokenA] -= reserveA_A;
             mapToken_reserveD[tokenA] += reserveD_A;
         }
+    }
+
+    // updatedSwapData encoding format => (bytes32 pairId, uint256 amountOut, uint256 swapAmountRemaining, bool completed, uint256 streamsRemaining)
+    function updatePairStreamQueueSwap(bytes memory updatedSwapData) external onlyPoolLogic {
+        (bytes32 pairId, uint256 amountOut, uint256 swapAmountRemaining, bool completed, uint256 streamsRemaining ) = abi.decode(updatedSwapData,(bytes32,uint256,uint256,bool,uint256));
+        Swap storage swap = mapPairId_pairStreamQueue_Swaps[pairId][mapPairId_pairStreamQueue_front[pairId]];
+        swap.amountOut += amountOut;
+        swap.swapAmountRemaining = swapAmountRemaining;
+        swap.completed = completed;
+        swap.streamsRemaining = streamsRemaining;
     }
 
     // @todo ask if we should sort it here, or pass sorted array from logic and just save

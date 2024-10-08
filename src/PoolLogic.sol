@@ -4,6 +4,7 @@ pragma solidity ^0.8.20;
 import {IPoolStates} from "./interfaces/pool/IPoolStates.sol";
 import {IPoolLogic} from "./interfaces/IPoolLogic.sol";
 import {IPoolActions} from "./interfaces/pool/IPoolActions.sol";
+import {IERC20} from "./interfaces/utils/IERC20.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 import {Swap} from "./lib/SwapQueue.sol";
 
@@ -221,27 +222,109 @@ contract PoolLogic is Ownable, IPoolLogic {
             if (frontSwap.swapAmountRemaining < amountOutB) {
                 bytes memory updateReservesParams = abi.encode(true,tokenIn,tokenOut,frontSwap.swapAmountRemaining,dOutA,amountOutA,dOutA);
                 IPoolActions(POOL_ADDRESS).updateReserves(updateReservesParams);
+                // updating frontSwap
+                bytes memory updatedSwapData_front = abi.encode(pairId,amountOutA,0,true,0);
+                IPoolActions(POOL_ADDRESS).updatePairStreamQueueSwap(updatedSwapData_front);
+                // updating oppositeSwap
+                bytes memory updatedSwapData_opposite = abi.encode(otherPairId,frontSwap.swapAmountRemaining,oppositeSwap.swapAmountRemaining - amountOutA,oppositeSwap.completed,oppositeSwap.streamsRemaining);
+                IPoolActions(POOL_ADDRESS).updatePairStreamQueueSwap(updatedSwapData_opposite);
+
+                completedSwapToken = frontSwap.tokenIn;
+                swapUser = frontSwap.user;
+                amountOutSwap = frontSwap.amountOut + amountOutA;
+
+                require(back > front, "Queue is empty");
+                IPoolActions(POOL_ADDRESS).dequeueSwap_pairStreamQueue(pairId);
             }
             else {
-                bytes memory updateReservesParams = abi.encode(true,tokenIn,tokenOut,amountOutB,dOutB,oppositeSwap.swapAmountRemaining,dOutB);
+                bytes memory updateReservesParams = abi.encode(false,tokenIn,tokenOut,amountOutB,dOutB,oppositeSwap.swapAmountRemaining,dOutB);
                 IPoolActions(POOL_ADDRESS).updateReserves(updateReservesParams);
+                // updating frontSwap
+                bytes memory updatedSwapData_Front = abi.encode(pairId,oppositeSwap.swapAmountRemaining,frontSwap.swapAmountRemaining-amountOutB,frontSwap.completed,frontSwap.streamsRemaining);
+                IPoolActions(POOL_ADDRESS).updatePairStreamQueueSwap(updatedSwapData_Front);
+                // updating oppositeSwap
+                bytes memory updatedSwapData_opposite = abi.encode(otherPairId,amountOutB,0,true,0);
+                IPoolActions(POOL_ADDRESS).updatePairStreamQueueSwap(updatedSwapData_opposite);
+                
+                completedSwapToken = oppositeSwap.tokenIn;
+                swapUser = oppositeSwap.user;
+                amountOutSwap = oppositeSwap.amountOut + amountOutB;
+
+                require(oppositeBack > oppositeFront, "Queue is empty");
+                IPoolActions(POOL_ADDRESS).dequeueSwap_pairStreamQueue(otherPairId);
+
             }
 
         } else {
 
-                (uint256 dToUpdate, uint256 amountOut) = getSwapAmountOut(
-                    frontSwap.swapPerStream,
-                    reserveA_In,
-                    reserveA_Out,
-                    reserveD_In,
-                    reserveD_Out
-                );
+            (uint256 dToUpdate, uint256 amountOut) = getSwapAmountOut(
+                frontSwap.swapPerStream,
+                reserveA_In,
+                reserveA_Out,
+                reserveD_In,
+                reserveD_Out
+            );
 
-                bytes memory updateReservesParams = abi.encode(false,tokenIn,tokenOut,frontSwap.swapPerStream,dToUpdate,amountOut,dToUpdate);
-                IPoolActions(POOL_ADDRESS).updateReserves(updateReservesParams);
+            bytes memory updateReservesParams = abi.encode(true,tokenIn,tokenOut,frontSwap.swapPerStream,dToUpdate,amountOut,dToUpdate);
+            IPoolActions(POOL_ADDRESS).updateReserves(updateReservesParams);
 
+            frontSwap.streamsRemaining--;
+            if (frontSwap.streamsRemaining == 0) {
+                frontSwap.completed = true;
+                completedSwapToken = frontSwap.tokenIn;
+                swapUser = frontSwap.user;
+                amountOutSwap = frontSwap.amountOut + amountOut;
             }
+                // updating frontSwap
+            bytes memory updatedSwapData_Front = abi.encode(pairId,amountOut,frontSwap.swapAmountRemaining - frontSwap.swapPerStream,frontSwap.completed,frontSwap.streamsRemaining);
+            IPoolActions(POOL_ADDRESS).updatePairStreamQueueSwap(updatedSwapData_Front);
 
+            if (frontSwap.streamsCount == 0) {
+                // @todo make a function of this error
+                require(back > front, "Queue is empty");
+                IPoolActions(POOL_ADDRESS).dequeueSwap_pairStreamQueue(pairId);
+            }
+        }
+
+            // transferring tokens
+       if (completedSwapToken != address(0)) IERC20(completedSwapToken).transfer(swapUser, amountOutSwap);
+
+        // --------------------------- HANDLE PENDING SWAP INSERTION ----------------------------- //
+        (Swap[] memory swaps_pending,uint256 front_pending,uint256 back_pending) = pool.pairPendingQueue(pairId);
+        
+        if (swaps_pending.length > 0) {
+        
+            Swap memory frontPendingSwap = swaps_pending[front_pending];
+
+            (
+                ,
+                ,
+                uint256 reserveA_In_New,
+                ,
+                ,
+                ,
+                ,
+                
+            ) = pool.poolInfo(address(frontPendingSwap.tokenIn));
+
+            (
+                ,
+                ,
+                uint256 reserveA_Out_New,
+                ,
+                ,
+                ,
+                ,
+            ) = pool.poolInfo(address(frontPendingSwap.tokenOut));
+
+                uint256 executionPriceInOrder = frontPendingSwap.executionPrice;
+                uint256 executionPriceLatest = getExecutionPrice(reserveA_In_New,reserveA_Out_New);
+
+                if (executionPriceLatest >= executionPriceInOrder) {
+                    IPoolActions(POOL_ADDRESS).enqueueSwap_pairStreamQueue(pairId, frontPendingSwap);
+                    IPoolActions(POOL_ADDRESS).dequeueSwap_pairPendingQueue(pairId);
+                }
+        }
 
     }
 
@@ -257,6 +340,7 @@ contract PoolLogic is Ownable, IPoolLogic {
             (,, uint back) = pool.pairPendingQueue(pairId);
             swapDetails.swapID = back;
             IPoolActions(POOL_ADDRESS).enqueueSwap_pairPendingQueue(pairId, swapDetails);
+            // @todo check prices before sorting (discord thread)
             IPoolActions(POOL_ADDRESS).sortPairPendingQueue(pairId);
         }
     }
