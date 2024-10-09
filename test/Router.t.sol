@@ -496,9 +496,9 @@ contract RouterTest is Test, Utils {
         console.log("Length %s", frontP); // @todo giving +1 idk why. Need to check this Nabeel
         console.log("Length %s", backP);
 
-        Swap memory swapPending = swapsPending[frontP-1];
+        Swap memory swapPending = swapsPending[frontP - 1];
 
-        assertGe(swapsPending.length , 1);
+        assertGe(swapsPending.length, 1);
         assertEq(swapPending.executionPrice, pendingExecutionPrice);
         assertEq(swapPending.swapAmountRemaining, pendingSwapAmount);
     }
@@ -553,16 +553,15 @@ contract RouterTest is Test, Utils {
         (Swap[] memory swapsStreamBefore, uint256 frontB, uint256 backB) = pool.pairStreamQueue(pairId);
 
         uint256 lengthOfStreamBefore = swapsStreamBefore.length;
-        
+
         // router.swap(address(tokenA), address(tokenB), tokenASwapAmount, pendingExecutionPrice/2); //inserting to streamQueue @todo: this line causing error
 
         // (Swap[] memory swapsStreamAfter, uint256 frontA, uint256 backA) = pool.pairStreamQueue(pairId);
-    
+
         // uint256 lengthOfStreamAfter = swapsStreamAfter.length;
 
         // assertEq(lengthOfStreamAfter, lengthOfStreamBefore+1);
         // assertEq(swapsStreamAfter[backA].executionPrice , pendingExecutionPrice);
-
     }
 
     // function test_streamingSwapTransferToken_success() public {
