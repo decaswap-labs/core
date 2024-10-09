@@ -10,9 +10,7 @@ import "../src/interfaces/pool/IPoolErrors.sol";
 import "../src/MockERC20.sol"; // Mock token for testing
 import "./utils/Utils.t.sol";
 
-
 contract PoolLogicTest is Test, Utils {
-
     Pool public pool;
     PoolLogic poolLogic;
     MockERC20 public tokenA;
@@ -26,19 +24,17 @@ contract PoolLogicTest is Test, Utils {
         tokenA = new MockERC20("Token A", "TKA", 18);
         tokenB = new MockERC20("Token B", "TKB", 18);
 
-        poolLogic = new PoolLogic(owner,address(0)); // setting zero address for poolAddress as not deployed yet.
+        poolLogic = new PoolLogic(owner, address(0)); // setting zero address for poolAddress as not deployed yet.
         pool = new Pool(address(0), address(0xA), address(poolLogic));
 
         // Approve pool contract to spend tokens
         tokenA.approve(address(pool), 1000e18);
         tokenB.approve(address(pool), 1000e18);
 
-
         pool.updateRouterAddress(owner);
         poolLogic.updatePoolAddress(address(pool)); // Setting poolAddress (kind of initialization)
 
         vm.stopPrank();
-
     }
 
     //------------- CREATE POOL TEST ---------------- //
@@ -54,20 +50,22 @@ contract PoolLogicTest is Test, Utils {
 
         tokenA.transfer(address(pool), tokenAAmount);
 
-        poolLogic.createPool(address(tokenA), owner, tokenAAmount, minLaunchReserveAa, minLaunchReserveDd, initialDToMintt);
+        poolLogic.createPool(
+            address(tokenA), owner, tokenAAmount, minLaunchReserveAa, minLaunchReserveDd, initialDToMintt
+        );
 
         (
-        uint256 reserveD,
-        uint256 poolOwnershipUnitsTotal,
-        uint256 reserveA,
-        uint256 minLaunchReserveA,
-        uint256 minLaunchReserveD,
-        uint256 initialDToMint,
-        uint256 poolFeeCollected,
-        bool initialized
+            uint256 reserveD,
+            uint256 poolOwnershipUnitsTotal,
+            uint256 reserveA,
+            uint256 minLaunchReserveA,
+            uint256 minLaunchReserveD,
+            uint256 initialDToMint,
+            uint256 poolFeeCollected,
+            bool initialized
         ) = pool.poolInfo(address(tokenA));
 
-        uint256 userLpUnits = pool.userLpUnitInfo(owner,address(tokenA));
+        uint256 userLpUnits = pool.userLpUnitInfo(owner, address(tokenA));
 
         uint256 balanceAfter = tokenA.balanceOf(owner);
 
@@ -75,7 +73,7 @@ contract PoolLogicTest is Test, Utils {
         assertEq(reserveD, initialDToMintt);
         assertEq(minLaunchReserveA, minLaunchReserveAa);
         assertEq(minLaunchReserveD, minLaunchReserveDd);
-        assertEq(balanceAfter, balanceBefore-tokenAAmount);
+        assertEq(balanceAfter, balanceBefore - tokenAAmount);
         assertEq(userLpUnits, poolOwnershipUnitsTotal);
 
         vm.stopPrank();
@@ -91,10 +89,14 @@ contract PoolLogicTest is Test, Utils {
 
         tokenA.transfer(address(pool), tokenAAmount);
 
-        poolLogic.createPool(address(tokenA), owner, tokenAAmount, minLaunchReserveAa, minLaunchReserveDd, initialDToMintt);
+        poolLogic.createPool(
+            address(tokenA), owner, tokenAAmount, minLaunchReserveAa, minLaunchReserveDd, initialDToMintt
+        );
 
         vm.expectRevert(IPoolErrors.DuplicatePool.selector);
-        poolLogic.createPool(address(tokenA), owner, tokenAAmount, minLaunchReserveAa, minLaunchReserveDd, initialDToMintt);
+        poolLogic.createPool(
+            address(tokenA), owner, tokenAAmount, minLaunchReserveAa, minLaunchReserveDd, initialDToMintt
+        );
 
         vm.stopPrank();
     }
@@ -109,8 +111,10 @@ contract PoolLogicTest is Test, Utils {
 
         vm.expectRevert(abi.encodeWithSelector(IPoolLogicErrors.NotRouter.selector, nonAuthorized));
 
-        poolLogic.createPool(address(tokenA), owner, tokenAAmount, minLaunchReserveAa, minLaunchReserveDd, initialDToMintt);        
-        
+        poolLogic.createPool(
+            address(tokenA), owner, tokenAAmount, minLaunchReserveAa, minLaunchReserveDd, initialDToMintt
+        );
+
         vm.stopPrank();
     }
 
@@ -125,50 +129,52 @@ contract PoolLogicTest is Test, Utils {
 
         uint256 balanceBefore = tokenA.balanceOf(owner);
 
-
         tokenA.transfer(address(pool), tokenAAmount);
 
-        poolLogic.createPool(address(tokenA), owner, tokenAAmount, minLaunchReserveAa, minLaunchReserveDd, initialDToMintt);
+        poolLogic.createPool(
+            address(tokenA), owner, tokenAAmount, minLaunchReserveAa, minLaunchReserveDd, initialDToMintt
+        );
 
         (
-        uint256 reserveDBefore,
-        uint256 poolOwnershipUnitsTotalBefore,
-        uint256 reserveABefore,
-        uint256 minLaunchReserveABefore,
-        uint256 minLaunchReserveDBefore,
-        uint256 initialDToMintBefore,
-        uint256 poolFeeCollectedBefore,
-        bool initializedB
+            uint256 reserveDBefore,
+            uint256 poolOwnershipUnitsTotalBefore,
+            uint256 reserveABefore,
+            uint256 minLaunchReserveABefore,
+            uint256 minLaunchReserveDBefore,
+            uint256 initialDToMintBefore,
+            uint256 poolFeeCollectedBefore,
+            bool initializedB
         ) = pool.poolInfo(address(tokenA));
 
         uint256 amountALiquidity = 1000e18;
 
-        uint256 lpUnitsToMint = poolLogic.calculateLpUnitsToMint(amountALiquidity, reserveABefore, poolOwnershipUnitsTotalBefore);
-        uint256 dUnitsToMint = poolLogic.calculateDUnitsToMint(amountALiquidity, reserveABefore+amountALiquidity, reserveDBefore, 0);
-        uint256 userLpUnitsBefore = pool.userLpUnitInfo(owner,address(tokenA));
+        uint256 lpUnitsToMint =
+            poolLogic.calculateLpUnitsToMint(amountALiquidity, reserveABefore, poolOwnershipUnitsTotalBefore);
+        uint256 dUnitsToMint =
+            poolLogic.calculateDUnitsToMint(amountALiquidity, reserveABefore + amountALiquidity, reserveDBefore, 0);
+        uint256 userLpUnitsBefore = pool.userLpUnitInfo(owner, address(tokenA));
 
         tokenA.transfer(address(pool), amountALiquidity);
 
         poolLogic.addLiquidity(address(tokenA), owner, amountALiquidity);
 
         (
-        uint256 reserveDAfter,
-        uint256 poolOwnershipUnitsTotalAfter,
-        uint256 reserveAAfter,
-        uint256 minLaunchReserveAAfter, //unchanged
-        uint256 minLaunchReserveDAfter, //unchanged
-        uint256 initialDToMintAfter, //unchanged
-        uint256 poolFeeCollectedAfter, //unchanged
-        bool initializedA
+            uint256 reserveDAfter,
+            uint256 poolOwnershipUnitsTotalAfter,
+            uint256 reserveAAfter,
+            uint256 minLaunchReserveAAfter, //unchanged
+            uint256 minLaunchReserveDAfter, //unchanged
+            uint256 initialDToMintAfter, //unchanged
+            uint256 poolFeeCollectedAfter, //unchanged
+            bool initializedA
         ) = pool.poolInfo(address(tokenA));
 
-        uint256 userLpUnitsAfter = pool.userLpUnitInfo(owner,address(tokenA));
+        uint256 userLpUnitsAfter = pool.userLpUnitInfo(owner, address(tokenA));
 
-        assertEq(reserveAAfter, reserveABefore+amountALiquidity);
-        assertEq(reserveDAfter, reserveDBefore+dUnitsToMint);
-        assertEq(poolOwnershipUnitsTotalAfter, poolOwnershipUnitsTotalBefore+lpUnitsToMint);
-        assertEq(userLpUnitsAfter, userLpUnitsBefore+lpUnitsToMint);
-
+        assertEq(reserveAAfter, reserveABefore + amountALiquidity);
+        assertEq(reserveDAfter, reserveDBefore + dUnitsToMint);
+        assertEq(poolOwnershipUnitsTotalAfter, poolOwnershipUnitsTotalBefore + lpUnitsToMint);
+        assertEq(userLpUnitsAfter, userLpUnitsBefore + lpUnitsToMint);
     }
 
     function test_addLiquidity_unauthorizedAddress() public {
@@ -177,10 +183,9 @@ contract PoolLogicTest is Test, Utils {
         vm.expectRevert(abi.encodeWithSelector(IPoolLogicErrors.NotRouter.selector, nonAuthorized));
 
         poolLogic.addLiquidity(address(tokenA), owner, 0);
-        
+
         vm.stopPrank();
     }
-
 
     // ------------ REMOVE LIQUIDITY TEST ------------- //
     function test_removeLiquidity_success() public {
@@ -192,49 +197,49 @@ contract PoolLogicTest is Test, Utils {
         uint256 initialDToMintt = 50e18;
 
         tokenA.transfer(address(pool), tokenAAmount);
-        poolLogic.createPool(address(tokenA), owner, tokenAAmount, minLaunchReserveAa, minLaunchReserveDd, initialDToMintt);
+        poolLogic.createPool(
+            address(tokenA), owner, tokenAAmount, minLaunchReserveAa, minLaunchReserveDd, initialDToMintt
+        );
 
         uint256 balanceBefore = tokenA.balanceOf(owner);
 
         (
-        uint256 reserveDBefore,
-        uint256 poolOwnershipUnitsTotalBefore,
-        uint256 reserveABefore,
-        uint256 minLaunchReserveABefore,
-        uint256 minLaunchReserveDBefore,
-        uint256 initialDToMintBefore,
-        uint256 poolFeeCollectedBefore,
-        bool initializedB
+            uint256 reserveDBefore,
+            uint256 poolOwnershipUnitsTotalBefore,
+            uint256 reserveABefore,
+            uint256 minLaunchReserveABefore,
+            uint256 minLaunchReserveDBefore,
+            uint256 initialDToMintBefore,
+            uint256 poolFeeCollectedBefore,
+            bool initializedB
         ) = pool.poolInfo(address(tokenA));
-
 
         uint256 userLpAmount = pool.userLpUnitInfo(owner, address(tokenA));
 
-        uint256 assetToTransfer = poolLogic.calculateAssetTransfer(userLpAmount, reserveABefore, poolOwnershipUnitsTotalBefore);
+        uint256 assetToTransfer =
+            poolLogic.calculateAssetTransfer(userLpAmount, reserveABefore, poolOwnershipUnitsTotalBefore);
         uint256 dToDeduct = poolLogic.calculateDToDeduct(userLpAmount, reserveDBefore, poolOwnershipUnitsTotalBefore);
 
         poolLogic.removeLiquidity(address(tokenA), owner, userLpAmount);
 
         (
-        uint256 reserveDAfter,
-        uint256 poolOwnershipUnitsTotalAfter,
-        uint256 reserveAAfter,
-        uint256 minLaunchReserveAAfter, //unchanged
-        uint256 minLaunchReserveDAfter, //uncahnged
-        uint256 initialDToMintAfter, //unchanged
-        uint256 poolFeeCollectedAfter, //unchanged
-        bool initializedd //unchanged
+            uint256 reserveDAfter,
+            uint256 poolOwnershipUnitsTotalAfter,
+            uint256 reserveAAfter,
+            uint256 minLaunchReserveAAfter, //unchanged
+            uint256 minLaunchReserveDAfter, //uncahnged
+            uint256 initialDToMintAfter, //unchanged
+            uint256 poolFeeCollectedAfter, //unchanged
+            bool initializedd //unchanged
         ) = pool.poolInfo(address(tokenA));
-
 
         uint256 userLpUnitsAfter = pool.userLpUnitInfo(address(tokenA), owner);
         uint256 balanceAfter = tokenA.balanceOf(owner);
 
-        assertEq(balanceAfter, balanceBefore+assetToTransfer);
-        assertEq(reserveDAfter, reserveDBefore-dToDeduct);
-        assertEq(reserveAAfter, reserveABefore-assetToTransfer);
+        assertEq(balanceAfter, balanceBefore + assetToTransfer);
+        assertEq(reserveDAfter, reserveDBefore - dToDeduct);
+        assertEq(reserveAAfter, reserveABefore - assetToTransfer);
         assertEq(poolOwnershipUnitsTotalAfter, poolOwnershipUnitsTotalBefore - userLpAmount);
-
     }
 
     function test_removeLiquidity_unauthorizedAddress() public {
@@ -243,8 +248,7 @@ contract PoolLogicTest is Test, Utils {
         vm.expectRevert(abi.encodeWithSelector(IPoolLogicErrors.NotRouter.selector, nonAuthorized));
 
         poolLogic.removeLiquidity(address(tokenA), owner, 0);
-        
+
         vm.stopPrank();
     }
-
 }

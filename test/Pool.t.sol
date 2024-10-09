@@ -25,7 +25,7 @@ contract PoolTest is Test, Utils {
     function setUp() public {
         tokenA = new MockERC20("Token A", "TKA", 18);
         tokenB = new MockERC20("Token B", "TKB", 18);
-        poolLogic = new PoolLogic(user,address(0)); // setting zero address for poolAddress as not deployed yet.
+        poolLogic = new PoolLogic(user, address(0)); // setting zero address for poolAddress as not deployed yet.
         vm.prank(user);
         pool = new Pool(vault, address(router), address(poolLogic));
         // Mint tokens for liquidity adding
@@ -37,38 +37,35 @@ contract PoolTest is Test, Utils {
         tokenA.approve(address(pool), 1000 ether);
         tokenB.approve(address(pool), 1000 ether);
 
-        router = new Router(user,address(pool));
+        router = new Router(user, address(pool));
         vm.startPrank(user);
         pool.updateRouterAddress(address(router));
         poolLogic.updatePoolAddress(address(pool)); // Setting poolAddress (kind of initialization)
-
     }
 
     // ------------------------ Test Cases ------------------------
 
-
-   //Test: Successfully create a pool
+    //Test: Successfully create a pool
     function testCreatePool_Success() public {
         vm.startPrank(user);
         tokenA.approve(address(router), 100 * 1e18);
         router.createPool(address(tokenA), 100 * 1e18, 100 * 1e18, 100 * 1e18, 10 * 1e18);
         vm.stopPrank();
         (
-        uint256 reserveD,
-        uint256 poolOwnershipUnitsTotal,
-        uint256 reserveA,
-        uint256 minLaunchReserveA,
-        uint256 minLaunchReserveD,
-        uint256 initialDToMint,
-        uint256 poolFeeCollected,
-        bool initialized
+            uint256 reserveD,
+            uint256 poolOwnershipUnitsTotal,
+            uint256 reserveA,
+            uint256 minLaunchReserveA,
+            uint256 minLaunchReserveD,
+            uint256 initialDToMint,
+            uint256 poolFeeCollected,
+            bool initialized
         ) = pool.poolInfo(address(tokenA));
 
         assertEq(reserveD, 10 * 1e18);
         assertEq(poolOwnershipUnitsTotal, 100 * 1e18);
         assertEq(initialized, true);
-        assertEq(tokenA.balanceOf(address(pool)),100 * 1e18);
-
+        assertEq(tokenA.balanceOf(address(pool)), 100 * 1e18);
     }
 
     // Test: Creating a pool that already exists
@@ -84,14 +81,14 @@ contract PoolTest is Test, Utils {
     // Test: Creating a pool from an unauthorized address
     function testCreatePoolFromRouter_UnauthorizedAddress() public {
         vm.startPrank(nonAuthorized);
-        vm.expectRevert(abi.encodeWithSelector(getOwnableUnauthorizedAccountSelector(),nonAuthorized));
+        vm.expectRevert(abi.encodeWithSelector(getOwnableUnauthorizedAccountSelector(), nonAuthorized));
         router.createPool(address(tokenA), 100 * 1e18, 100 * 1e18, 100 * 1e18, 10 * 1e18);
         vm.stopPrank();
     }
 
     function testCreatePoolFromPool_UnauthorizedAddress() public {
         vm.startPrank(nonAuthorized);
-        vm.expectRevert(abi.encodeWithSelector(IPoolErrors.NotPoolLogic.selector,nonAuthorized));
+        vm.expectRevert(abi.encodeWithSelector(IPoolErrors.NotPoolLogic.selector, nonAuthorized));
         pool.createPool("0x");
         vm.stopPrank();
     }
@@ -109,43 +106,43 @@ contract PoolTest is Test, Utils {
         vm.startPrank(user);
         router.createPool(address(tokenA), 100 * 1e18, 100 * 1e18, 100 * 1e18, 10 * 1e18);
         (
-        uint256 reserveD,
-        uint256 poolOwnershipUnitsTotal,
-        uint256 reserveA,
-        uint256 minLaunchReserveA,
-        uint256 minLaunchReserveD,
-        uint256 initialDToMint,
-        uint256 poolFeeCollected,
-        bool initialized
+            uint256 reserveD,
+            uint256 poolOwnershipUnitsTotal,
+            uint256 reserveA,
+            uint256 minLaunchReserveA,
+            uint256 minLaunchReserveD,
+            uint256 initialDToMint,
+            uint256 poolFeeCollected,
+            bool initialized
         ) = pool.poolInfo(address(tokenA));
-        
+
         vm.stopPrank();
 
-        console.log("Before ReserveA: ",reserveA);
-        console.log("Before ReserveD: ",reserveD);
-        console.log("After poolOwnershipUnitsTotal: ",poolOwnershipUnitsTotal);
+        console.log("Before ReserveA: ", reserveA);
+        console.log("Before ReserveD: ", reserveD);
+        console.log("After poolOwnershipUnitsTotal: ", poolOwnershipUnitsTotal);
 
         uint256 initialReserveD = reserveD;
         uint256 initialOwnershipUnits = poolOwnershipUnitsTotal;
 
         assertEq(initialReserveD, 10 * 1e18);
         assertEq(initialOwnershipUnits, 100 * 1e18);
-        assertEq(tokenA.balanceOf(address(pool)),100 * 1e18);   
+        assertEq(tokenA.balanceOf(address(pool)), 100 * 1e18);
 
-        uint beforeTokenABalance = tokenA.balanceOf(address(pool));
+        uint256 beforeTokenABalance = tokenA.balanceOf(address(pool));
         vm.startPrank(user);
         router.addLiquidity(address(tokenA), 100 * 1e18);
         vm.stopPrank();
 
-        (reserveD, poolOwnershipUnitsTotal, reserveA, , , , ,) = pool.poolInfo(address(tokenA));
+        (reserveD, poolOwnershipUnitsTotal, reserveA,,,,,) = pool.poolInfo(address(tokenA));
 
-        console.log("After ReserveA: ",reserveA);
-        console.log("After ReserveD: ",reserveD);
-        console.log("After poolOwnershipUnitsTotal: ",poolOwnershipUnitsTotal);
+        console.log("After ReserveA: ", reserveA);
+        console.log("After ReserveD: ", reserveD);
+        console.log("After poolOwnershipUnitsTotal: ", poolOwnershipUnitsTotal);
 
         assertGt(reserveD, initialReserveD, "ReserveA should increase");
         assertGt(poolOwnershipUnitsTotal, initialOwnershipUnits, "Pool ownership units should increase");
-        assertEq(tokenA.balanceOf(address(pool)),beforeTokenABalance + 100 * 1e18);
+        assertEq(tokenA.balanceOf(address(pool)), beforeTokenABalance + 100 * 1e18);
     }
 
     // Test: Adding 0 amount liquidity
@@ -153,7 +150,7 @@ contract PoolTest is Test, Utils {
         vm.startPrank(user);
         router.createPool(address(tokenA), 100 * 1e18, 100 * 1e18, 100 * 1e18, 10 * 1e18);
         vm.expectRevert(IRouterErrors.InvalidAmount.selector);
-        router.addLiquidity(address(tokenA),0); // 0 amount
+        router.addLiquidity(address(tokenA), 0); // 0 amount
         vm.stopPrank();
     }
 
@@ -163,7 +160,7 @@ contract PoolTest is Test, Utils {
         router.createPool(address(tokenA), 100 * 1e18, 100 * 1e18, 100 * 1e18, 10 * 1e18);
         vm.stopPrank();
         vm.startPrank(nonAuthorized);
-        vm.expectRevert(abi.encodeWithSelector(IPoolErrors.NotPoolLogic.selector,nonAuthorized));
+        vm.expectRevert(abi.encodeWithSelector(IPoolErrors.NotPoolLogic.selector, nonAuthorized));
         pool.addLiquidity("0x");
         vm.stopPrank();
     }
@@ -201,9 +198,9 @@ contract PoolTest is Test, Utils {
 
     //     (, , reserveA, , , , ,) = pool.poolInfo(address(tokenA));
 
-    //     uint256 finalReserveA = reserveA; 
+    //     uint256 finalReserveA = reserveA;
 
-    //     console.log("initialReserveA: ",initialReserveA);       
+    //     console.log("initialReserveA: ",initialReserveA);
     //     console.log("finalReserveA: ",finalReserveA);
 
     //     assertGt(initialReserveA, finalReserveA);
@@ -258,18 +255,16 @@ contract PoolTest is Test, Utils {
     //     uint256 Before_A_reserveD = A_reserveD;
     //     uint256 Before_A_reserveA = A_reserveA;
     //     uint256 Before_B_reserveD = B_reserveD;
-    //     uint256 Before_B_reserveA = B_reserveA;        
+    //     uint256 Before_B_reserveA = B_reserveA;
 
     //     bytes32 id = keccak256(abi.encodePacked(address(tokenA), address(tokenB)));
 
-
     //     vm.prank(router);
     //     pool.executeSwap(user,10 * 1e18,1,address(tokenA),address(tokenB)); //A->B
-        
-    //   Queue.QueueStruct memory queue = pool.getStreamStruct(id);
-  
 
-    //    uint256 streamsCountAfter = queue.data[queue.front].streamsCount;    
+    //   Queue.QueueStruct memory queue = pool.getStreamStruct(id);
+
+    //    uint256 streamsCountAfter = queue.data[queue.front].streamsCount;
 
     //    console.log("streamsCountAfter",streamsCountAfter);
 
@@ -279,7 +274,7 @@ contract PoolTest is Test, Utils {
     //     uint256 After_A_reserveD = A_reserveD;
     //     uint256 After_A_reserveA = A_reserveA;
     //     uint256 After_B_reserveD = B_reserveD;
-    //     uint256 After_B_reserveA = B_reserveA; 
+    //     uint256 After_B_reserveA = B_reserveA;
 
     //     assertLt(After_A_reserveD, Before_A_reserveD);
     //     assertGt(After_B_reserveD, Before_B_reserveD);
@@ -344,7 +339,6 @@ contract PoolTest is Test, Utils {
     //     B_initlialized
     //     ) = pool.poolInfo(address(tokenB));
 
-
     //     uint256 After_Current_price = (A_reserveA * 1e18 / B_reserveA);
     //     console.log("after_Current_price: ",After_Current_price);
 
@@ -353,10 +347,9 @@ contract PoolTest is Test, Utils {
 
     //    bytes32 id = keccak256(abi.encodePacked(address(tokenA), address(tokenB)));
 
-    //    Queue.QueueStruct memory queue = pool.getPendingStruct(id);   
+    //    Queue.QueueStruct memory queue = pool.getPendingStruct(id);
 
     //    console.log("queue.data.length: ",queue.data.length);
-
 
     // }
 
@@ -378,17 +371,15 @@ contract PoolTest is Test, Utils {
     //     (uint256 A_reserveD, ,uint256 A_reserveA, uint256 A_minLaunchReserveA, uint256 A_minLaunchReserveD, , ,) = pool.poolInfo(address(tokenA));
     //     (uint256 B_reserveD, ,uint256 B_reserveA, uint256 B_minLaunchReserveB, uint256 B_minLaunchReserveD, , ,) = pool.poolInfo(address(tokenB));
 
-        
     //      bytes32 id = keccak256(abi.encodePacked(address(tokenA), address(tokenB)));
-        
+
     //     Queue.QueueStruct memory queue = pool.getStreamStruct(id);
 
-    //     uint256 streamsCountBefore = queue.data[queue.front].streamsCount;    
+    //     uint256 streamsCountBefore = queue.data[queue.front].streamsCount;
 
     //    console.log("streamsCountBefore",streamsCountBefore);
-        
-    //    uint256 swapID = queue.data[queue.front].swapID;
 
+    //    uint256 swapID = queue.data[queue.front].swapID;
 
     //     vm.prank(user);
     //     pool.cancelSwap(swapID,id,true);
@@ -402,11 +393,11 @@ contract PoolTest is Test, Utils {
     //     console.log("B_reserveA",B_reserveA);
 
     //     //     Queue.QueueStruct memory queue1 = pool.getStreamStruct(id);
-    //     //    uint256 streamsCountAfter = queue1.data[queue1.front].streamsCount;    
+    //     //    uint256 streamsCountAfter = queue1.data[queue1.front].streamsCount;
 
     //     //    console.log("streamsCountAfter",streamsCountAfter);
 
-    //     //    uint256 swapAmountRemaining = queue.data[queue.front].swapAmountRemaining;    
+    //     //    uint256 swapAmountRemaining = queue.data[queue.front].swapAmountRemaining;
 
     //     //    console.log("swapAmountRemaining",swapAmountRemaining);
 
@@ -431,7 +422,7 @@ contract PoolTest is Test, Utils {
 
     //     vm.prank(router);
     //     pool.executeSwap(user,10 * 1e18,1,address(tokenB),address(tokenA)); //B->A
- 
+
     //     console.log(tokenA.balanceOf(address(pool)));
     //     console.log(tokenB.balanceOf(address(pool)));
 
@@ -444,7 +435,6 @@ contract PoolTest is Test, Utils {
     // //     vm.prank(user);
     // //     pool.createPool(address(tokenB), 1 * 1e18, 1 * 1e18, 100 * 1e18, 1 * 1e18);
 
-        
     // //     vm.prank(router);
     // //     vm.expectRevert();
     // //     pool.executeSwap(user, 1000e18,1e18,address(tokenA),address(tokenB)); //A->B
@@ -457,7 +447,6 @@ contract PoolTest is Test, Utils {
 
     //     vm.prank(user);
     //     pool.createPool(address(tokenB), 100 * 1e18, 1 * 1e18, 100 * 1e18, 1 * 1e18);
-
 
     //     vm.prank(router);
     //     pool.executeSwap(user,10 * 1e18,1e18,address(tokenA),address(tokenB));
@@ -517,11 +506,11 @@ contract PoolTest is Test, Utils {
     // }
 
     // function testDepositInvalidToken() public {
-           
+
     //         vm.prank(user);
     //         pool.createPool(address(tokenA), 100 * 1e18, 1 * 1e18, 100 * 1e18, 1 * 1e18);
     //         vm.expectRevert();
-    //         vm.prank(router);  
+    //         vm.prank(router);
     //         pool.depositVault(user, 1e18, address(0));
 
     // }
@@ -546,7 +535,6 @@ contract PoolTest is Test, Utils {
     //     assertEq(dAmount, 9900990099009900);
     // }
 
-
     // function testWithdrawVaultwithInsufficientAmount() public {
 
     //     vm.prank(user);
@@ -561,5 +549,5 @@ contract PoolTest is Test, Utils {
     //     vm.prank(router);
     //     pool.withdrawVault(user, 1e18, address(tokenA));
 
-    // }    
+    // }
 }

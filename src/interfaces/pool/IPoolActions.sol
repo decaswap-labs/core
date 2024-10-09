@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.13;
+
 import {Swap} from "../../lib/SwapQueue.sol";
 
 interface IPoolActions {
@@ -18,7 +19,7 @@ interface IPoolActions {
     function dequeueSwap_pairPendingQueue(bytes32 pairId) external;
     // updateReservesParams encoding format => (bool aToB, address tokenA, address tokenB, uint256 reserveA_A, uint256 reserveD_A,uint256 reserveA_B, uint256 reserveD_B)
     function updateReserves(bytes memory updateReservesParams) external;
-        // updatedSwapData encoding format => (bytes32 pairId, uint256 amountOut, uint256 swapAmountRemaining, bool completed, uint256 streamsRemaining)
+    // updatedSwapData encoding format => (bytes32 pairId, uint256 amountOut, uint256 swapAmountRemaining, bool completed, uint256 streamsRemaining)
     function updatePairStreamQueueSwap(bytes memory updatedSwapData) external;
     function sortPairPendingQueue(bytes32 pairId) external;
     function executeSwap(address, uint256, uint256, address, address) external;

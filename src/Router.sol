@@ -11,13 +11,13 @@ import {IERC20} from "./interfaces/utils/IERC20.sol";
 // @todo OZ safeERC20 or custom implementation?
 // @todo ERC777 supported or not? (For reentrancy).
 // @todo remove unused errors
+
 contract Router is Ownable, IRouter {
     address public override POOL_ADDRESS;
     IPoolActions pool;
     IPoolStates poolStates;
 
     constructor(address ownerAddress, address poolAddress) Ownable(ownerAddress) {
-
         POOL_ADDRESS = poolAddress;
         pool = IPoolActions(POOL_ADDRESS);
         poolStates = IPoolStates(POOL_ADDRESS);
@@ -25,15 +25,22 @@ contract Router is Ownable, IRouter {
         emit PoolAddressUpdated(address(0), POOL_ADDRESS);
     }
 
-    function createPool(address token, uint amount, uint256 minLaunchReserveA, uint256 minLaunchReserveD,uint256 initialDToMint) external onlyOwner {
+    function createPool(
+        address token,
+        uint256 amount,
+        uint256 minLaunchReserveA,
+        uint256 minLaunchReserveD,
+        uint256 initialDToMint
+    ) external onlyOwner {
         if (amount == 0) revert InvalidAmount();
         if (token == address(0)) revert InvalidToken();
         if (initialDToMint == 0) revert InvalidInitialDAmount();
 
         IERC20(token).transferFrom(msg.sender, POOL_ADDRESS, amount);
-        IPoolLogic(poolStates.POOL_LOGIC()).createPool(token,msg.sender,amount,minLaunchReserveA,minLaunchReserveD,initialDToMint);
+        IPoolLogic(poolStates.POOL_LOGIC()).createPool(
+            token, msg.sender, amount, minLaunchReserveA, minLaunchReserveD, initialDToMint
+        );
     }
-
 
     function addLiquidity(address token, uint256 amount) external override {
         // @todo confirm about the appoach, where to keep checks? PoolLogic/Pool/Router??Then refactor
@@ -41,7 +48,7 @@ contract Router is Ownable, IRouter {
         if (amount == 0) revert InvalidAmount();
 
         IERC20(token).transferFrom(msg.sender, POOL_ADDRESS, amount);
-        IPoolLogic(poolStates.POOL_LOGIC()).addLiquidity(token,msg.sender,amount);
+        IPoolLogic(poolStates.POOL_LOGIC()).addLiquidity(token, msg.sender, amount);
 
         emit LiquidityAdded(msg.sender, token, amount);
     }
@@ -50,7 +57,7 @@ contract Router is Ownable, IRouter {
         if (!poolExist(token)) revert InvalidPool();
         if (lpUnits == 0 || lpUnits > poolStates.userLpUnitInfo(msg.sender, token)) revert InvalidAmount();
 
-        IPoolLogic(poolStates.POOL_LOGIC()).removeLiquidity(token,msg.sender,lpUnits);
+        IPoolLogic(poolStates.POOL_LOGIC()).removeLiquidity(token, msg.sender, lpUnits);
 
         emit LiquidityRemoved(msg.sender, token, lpUnits);
     }
@@ -58,10 +65,10 @@ contract Router is Ownable, IRouter {
     function swap(address tokenIn, address tokenOut, uint256 amountIn, uint256 executionPrice) external {
         if (amountIn == 0) revert InvalidAmount();
         if (executionPrice == 0) revert InvalidExecutionPrice();
-        if(!poolExist(tokenIn) || !poolExist(tokenOut)) revert InvalidPool();
-        
+        if (!poolExist(tokenIn) || !poolExist(tokenOut)) revert InvalidPool();
+
         IERC20(tokenIn).transferFrom(msg.sender, POOL_ADDRESS, amountIn);
-        IPoolLogic(poolStates.POOL_LOGIC()).swap(msg.sender,tokenIn,tokenOut,amountIn,executionPrice);
+        IPoolLogic(poolStates.POOL_LOGIC()).swap(msg.sender, tokenIn, tokenOut, amountIn, executionPrice);
     }
 
     function updatePoolAddress(address newPoolAddress) external override onlyOwner {

@@ -2,7 +2,14 @@
 pragma solidity ^0.8.13;
 
 interface IPoolLogicActions {
-    function createPool(address token, address user, uint256 amount, uint256 minLaunchReserveA, uint256 minLaunchReserveD,uint256 initialDToMint) external;
+    function createPool(
+        address token,
+        address user,
+        uint256 amount,
+        uint256 minLaunchReserveA,
+        uint256 minLaunchReserveD,
+        uint256 initialDToMint
+    ) external;
     function addLiquidity(address token, address user, uint256 amount) external;
     function removeLiquidity(address token, address user, uint256 lpUnits) external;
     function swap(address user, address tokenIn, address tokenOut, uint256 amountIn, uint256 executionPrice) external;
