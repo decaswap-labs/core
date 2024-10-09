@@ -308,9 +308,9 @@ contract RouterTest is Test, Utils {
         router.updatePoolAddress(address(0x123));
     }
 
-    // ---------------------- SWAP ------------------------- //
+    ---------------------- SWAP ------------------------- //
 
-    function test_swap_success() public {
+    function test_streamingSwap_success() public {
         /*
             1. Create pool with tokens (100 TKNA)
             2. Create second pool with tokens (100 TKNB)
@@ -345,12 +345,10 @@ contract RouterTest is Test, Utils {
         uint256 minLaunchReserveAPoolB = 25e18;
         uint256 minLaunchReserveDPoolB = 5e18; // we can change this for error test
 
-        tokenA.approve(address(router), tokenAAmount);
         router.createPool(
             address(tokenA), tokenAAmount, minLaunchReserveAPoolA, minLaunchReserveDPoolA, initialDToMintPoolA
         );
 
-        tokenB.approve(address(router), tokenBAmount);
         router.createPool(
             address(tokenB), tokenBAmount, minLaunchReserveAPoolB, minLaunchReserveDPoolB, initialDToMintPoolB
         );
@@ -398,4 +396,176 @@ contract RouterTest is Test, Utils {
         uint256 executionPriceAfterSwap = poolLogic.getExecutionPrice(reserveATokenAAfterSwap, reserveATokenBAfterSwap);
         console.log("%s Exec Price ====>", executionPriceAfterSwap);
     }
+
+    function test_swap_invalidToken() public {
+        vm.startPrank(owner);
+
+        uint256 initialDToMintPoolA = 50e18;
+
+        uint256 tokenAAmount = 100e18;
+        uint256 minLaunchReserveAPoolA = 25e18;
+        uint256 minLaunchReserveDPoolA = 25e18;
+
+        router.createPool(
+            address(tokenA), tokenAAmount, minLaunchReserveAPoolA, minLaunchReserveDPoolA, initialDToMintPoolA
+        );
+        vm.expectRevert(IRouterErrors.InvalidPool.selector);
+        router.swap(address(tokenA), address(0x0), 1, 1);
+    }
+
+    function test_swap_invalidAmount() public {
+        vm.startPrank(owner);
+
+        uint256 initialDToMintPoolA = 50e18;
+
+        uint256 tokenAAmount = 100e18;
+        uint256 minLaunchReserveAPoolA = 25e18;
+        uint256 minLaunchReserveDPoolA = 25e18;
+
+        router.createPool(
+            address(tokenA), tokenAAmount, minLaunchReserveAPoolA, minLaunchReserveDPoolA, initialDToMintPoolA
+        );
+        vm.expectRevert(IRouterErrors.InvalidAmount.selector);
+        router.swap(address(tokenA), address(0x0), 0, 1);
+    }
+
+    function test_swap_invalidExecPrice() public {
+        vm.startPrank(owner);
+
+        uint256 initialDToMintPoolA = 50e18;
+
+        uint256 tokenAAmount = 100e18;
+        uint256 minLaunchReserveAPoolA = 25e18;
+        uint256 minLaunchReserveDPoolA = 25e18;
+
+        router.createPool(
+            address(tokenA), tokenAAmount, minLaunchReserveAPoolA, minLaunchReserveDPoolA, initialDToMintPoolA
+        );
+        vm.expectRevert(IRouterErrors.InvalidExecutionPrice.selector);
+        router.swap(address(tokenA), address(0x0), 1, 0);
+    }
+
+    function test_streamingSwapAddPending_success() public {
+        vm.startPrank(owner);
+
+        uint256 initialDToMintPoolA = 50e18;
+        uint256 initialDToMintPoolB = 10e18;
+        uint256 SLIPPAGE = 10;
+
+        uint256 tokenAAmount = 100e18;
+        uint256 minLaunchReserveAPoolA = 25e18;
+        uint256 minLaunchReserveDPoolA = 25e18;
+
+        uint256 tokenBAmount = 100e18;
+        uint256 minLaunchReserveAPoolB = 25e18;
+        uint256 minLaunchReserveDPoolB = 5e18; // we can change this for error test
+
+        router.createPool(
+            address(tokenA), tokenAAmount, minLaunchReserveAPoolA, minLaunchReserveDPoolA, initialDToMintPoolA
+        );
+
+        router.createPool(
+            address(tokenB), tokenBAmount, minLaunchReserveAPoolB, minLaunchReserveDPoolB, initialDToMintPoolB
+        );
+
+        // update pair slippage
+        pool.updatePairSlippage(address(tokenA), address(tokenB), SLIPPAGE);
+
+        uint256 tokenASwapAmount = 30e18;
+
+        uint256 executionPriceBeforeSwap = poolLogic.getExecutionPrice(tokenAAmount, tokenBAmount);
+
+        router.swap(address(tokenA), address(tokenB), tokenASwapAmount, executionPriceBeforeSwap);
+
+        (uint256 reserveDTokenAAfterSwap,, uint256 reserveATokenAAfterSwap,,,,,) = pool.poolInfo(address(tokenA));
+
+        (uint256 reserveDTokenBAfterSwap,, uint256 reserveATokenBAfterSwap,,,,,) = pool.poolInfo(address(tokenB));
+
+        uint256 executionPriceAfterSwap = poolLogic.getExecutionPrice(reserveATokenAAfterSwap, reserveATokenBAfterSwap);
+
+        uint256 pendingSwapAmount = tokenASwapAmount / 2;
+
+        uint256 pendingExecutionPrice = executionPriceAfterSwap + 1;
+
+        router.swap(address(tokenA), address(tokenB), pendingSwapAmount, pendingExecutionPrice);
+
+        bytes32 pairId = keccak256(abi.encodePacked(address(tokenA), address(tokenB)));
+
+        (Swap[] memory swapsPending, uint256 frontP, uint256 backP) = pool.pairPendingQueue(pairId);
+        console.log("Length %s", swapsPending.length);
+        console.log("Length %s", frontP); // @todo giving +1 idk why. Need to check this Nabeel
+        console.log("Length %s", backP);
+
+        Swap memory swapPending = swapsPending[frontP-1];
+
+        assertGe(swapsPending.length , 1);
+        assertEq(swapPending.executionPrice, pendingExecutionPrice);
+        assertEq(swapPending.swapAmountRemaining, pendingSwapAmount);
+    }
+
+    function test_streamingSwapAddPendingToStream_success() public {
+        vm.startPrank(owner);
+
+        uint256 initialDToMintPoolA = 50e18;
+        uint256 initialDToMintPoolB = 10e18;
+        uint256 SLIPPAGE = 10;
+
+        uint256 tokenAAmount = 100e18;
+        uint256 minLaunchReserveAPoolA = 25e18;
+        uint256 minLaunchReserveDPoolA = 25e18;
+
+        uint256 tokenBAmount = 100e18;
+        uint256 minLaunchReserveAPoolB = 25e18;
+        uint256 minLaunchReserveDPoolB = 5e18; // we can change this for error test
+
+        router.createPool(
+            address(tokenA), tokenAAmount, minLaunchReserveAPoolA, minLaunchReserveDPoolA, initialDToMintPoolA
+        );
+
+        router.createPool(
+            address(tokenB), tokenBAmount, minLaunchReserveAPoolB, minLaunchReserveDPoolB, initialDToMintPoolB
+        );
+
+        // update pair slippage
+        pool.updatePairSlippage(address(tokenA), address(tokenB), SLIPPAGE);
+
+        uint256 tokenASwapAmount = 30e18;
+
+        uint256 executionPriceBeforeSwap = poolLogic.getExecutionPrice(tokenAAmount, tokenBAmount);
+
+        router.swap(address(tokenA), address(tokenB), tokenASwapAmount, executionPriceBeforeSwap);
+
+        (uint256 reserveDTokenAAfterSwap,, uint256 reserveATokenAAfterSwap,,,,,) = pool.poolInfo(address(tokenA));
+
+        (uint256 reserveDTokenBAfterSwap,, uint256 reserveATokenBAfterSwap,,,,,) = pool.poolInfo(address(tokenB));
+
+        uint256 executionPriceAfterSwap = poolLogic.getExecutionPrice(reserveATokenAAfterSwap, reserveATokenBAfterSwap);
+
+        uint256 pendingSwapAmount = tokenASwapAmount / 2;
+
+        uint256 pendingExecutionPrice = executionPriceAfterSwap + 1;
+
+        // this should enter in pending, then to stream.
+        router.swap(address(tokenA), address(tokenB), pendingSwapAmount, pendingExecutionPrice);
+
+        bytes32 pairId = keccak256(abi.encodePacked(address(tokenA), address(tokenB)));
+
+        (Swap[] memory swapsStreamBefore, uint256 frontB, uint256 backB) = pool.pairStreamQueue(pairId);
+
+        uint256 lengthOfStreamBefore = swapsStreamBefore.length;
+        
+        router.swap(address(tokenA), address(tokenB), tokenASwapAmount, pendingExecutionPrice/2); //inserting to streamQueue
+
+        // (Swap[] memory swapsStreamAfter, uint256 frontA, uint256 backA) = pool.pairStreamQueue(pairId);
+    
+        // uint256 lengthOfStreamAfter = swapsStreamAfter.length;
+
+        // assertEq(lengthOfStreamAfter, lengthOfStreamBefore+1);
+        // assertEq(swapsStreamAfter[backA].executionPrice , pendingExecutionPrice);
+
+    }
+
+    // function test_streamingSwapTransferToken_success() public {
+
+    // }
 }

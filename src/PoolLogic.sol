@@ -335,11 +335,16 @@ contract PoolLogic is Ownable, IPoolLogic {
             (Swap[] memory swaps_pending,, uint256 back) = pool.pairPendingQueue(pairId);
             swapDetails.swapID = back;
 
-            if (swapDetails.executionPrice >= swaps_pending[back].executionPrice) {
+            if (swaps_pending.length == 0) {
+                // was throwing out of bound error
                 IPoolActions(POOL_ADDRESS).enqueueSwap_pairPendingQueue(pairId, swapDetails);
             } else {
-                IPoolActions(POOL_ADDRESS).enqueueSwap_pairPendingQueue(pairId, swapDetails);
-                IPoolActions(POOL_ADDRESS).sortPairPendingQueue(pairId);
+                if (swapDetails.executionPrice >= swaps_pending[back].executionPrice) {
+                    IPoolActions(POOL_ADDRESS).enqueueSwap_pairPendingQueue(pairId, swapDetails);
+                } else {
+                    IPoolActions(POOL_ADDRESS).enqueueSwap_pairPendingQueue(pairId, swapDetails);
+                    IPoolActions(POOL_ADDRESS).sortPairPendingQueue(pairId);
+                }
             }
         }
     }
