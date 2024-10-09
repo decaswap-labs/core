@@ -564,7 +564,55 @@ contract RouterTest is Test, Utils {
         // assertEq(swapsStreamAfter[backA].executionPrice , pendingExecutionPrice);
     }
 
-    // function test_streamingSwapTransferToken_success() public {
+    function test_streamingSwapTransferToken_success() public {
+        vm.startPrank(owner);
 
-    // }
+        uint256 initialDToMintPoolA = 50e18;
+        uint256 initialDToMintPoolB = 50e18;
+        uint256 SLIPPAGE = 10;
+
+        uint256 tokenAAmount = 100e18;
+        uint256 minLaunchReserveAPoolA = 25e18;
+        uint256 minLaunchReserveDPoolA = 25e18;
+
+        uint256 tokenBAmount = 100e18;
+        uint256 minLaunchReserveAPoolB = 25e18;
+        uint256 minLaunchReserveDPoolB = 25e18; // we can change this for error test
+
+        router.createPool(
+            address(tokenA), tokenAAmount, minLaunchReserveAPoolA, minLaunchReserveDPoolA, initialDToMintPoolA
+        );
+
+        router.createPool(
+            address(tokenB), tokenBAmount, minLaunchReserveAPoolB, minLaunchReserveDPoolB, initialDToMintPoolB
+        );
+
+        // update pair slippage
+        pool.updatePairSlippage(address(tokenA), address(tokenB), SLIPPAGE);
+
+        uint256 tokenASwapAmount = 30e18;
+
+        uint256 streamsBeforeSwap = poolLogic.calculateStreamCount(tokenASwapAmount, SLIPPAGE, initialDToMintPoolB); //passed poolB D because its less.
+
+        uint256 swapPerStreamLocal = tokenASwapAmount / streamsBeforeSwap;
+
+        uint256 executionPriceBeforeSwap = poolLogic.getExecutionPrice(tokenAAmount, tokenBAmount);
+
+        (uint256 dOutA, uint256 swapAmountOutBeforeSwap) = poolLogic.getSwapAmountOut(
+            swapPerStreamLocal, tokenAAmount, tokenBAmount, initialDToMintPoolA, initialDToMintPoolB
+        );
+
+        console.log("%s Streams ====>", streamsBeforeSwap);
+        console.log("%s Swap Per Stream ====>", swapPerStreamLocal);
+        console.log("%s Exec Price ====>", executionPriceBeforeSwap);
+        console.log("%s Amount Out ====>", swapAmountOutBeforeSwap);
+
+        //@todo: throwing error in handling whole stream at once
+
+        // router.swap(address(tokenA), address(tokenB), tokenASwapAmount, executionPriceBeforeSwap);
+
+        // // get swap from queue
+        // bytes32 pairId = keccak256(abi.encodePacked(address(tokenA), address(tokenB)));
+        // (Swap[] memory swaps, uint256 front, uint256 back) = pool.pairStreamQueue(pairId);
+    }
 }
