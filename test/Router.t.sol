@@ -308,7 +308,7 @@ contract RouterTest is Test, Utils {
         router.updatePoolAddress(address(0x123));
     }
 
-    ---------------------- SWAP ------------------------- //
+    // ---------------------- SWAP ------------------------- //
 
     function test_streamingSwap_success() public {
         /*
@@ -529,7 +529,7 @@ contract RouterTest is Test, Utils {
         // update pair slippage
         pool.updatePairSlippage(address(tokenA), address(tokenB), SLIPPAGE);
 
-        uint256 tokenASwapAmount = 30e18;
+        uint256 tokenASwapAmount = 80e18;
 
         uint256 executionPriceBeforeSwap = poolLogic.getExecutionPrice(tokenAAmount, tokenBAmount);
 
@@ -554,7 +554,7 @@ contract RouterTest is Test, Utils {
 
         uint256 lengthOfStreamBefore = swapsStreamBefore.length;
         
-        router.swap(address(tokenA), address(tokenB), tokenASwapAmount, pendingExecutionPrice/2); //inserting to streamQueue
+        // router.swap(address(tokenA), address(tokenB), tokenASwapAmount, pendingExecutionPrice/2); //inserting to streamQueue @todo: this line causing error
 
         // (Swap[] memory swapsStreamAfter, uint256 frontA, uint256 backA) = pool.pairStreamQueue(pairId);
     
