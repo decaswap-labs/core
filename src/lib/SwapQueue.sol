@@ -44,6 +44,7 @@ library Queue {
     function dequeue(QueueStruct storage queue) internal returns (Swap memory) {
         require(queue.back > queue.front, "Queue is empty");
         Swap memory value = queue.data[queue.front];
+        delete queue.data[queue.front];
         queue.front++;
         return value;
     }

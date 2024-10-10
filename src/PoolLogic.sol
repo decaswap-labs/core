@@ -195,7 +195,7 @@ contract PoolLogic is Ownable, IPoolLogic {
         bytes32 otherPairId = keccak256(abi.encodePacked(tokenOut, tokenIn));
         (Swap[] memory oppositeSwaps, uint256 oppositeFront, uint256 oppositeBack) = pool.pairStreamQueue(otherPairId);
 
-        if (oppositeSwaps.length != 0) {
+        if (oppositeBack - oppositeFront != 0) {
             Swap memory oppositeSwap = oppositeSwaps[oppositeFront];
             // A->B , dout1 is D1, amountOut1 is B
             (uint256 dOutA, uint256 amountOutA) =
@@ -308,7 +308,7 @@ contract PoolLogic is Ownable, IPoolLogic {
         // --------------------------- HANDLE PENDING SWAP INSERTION ----------------------------- //
         (Swap[] memory swaps_pending, uint256 front_pending, uint256 back_pending) = pool.pairPendingQueue(pairId);
 
-        if (swaps_pending.length > 0) {
+        if (back_pending - front_pending > 0) {
             Swap memory frontPendingSwap = swaps_pending[front_pending];
 
             (,, uint256 reserveA_In_New,,,,,) = pool.poolInfo(address(frontPendingSwap.tokenIn));
@@ -334,14 +334,13 @@ contract PoolLogic is Ownable, IPoolLogic {
             swapDetails.swapID = back;
             IPoolActions(POOL_ADDRESS).enqueueSwap_pairStreamQueue(pairId, swapDetails);
         } else {
-            (Swap[] memory swaps_pending,, uint256 back) = pool.pairPendingQueue(pairId);
+            (Swap[] memory swaps_pending, uint256 front, uint256 back) = pool.pairPendingQueue(pairId);
             swapDetails.swapID = back;
 
-            if (swaps_pending.length == 0) {
-                // was throwing out of bound error
+            if (back - front == 0) {
                 IPoolActions(POOL_ADDRESS).enqueueSwap_pairPendingQueue(pairId, swapDetails);
             } else {
-                if (swapDetails.executionPrice >= swaps_pending[back].executionPrice) {
+                if (swapDetails.executionPrice >= swaps_pending[back-1].executionPrice) {
                     IPoolActions(POOL_ADDRESS).enqueueSwap_pairPendingQueue(pairId, swapDetails);
                 } else {
                     IPoolActions(POOL_ADDRESS).enqueueSwap_pairPendingQueue(pairId, swapDetails);
