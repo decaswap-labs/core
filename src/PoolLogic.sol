@@ -303,7 +303,7 @@ contract PoolLogic is Ownable, IPoolLogic {
         }
 
         // transferring tokens
-        if (completedSwapToken != address(0)) IERC20(completedSwapToken).transfer(swapUser, amountOutSwap);
+        if (completedSwapToken != address(0)) IPoolActions(POOL_ADDRESS).transferTokens(completedSwapToken, swapUser, amountOutSwap);
 
         // --------------------------- HANDLE PENDING SWAP INSERTION ----------------------------- //
         (Swap[] memory swaps_pending, uint256 front_pending, uint256 back_pending) = pool.pairPendingQueue(pairId);

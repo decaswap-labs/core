@@ -21,6 +21,7 @@ interface IPoolActions {
     function updateReserves(bytes memory updateReservesParams) external;
     // updatedSwapData encoding format => (bytes32 pairId, uint256 amountOut, uint256 swapAmountRemaining, bool completed, uint256 streamsRemaining)
     function updatePairStreamQueueSwap(bytes memory updatedSwapData) external;
+    function transferTokens(address tokenAddress, address to, uint256 amount) external;
     function sortPairPendingQueue(bytes32 pairId) external;
     function executeSwap(address, uint256, uint256, address, address) external;
     function depositVault(address, uint256, address) external;

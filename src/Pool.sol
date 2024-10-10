@@ -244,6 +244,10 @@ contract Pool is IPool, Ownable {
         SwapSorter.quickSort(mapPairId_pairPendingQueue_Swaps[pairId]);
     }
 
+    function transferTokens(address token, address to, uint256 amount) external onlyPoolLogic{
+        IERC20(token).transfer(to, amount);
+    }
+
     function depositVault(address user, uint256 amountIn, address tokenIn) external override onlyRouter {
         // if (amountIn == 0) revert InvalidTokenAmount();
         // if (!poolInfo[tokenIn].initialized) revert InvalidPool();
