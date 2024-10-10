@@ -295,7 +295,7 @@ contract PoolLogic is Ownable, IPoolLogic {
             );
             IPoolActions(POOL_ADDRESS).updatePairStreamQueueSwap(updatedSwapData_Front);
 
-            if (frontSwap.streamsCount == 0) {
+            if (frontSwap.streamsRemaining == 0) {
                 // @todo make a function of this error
                 require(back > front, "Queue is empty");
                 IPoolActions(POOL_ADDRESS).dequeueSwap_pairStreamQueue(pairId);
