@@ -281,7 +281,7 @@ contract PoolLogic is Ownable, IPoolLogic {
             frontSwap.streamsRemaining--;
             if (frontSwap.streamsRemaining == 0) {
                 frontSwap.completed = true;
-                completedSwapToken = frontSwap.tokenIn;
+                completedSwapToken = frontSwap.tokenOut;
                 swapUser = frontSwap.user;
                 amountOutSwap = frontSwap.amountOut + amountOut;
             }

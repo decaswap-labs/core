@@ -619,9 +619,9 @@ contract RouterTest is Test, Utils {
         console.log("%s balance b before ====>", userBalanceBBefore);
         console.log("%s balance b after ====>", userBalanceBAfter);
         
-        assertEq(front,back); // @todo after dequeing front is not increamenting
+        assertEq(front,back);
 
-        // assertEq(userBalanceAAfter, userBalanceABefore - tokenASwapAmount); @todo balances are deducting more than it should. 
+        assertEq(userBalanceAAfter, userBalanceABefore - tokenASwapAmount); 
 
         // assertEq(userBalanceBAfter, userBalanceABefore + swapAmountOutBeforeSwap); @todo token B balance is not changing at all after exec
     }
