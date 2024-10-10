@@ -600,28 +600,29 @@ contract RouterTest is Test, Utils {
             swapPerStreamLocal, tokenAAmount, tokenBAmount, initialDToMintPoolA, initialDToMintPoolB
         );
 
-        console.log("%s Streams ====>", streamsBeforeSwap);
-        console.log("%s Swap Per Stream ====>", swapPerStreamLocal);
-        console.log("%s Exec Price ====>", executionPriceBeforeSwap);
-        console.log("%s Amount Out ====>", swapAmountOutBeforeSwap);
-
         uint256 userBalanceABefore = tokenA.balanceOf(owner);
         uint256 userBalanceBBefore = tokenB.balanceOf(owner);
 
         router.swap(address(tokenA), address(tokenB), tokenASwapAmount, executionPriceBeforeSwap);
 
-        // uint256 userBalanceAAfter = tokenA.balanceOf(owner);
-        // uint256 userBalanceBAfter = tokenB.balanceOf(owner);
+        uint256 userBalanceAAfter = tokenA.balanceOf(owner);
+        uint256 userBalanceBAfter = tokenB.balanceOf(owner);
 
-        // // get swap from queue
-        // bytes32 pairId = keccak256(abi.encodePacked(address(tokenA), address(tokenB)));
+        // get swap from queue
+        bytes32 pairId = keccak256(abi.encodePacked(address(tokenA), address(tokenB)));
 
-        // (Swap[] memory swaps, uint256 front, uint256 back) = pool.pairStreamQueue(pairId);
+        (Swap[] memory swaps, uint256 front, uint256 back) = pool.pairStreamQueue(pairId);
 
-        // assertEq(front,back);
-        // assertEq(userBalanceAAfter, userBalanceABefore - tokenASwapAmount);
-        // assertEq(userBalanceBAfter, userBalanceABefore + swapAmountOutBeforeSwap);
-    
+        console.log("%s balance a before ====>", userBalanceABefore);
+        console.log("%s balance a after ====>", userBalanceAAfter);
+        console.log("%s transfer amount a ====>", tokenASwapAmount);
+        console.log("%s balance b before ====>", userBalanceBBefore);
+        console.log("%s balance b after ====>", userBalanceBAfter);
+        
+        // assertEq(front,back); // @todo after dequeing front is not increamenting
 
+        // assertEq(userBalanceAAfter, userBalanceABefore - tokenASwapAmount); @todo balances are deducting more than it should. 
+
+        // assertEq(userBalanceBAfter, userBalanceABefore + swapAmountOutBeforeSwap); @todo token B balance is not changing at all after exec
     }
 }
