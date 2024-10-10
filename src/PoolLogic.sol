@@ -123,10 +123,11 @@ contract PoolLogic is Ownable, IPoolLogic {
         bytes32 poolId;
         bytes32 pairId;
 
-        // TODO: Need to handle same vault deposit withdraw streams
         // break into streams
-        minPoolDepth = reserveD_In <= reserveD_Out ? reserveD_In : reserveD_Out;
-        poolId = getPoolId(tokenIn, address(0xD)); // for pair slippage only. Not an ID for pair direction queue
+        minPoolDepth = reserveD_In <= reserveD_Out
+            ? reserveD_In
+            : reserveD_Out;
+        poolId = getPoolId(tokenIn, tokenOut); // for pair slippage only. Not an ID for pair direction queue
         streamCount = calculateStreamCount(amountIn, pool.pairSlippage(poolId), minPoolDepth);
         swapPerStream = amountIn / streamCount;
 
@@ -317,10 +318,11 @@ contract PoolLogic is Ownable, IPoolLogic {
             uint256 executionPriceInOrder = frontPendingSwap.executionPrice;
             uint256 executionPriceLatest = getExecutionPrice(reserveA_In_New, reserveA_Out_New);
 
-            if (executionPriceLatest >= executionPriceInOrder) {
-                IPoolActions(POOL_ADDRESS).enqueueSwap_pairStreamQueue(pairId, frontPendingSwap);
-                IPoolActions(POOL_ADDRESS).dequeueSwap_pairPendingQueue(pairId);
-            }
+                if (executionPriceLatest >= executionPriceInOrder) {
+                    IPoolActions(POOL_ADDRESS).enqueueSwap_pairStreamQueue(pairId, frontPendingSwap);
+                    require(back_pending > front_pending, "Queue is empty");
+                    IPoolActions(POOL_ADDRESS).dequeueSwap_pairPendingQueue(pairId);
+                }
         }
     }
 
