@@ -124,9 +124,7 @@ contract PoolLogic is Ownable, IPoolLogic {
         bytes32 pairId;
 
         // break into streams
-        minPoolDepth = reserveD_In <= reserveD_Out
-            ? reserveD_In
-            : reserveD_Out;
+        minPoolDepth = reserveD_In <= reserveD_Out ? reserveD_In : reserveD_Out;
         poolId = getPoolId(tokenIn, tokenOut); // for pair slippage only. Not an ID for pair direction queue
         streamCount = calculateStreamCount(amountIn, pool.pairSlippage(poolId), minPoolDepth);
         swapPerStream = amountIn / streamCount;
@@ -303,7 +301,9 @@ contract PoolLogic is Ownable, IPoolLogic {
         }
 
         // transferring tokens
-        if (completedSwapToken != address(0)) IPoolActions(POOL_ADDRESS).transferTokens(completedSwapToken, swapUser, amountOutSwap);
+        if (completedSwapToken != address(0)) {
+            IPoolActions(POOL_ADDRESS).transferTokens(completedSwapToken, swapUser, amountOutSwap);
+        }
 
         // --------------------------- HANDLE PENDING SWAP INSERTION ----------------------------- //
         (Swap[] memory swaps_pending, uint256 front_pending, uint256 back_pending) = pool.pairPendingQueue(pairId);
@@ -318,11 +318,11 @@ contract PoolLogic is Ownable, IPoolLogic {
             uint256 executionPriceInOrder = frontPendingSwap.executionPrice;
             uint256 executionPriceLatest = getExecutionPrice(reserveA_In_New, reserveA_Out_New);
 
-                if (executionPriceLatest >= executionPriceInOrder) {
-                    IPoolActions(POOL_ADDRESS).enqueueSwap_pairStreamQueue(pairId, frontPendingSwap);
-                    require(back_pending > front_pending, "Queue is empty");
-                    IPoolActions(POOL_ADDRESS).dequeueSwap_pairPendingQueue(pairId);
-                }
+            if (executionPriceLatest >= executionPriceInOrder) {
+                IPoolActions(POOL_ADDRESS).enqueueSwap_pairStreamQueue(pairId, frontPendingSwap);
+                require(back_pending > front_pending, "Queue is empty");
+                IPoolActions(POOL_ADDRESS).dequeueSwap_pairPendingQueue(pairId);
+            }
         }
     }
 
@@ -340,7 +340,7 @@ contract PoolLogic is Ownable, IPoolLogic {
             if (back - front == 0) {
                 IPoolActions(POOL_ADDRESS).enqueueSwap_pairPendingQueue(pairId, swapDetails);
             } else {
-                if (swapDetails.executionPrice >= swaps_pending[back-1].executionPrice) {
+                if (swapDetails.executionPrice >= swaps_pending[back - 1].executionPrice) {
                     IPoolActions(POOL_ADDRESS).enqueueSwap_pairPendingQueue(pairId, swapDetails);
                 } else {
                     IPoolActions(POOL_ADDRESS).enqueueSwap_pairPendingQueue(pairId, swapDetails);
