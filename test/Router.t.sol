@@ -623,6 +623,6 @@ contract RouterTest is Test, Utils {
 
         assertEq(userBalanceAAfter, userBalanceABefore - tokenASwapAmount); 
 
-        // assertEq(userBalanceBAfter, userBalanceABefore + swapAmountOutBeforeSwap); @todo token B balance is not changing at all after exec
+        assertEq(userBalanceBAfter, userBalanceABefore + swapAmountOutBeforeSwap);
     }
 }
