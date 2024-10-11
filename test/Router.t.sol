@@ -41,6 +41,8 @@ contract RouterTest is Test, Utils {
     }
 
     //------------- CREATE POOL TEST ---------------- //
+
+    // test to create pool success
     function test_createPool_success() public {
         vm.startPrank(owner);
 
@@ -78,8 +80,9 @@ contract RouterTest is Test, Utils {
         assertEq(userLpUnits, poolOwnershipUnitsTotal);
 
         vm.stopPrank();
-    }
+    }  
 
+    // test to check crte pool method fails if pool already exists
     function test_createPool_poolAlreadyExists() public {
         vm.startPrank(owner);
 
@@ -97,7 +100,8 @@ contract RouterTest is Test, Utils {
         vm.stopPrank();
     }
 
-    function test_createPoo_unauthorizedAddress() public {
+    // test to check crte pool method fails if access from invalid addrs
+    function test_createPool_unauthorizedAddress() public {
         vm.startPrank(nonAuthorized);
 
         uint256 tokenAAmount = 1000e18;
@@ -117,6 +121,8 @@ contract RouterTest is Test, Utils {
     }
 
     // ------------ ADD LIQUIDITY TEST --------------- //
+
+    // test to add ldty success
     function test_addLiquidity_success() public {
         vm.startPrank(owner);
 
@@ -171,6 +177,7 @@ contract RouterTest is Test, Utils {
         assertEq(userLpUnitsAfter, userLpUnitsBefore + lpUnitsToMint);
     }
 
+    // test to check add ldty method fails given invalid tkn
     function test_addLiquidity_invalidToken() public {
         vm.startPrank(owner);
 
@@ -181,6 +188,7 @@ contract RouterTest is Test, Utils {
         vm.stopPrank();
     }
 
+    // test to check add ldty method fails given invalid amnt
     function test_addLiquidity_invalidAmount() public {
         vm.startPrank(owner);
 
@@ -203,6 +211,8 @@ contract RouterTest is Test, Utils {
     }
 
     // ------------ REMOVE LIQUIDITY TEST ------------- //
+
+    // test to remove lqdty successfuly
     function test_removeLiquidity_success() public {
         vm.startPrank(owner);
 
@@ -255,6 +265,7 @@ contract RouterTest is Test, Utils {
         assertEq(poolOwnershipUnitsTotalAfter, poolOwnershipUnitsTotalBefore - userLpAmount);
     }
 
+    // test to check rmv lqty fails given invalid tkn
     function test_removeLiquidity_invalidToken() public {
         vm.startPrank(owner);
 
@@ -265,6 +276,7 @@ contract RouterTest is Test, Utils {
         vm.stopPrank();
     }
 
+    // test to check rmv lqty fails given invalid amnt
     function test_removeLiquidity_invalidAmount() public {
         vm.startPrank(owner);
 
@@ -287,7 +299,8 @@ contract RouterTest is Test, Utils {
     }
 
     // ------------ UPDATE POOL ADDRESS --------------- //
-
+    
+    // test to update pool address
     function test_updatePoolAddress_success() public {
         vm.startPrank(owner);
 
@@ -300,6 +313,7 @@ contract RouterTest is Test, Utils {
         assertEq(poolAddress, address(poolNew));
     }
 
+    // test to check method fails of updating address by invalid address
     function test_updatePoolAddress_unauthorizedAddress() public {
         vm.startPrank(nonAuthorized);
 
@@ -310,6 +324,7 @@ contract RouterTest is Test, Utils {
 
     // ---------------------- SWAP ------------------------- //
 
+    // test to add swap to stream queue, and execute 1 stream of it
     function test_streamingSwap_success() public {
         /*
             1. Create pool with tokens (100 TKNA)
@@ -397,6 +412,7 @@ contract RouterTest is Test, Utils {
         console.log("%s Exec Price ====>", executionPriceAfterSwap);
     }
 
+    // test to check the method fails if invalid pool is given
     function test_swap_invalidToken() public {
         vm.startPrank(owner);
 
@@ -413,6 +429,7 @@ contract RouterTest is Test, Utils {
         router.swap(address(tokenA), address(0x0), 1, 1);
     }
 
+    // test to check the method fails if invalid amount given
     function test_swap_invalidAmount() public {
         vm.startPrank(owner);
 
@@ -428,7 +445,8 @@ contract RouterTest is Test, Utils {
         vm.expectRevert(IRouterErrors.InvalidAmount.selector);
         router.swap(address(tokenA), address(0x0), 0, 1);
     }
-
+    
+    // test to check the method fails if invalid exec price given
     function test_swap_invalidExecPrice() public {
         vm.startPrank(owner);
 
@@ -445,6 +463,7 @@ contract RouterTest is Test, Utils {
         router.swap(address(tokenA), address(0x0), 1, 0);
     }
 
+    // test to add pending swap in pending queue
     function test_streamingSwapAddPending_success() public {
         vm.startPrank(owner);
 
@@ -503,6 +522,7 @@ contract RouterTest is Test, Utils {
         assertEq(swapPending.swapAmountRemaining, pendingSwapAmount);
     }
 
+    // test to add swap to pending queue, then stream the queue so that pending adds back to stream queue
     function test_streamingSwapAddPendingToStream_success() public {
         vm.startPrank(owner);
 
@@ -562,6 +582,7 @@ contract RouterTest is Test, Utils {
         assertEq(swapsStreamAfter[backA-1].executionPrice , pendingExecutionPrice);
     }
 
+    // test to check the execution of whole swap and test token transfer
     function test_streamingSwapTransferToken_success() public {
         vm.startPrank(owner);
 
@@ -626,6 +647,7 @@ contract RouterTest is Test, Utils {
         assertEq(userBalanceBAfter, userBalanceABefore + swapAmountOutBeforeSwap);
     }
 
+    // test to enter opp direction swap and also execute it in the same stream
     function test_oppositeDirectionSwapExecution_success() public {
         /* 
             1. Create pool with tokens (100 TKNA)
