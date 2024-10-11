@@ -238,7 +238,7 @@ contract PoolLogic is Ownable, IPoolLogic {
                 );
                 IPoolActions(POOL_ADDRESS).updatePairStreamQueueSwap(updatedSwapData_opposite);
 
-                completedSwapToken = frontSwap.tokenIn;
+                completedSwapToken = frontSwap.tokenOut;
                 swapUser = frontSwap.user;
                 amountOutSwap = frontSwap.amountOut + amountOutA;
 
