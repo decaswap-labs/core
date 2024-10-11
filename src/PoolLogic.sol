@@ -234,7 +234,7 @@ contract PoolLogic is Ownable, IPoolLogic {
                     frontSwap.swapAmountRemaining,
                     oppositeSwap.swapAmountRemaining - amountOutA,
                     oppositeSwap.completed,
-                    oppositeSwap.streamsRemaining
+                    oppositeSwap.streamsRemaining - 1
                 );
                 IPoolActions(POOL_ADDRESS).updatePairStreamQueueSwap(updatedSwapData_opposite);
 

@@ -718,7 +718,7 @@ contract RouterTest is Test, Utils {
         bytes32 pairIdAtoB = keccak256(abi.encodePacked(address(tokenA), address(tokenB)));
         (Swap[] memory swapsAtoB, uint256 frontAtoB, uint256 backAtoB) = pool.pairStreamQueue(pairIdAtoB);
         Swap memory swapAtoB = swapsAtoB[frontAtoB];
-        // assertEq(swapAtoB.streamsRemaining, 1); @todo: swap1 stream were 3, should be down to 1 after this
+        assertEq(swapAtoB.streamsRemaining, 1);
         // @todo: in contract swapPerStream should also be updated of swap1
 
         bytes32 pairIdBtoA = keccak256(abi.encodePacked(address(tokenB), address(tokenA)));
