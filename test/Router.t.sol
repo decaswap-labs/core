@@ -684,6 +684,9 @@ contract RouterTest is Test, Utils {
         uint256 minLaunchReserveAPoolB = 5e18;
         uint256 minLaunchReserveDPoolB = 5e18; // we can change this for error test
 
+        bytes32 pairIdAtoB = keccak256(abi.encodePacked(address(tokenA), address(tokenB)));
+        bytes32 pairIdBtoA = keccak256(abi.encodePacked(address(tokenB), address(tokenA)));
+
         router.createPool(
             address(tokenA), tokenAAmount, minLaunchReserveAPoolA, minLaunchReserveDPoolA, initialDToMintPoolA
         );
@@ -706,7 +709,7 @@ contract RouterTest is Test, Utils {
         // update pair slippage
         pool.updatePairSlippage(address(tokenA), address(tokenB), SLIPPAGE);
 
-        uint256 tokenASwapAmount = 40e18; //3 streams
+        uint256 tokenASwapAmount = 40e18; //4 streams
         uint256 tokenBSwapAmount = 15e18; //1 stream
 
         vm.stopPrank();
@@ -724,7 +727,13 @@ contract RouterTest is Test, Utils {
 
         uint256 streamsBeforeSwapBtoA = poolLogic.calculateStreamCount(tokenBSwapAmount, SLIPPAGE, dToPass); //passed poolB D because its less.
 
-        console.log("B -> A %s", streamsBeforeSwapBtoA); // returning 1
+        (Swap[] memory swapsAtoB, uint256 frontAtoB, uint256 backAtoB) = pool.pairStreamQueue(pairIdAtoB);
+
+        uint256 streamsBeforeSwapAtoB = swapsAtoB[frontAtoB].streamsRemaining;
+
+        console.log("B -> A %s", streamsBeforeSwapBtoA); // 1
+        console.log("A -> B %s", streamsBeforeSwapAtoB); // 3
+        console.log("A -> B %s", swapsAtoB[frontAtoB].swapAmountRemaining);
 
         uint256 swapBtoAPerStreamLocal = tokenBSwapAmount / streamsBeforeSwapBtoA;
 
@@ -741,9 +750,8 @@ contract RouterTest is Test, Utils {
         uint256 user2TokenBBalanceAfter = tokenB.balanceOf(user2);
 
         // // get swap from queue
-        bytes32 pairIdAtoB = keccak256(abi.encodePacked(address(tokenA), address(tokenB)));
-        (Swap[] memory swapsAtoB, uint256 frontAtoB, uint256 backAtoB) = pool.pairStreamQueue(pairIdAtoB);
-        Swap memory swapAtoB = swapsAtoB[frontAtoB-1]; // @todo, array out of bound error. You are increamenting the swapQueue of AtoB instead of BtoA
+        (Swap[] memory swapsAtoBAfterSwap, uint256 frontAtoBa, uint256 backAtoBa) = pool.pairStreamQueue(pairIdAtoB);
+        Swap memory swapAtoB = swapsAtoBAfterSwap[frontAtoBa-1]; // @todo, array out of bound error. You are increamenting the swapQueue of AtoB instead of BtoA
 
         (uint256 reserveDAa,, uint256 reserveAAa,,,,,) = pool.poolInfo(address(tokenA));
 
@@ -755,7 +763,6 @@ contract RouterTest is Test, Utils {
 
         assertEq(swapAtoB.streamsRemaining, streamsAfterExecuteOfSwap1-1); // @todo, swapAtoB returning stream == 0. Whereas in terms of formula it's 1
 
-        bytes32 pairIdBtoA = keccak256(abi.encodePacked(address(tokenB), address(tokenA)));
         (Swap[] memory swapsBtoA, uint256 frontBtoA, uint256 backBtoA) = pool.pairStreamQueue(pairIdBtoA);
         assertEq(frontBtoA, backBtoA-1); // @todo, front not increamenting. 
         // assertEq(swapsBtoA[frontBtoA].completed, true);
