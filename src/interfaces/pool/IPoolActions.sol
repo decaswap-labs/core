@@ -19,7 +19,7 @@ interface IPoolActions {
     function dequeueSwap_pairPendingQueue(bytes32 pairId) external;
     // updateReservesParams encoding format => (bool aToB, address tokenA, address tokenB, uint256 reserveA_A, uint256 reserveD_A,uint256 reserveA_B, uint256 reserveD_B)
     function updateReserves(bytes memory updateReservesParams) external;
-    // updatedSwapData encoding format => (bytes32 pairId, uint256 amountOut, uint256 swapAmountRemaining, bool completed, uint256 streamsRemaining)
+    // updatedSwapData encoding format => (bytes32 pairId, uint256 amountOut, uint256 swapAmountRemaining, bool completed, uint256 streamsRemaining, uint256 streamCount, uint256 swapPerStream)
     function updatePairStreamQueueSwap(bytes memory updatedSwapData) external;
     function transferTokens(address tokenAddress, address to, uint256 amount) external;
     function sortPairPendingQueue(bytes32 pairId) external;

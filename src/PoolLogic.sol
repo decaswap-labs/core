@@ -226,16 +226,42 @@ contract PoolLogic is Ownable, IPoolLogic {
                     abi.encode(true, tokenIn, tokenOut, frontSwap.swapAmountRemaining, dOutA, amountOutA, dOutA);
                 IPoolActions(POOL_ADDRESS).updateReserves(updateReservesParams);
                 // updating frontSwap
-                bytes memory updatedSwapData_front = abi.encode(pairId, amountOutA, 0, true, 0);
+                bytes memory updatedSwapData_front = abi.encode(pairId, amountOutA, 0, true, 0,frontSwap.streamsCount,frontSwap.swapPerStream);
                 IPoolActions(POOL_ADDRESS).updatePairStreamQueueSwap(updatedSwapData_front);
-                // updating oppositeSwap
-                bytes memory updatedSwapData_opposite = abi.encode(
-                    otherPairId,
-                    frontSwap.swapAmountRemaining,
-                    oppositeSwap.swapAmountRemaining - amountOutA,
-                    oppositeSwap.completed,
-                    oppositeSwap.streamsRemaining - 1
-                );
+                bytes memory updatedSwapData_opposite;
+                if(amountOutA < oppositeSwap.swapPerStream) {
+                    uint reserveD_In_updated = reserveD_In - dOutA;
+                    uint reserveD_Out_updated = reserveD_Out + dOutA;
+                    // recalc stream count and swap per stream
+                    bytes32 poolId = getPoolId(tokenOut, tokenIn); // for pair slippage only. Not an ID for pair direction queue
+                    uint256 minPoolDepth = reserveD_In <= reserveD_Out ? reserveD_In : reserveD_Out;
+                    uint newStreamCount = calculateStreamCount(oppositeSwap.swapAmountRemaining - amountOutA,pool.pairSlippage(poolId),minPoolDepth);
+                    uint newSwapPerStream = (oppositeSwap.swapAmountRemaining - amountOutA) / newStreamCount;
+                    // updating oppositeSwap
+                    updatedSwapData_opposite = abi.encode(
+                        otherPairId,
+                        frontSwap.swapAmountRemaining,
+                        oppositeSwap.swapAmountRemaining - amountOutA,
+                        oppositeSwap.completed,
+                        newStreamCount,
+                        newStreamCount,
+                        newSwapPerStream
+                    );
+
+                }
+                else {
+                    // updating oppositeSwap
+                    updatedSwapData_opposite = abi.encode(
+                        otherPairId,
+                        frontSwap.swapAmountRemaining,
+                        oppositeSwap.swapAmountRemaining - amountOutA,
+                        oppositeSwap.completed,
+                        oppositeSwap.streamsRemaining - 1,
+                        oppositeSwap.streamsCount,
+                        oppositeSwap.swapPerStream
+                    );
+                }
+
                 IPoolActions(POOL_ADDRESS).updatePairStreamQueueSwap(updatedSwapData_opposite);
 
                 completedSwapToken = frontSwap.tokenOut;
@@ -254,11 +280,13 @@ contract PoolLogic is Ownable, IPoolLogic {
                     oppositeSwap.swapAmountRemaining,
                     frontSwap.swapAmountRemaining - amountOutB,
                     frontSwap.completed,
-                    frontSwap.streamsRemaining
+                    frontSwap.streamsRemaining,
+                    frontSwap.streamsCount,
+                    frontSwap.swapPerStream
                 );
                 IPoolActions(POOL_ADDRESS).updatePairStreamQueueSwap(updatedSwapData_Front);
                 // updating oppositeSwap
-                bytes memory updatedSwapData_opposite = abi.encode(otherPairId, amountOutB, 0, true, 0);
+                bytes memory updatedSwapData_opposite = abi.encode(otherPairId, amountOutB, 0, true, 0,oppositeSwap.streamsCount,oppositeSwap.swapPerStream);
                 IPoolActions(POOL_ADDRESS).updatePairStreamQueueSwap(updatedSwapData_opposite);
 
                 completedSwapToken = oppositeSwap.tokenIn;
@@ -289,7 +317,9 @@ contract PoolLogic is Ownable, IPoolLogic {
                 amountOut,
                 frontSwap.swapAmountRemaining - frontSwap.swapPerStream,
                 frontSwap.completed,
-                frontSwap.streamsRemaining
+                frontSwap.streamsRemaining,
+                frontSwap.streamsCount,
+                frontSwap.swapPerStream
             );
             IPoolActions(POOL_ADDRESS).updatePairStreamQueueSwap(updatedSwapData_Front);
 

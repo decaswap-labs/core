@@ -227,15 +227,17 @@ contract Pool is IPool, Ownable {
         }
     }
 
-    // updatedSwapData encoding format => (bytes32 pairId, uint256 amountOut, uint256 swapAmountRemaining, bool completed, uint256 streamsRemaining)
+    // updatedSwapData encoding format => (bytes32 pairId, uint256 amountOut, uint256 swapAmountRemaining, bool completed, uint256 streamsRemaining, uint256 streamCount, uint256 swapPerStream)
     function updatePairStreamQueueSwap(bytes memory updatedSwapData) external onlyPoolLogic {
-        (bytes32 pairId, uint256 amountOut, uint256 swapAmountRemaining, bool completed, uint256 streamsRemaining) =
-            abi.decode(updatedSwapData, (bytes32, uint256, uint256, bool, uint256));
+        (bytes32 pairId, uint256 amountOut, uint256 swapAmountRemaining, bool completed, uint256 streamsRemaining, uint256 streamCount, uint256 swapPerStream) =
+            abi.decode(updatedSwapData, (bytes32, uint256, uint256, bool, uint256,uint256,uint256));
         Swap storage swap = mapPairId_pairStreamQueue_Swaps[pairId][mapPairId_pairStreamQueue_front[pairId]];
         swap.amountOut += amountOut;
         swap.swapAmountRemaining = swapAmountRemaining;
         swap.completed = completed;
         swap.streamsRemaining = streamsRemaining;
+        swap.streamsCount = streamCount;
+        swap.swapPerStream = swapPerStream;
     }
 
     // @todo ask if we should sort it here, or pass sorted array from logic and just save
