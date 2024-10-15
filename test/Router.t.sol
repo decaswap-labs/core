@@ -751,7 +751,7 @@ contract RouterTest is Test, Utils {
 
         // // get swap from queue
         (Swap[] memory swapsAtoBAfterSwap, uint256 frontAtoBa, uint256 backAtoBa) = pool.pairStreamQueue(pairIdAtoB);
-        Swap memory swapAtoB = swapsAtoBAfterSwap[frontAtoBa-1]; // @todo, array out of bound error. You are increamenting the swapQueue of AtoB instead of BtoA
+        Swap memory swapAtoB = swapsAtoBAfterSwap[frontAtoBa]; // @todo, array out of bound error. You are increamenting the swapQueue of AtoB instead of BtoA
 
         (uint256 reserveDAa,, uint256 reserveAAa,,,,,) = pool.poolInfo(address(tokenA));
 
@@ -761,17 +761,16 @@ contract RouterTest is Test, Utils {
 
         uint256 streamsAfterExecuteOfSwap1 = poolLogic.calculateStreamCount(swapAtoB.swapAmountRemaining, SLIPPAGE, dToPassAgain);
 
-        // assertEq(swapAtoB.streamsRemaining, streamsAfterExecuteOfSwap1); // @todo, swapAtoB returning stream == 0. Whereas in terms of formula it's 1
+        assertEq(swapAtoB.streamsRemaining, streamsAfterExecuteOfSwap1); // @todo, swapAtoB returning stream == 0. Whereas in terms of formula it's 1
 
         (Swap[] memory swapsBtoA, uint256 frontBtoA, uint256 backBtoA) = pool.pairStreamQueue(pairIdBtoA);
-        // assertEq(frontBtoA, backBtoA); // @todo, front not increamenting. 
-        // assertEq(swapsBtoA[frontBtoA].completed, true);
+        assertEq(frontBtoA, backBtoA); // @todo, front not increamenting. 
+        assertEq(swapsBtoA[frontBtoA -1 ].completed, true);
 
-        console.log("AMMMOUNTTT %s",swapsBtoA[frontBtoA].swapAmountRemaining); // should return 0.
+        console.log("AMMMOUNTTT %s",swapsBtoA[frontBtoA - 1].swapAmountRemaining); // should return 0.
 
-        // assertEq(user2TokenABalanceAfter, swapAmountOutBtoABeforeSwap); 
-        // assertEq(user2TokenBBalanceAfter, user2TokenBBalanceBefore - swapBtoAPerStreamLocal); 
+        assertEq(user2TokenABalanceAfter, swapAmountOutBtoABeforeSwap); 
+        assertEq(user2TokenBBalanceAfter, user2TokenBBalanceBefore - swapBtoAPerStreamLocal); 
 
-        //@todo: you are updating the swap which is consuming the other one, instead of updating the swap which is consumed.
     }
 }

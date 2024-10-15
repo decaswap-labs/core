@@ -221,7 +221,7 @@ contract PoolLogic is Ownable, IPoolLogic {
         */
 
             // TKN , TKN
-            if (frontSwap.swapAmountRemaining < amountOutB) {
+            if (frontSwap.swapAmountRemaining > amountOutB) {
                 bytes memory updateReservesParams =
                     abi.encode(true, tokenIn, tokenOut, frontSwap.swapAmountRemaining, dOutA, amountOutA, dOutA);
                 IPoolActions(POOL_ADDRESS).updateReserves(updateReservesParams);
@@ -229,7 +229,7 @@ contract PoolLogic is Ownable, IPoolLogic {
                 bytes memory updatedSwapData_front = abi.encode(pairId, amountOutA, 0, true, 0,frontSwap.streamsCount,frontSwap.swapPerStream);
                 IPoolActions(POOL_ADDRESS).updatePairStreamQueueSwap(updatedSwapData_front);
                 bytes memory updatedSwapData_opposite;
-                if(amountOutA < oppositeSwap.swapPerStream) {
+                if(amountOutA != oppositeSwap.swapPerStream) {
                     uint reserveD_In_updated = reserveD_In - dOutA;
                     uint reserveD_Out_updated = reserveD_Out + dOutA;
                     // recalc stream count and swap per stream
