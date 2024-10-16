@@ -739,38 +739,281 @@ contract RouterTest is Test, Utils {
 
         (, uint256 swapAmountOutBtoABeforeSwap) =
             poolLogic.getSwapAmountOut(swapBtoAPerStreamLocal, reserveAB, reserveAA, reserveDB, reserveDA);
+        console.log("swapAmountOutBtoABeforeSwap itny A",swapAmountOutBtoABeforeSwap);
+        vm.startPrank(user2);
+        router.swap(address(tokenB), address(tokenA), tokenBSwapAmount, 1); //@todo: Swap not working. That's why cant test rest of code
+        vm.stopPrank();
 
-        // vm.startPrank(user2);
-        // router.swap(address(tokenB), address(tokenA), tokenBSwapAmount, 1); @todo: Swap not working. That's why cant test rest of code
-        // vm.stopPrank();
+        vm.startPrank(owner);
 
-        // vm.startPrank(owner);
+        uint256 user2TokenABalanceAfter = tokenA.balanceOf(user2);
+        uint256 user2TokenBBalanceAfter = tokenB.balanceOf(user2);
 
-        // uint256 user2TokenABalanceAfter = tokenA.balanceOf(user2);
-        // uint256 user2TokenBBalanceAfter = tokenB.balanceOf(user2);
+        // // get swap from queue
+        (Swap[] memory swapsAtoBAfterSwap, uint256 frontAtoBa, uint256 backAtoBa) = pool.pairStreamQueue(pairIdAtoB);
+        Swap memory swapAtoB = swapsAtoBAfterSwap[frontAtoBa]; // @todo, array out of bound error. You are increamenting the swapQueue of AtoB instead of BtoA
 
-        // // // get swap from queue
-        // (Swap[] memory swapsAtoBAfterSwap, uint256 frontAtoBa, uint256 backAtoBa) = pool.pairStreamQueue(pairIdAtoB);
-        // Swap memory swapAtoB = swapsAtoBAfterSwap[frontAtoBa]; // @todo, array out of bound error. You are increamenting the swapQueue of AtoB instead of BtoA
+        (uint256 reserveDAa,, uint256 reserveAAa,,,,,) = pool.poolInfo(address(tokenA));
 
-        // (uint256 reserveDAa,, uint256 reserveAAa,,,,,) = pool.poolInfo(address(tokenA));
+        (uint256 reserveDBb,, uint256 reserveABb,,,,,) = pool.poolInfo(address(tokenB));
 
-        // (uint256 reserveDBb,, uint256 reserveABb,,,,,) = pool.poolInfo(address(tokenB));
+        uint256 dToPassAgain = reserveDAa <= reserveDBb ? reserveDAa : reserveDBb;
 
-        // uint256 dToPassAgain = reserveDAa <= reserveDBb ? reserveDAa : reserveDBb;
+        uint256 streamsAfterExecuteOfSwap1 = poolLogic.calculateStreamCount(swapAtoB.swapAmountRemaining, SLIPPAGE, dToPassAgain);
 
-        // uint256 streamsAfterExecuteOfSwap1 = poolLogic.calculateStreamCount(swapAtoB.swapAmountRemaining, SLIPPAGE, dToPassAgain);
+        assertEq(swapAtoB.streamsRemaining, streamsAfterExecuteOfSwap1); // @todo, swapAtoB returning stream == 0. Whereas in terms of formula it's 1
 
-        // assertEq(swapAtoB.streamsRemaining, streamsAfterExecuteOfSwap1); // @todo, swapAtoB returning stream == 0. Whereas in terms of formula it's 1
+        (Swap[] memory swapsBtoA, uint256 frontBtoA, uint256 backBtoA) = pool.pairStreamQueue(pairIdBtoA);
+        assertEq(frontBtoA, backBtoA); // @todo, front not increamenting. 
+        assertEq(swapsBtoA[frontBtoA -1 ].completed, true);
 
-        // (Swap[] memory swapsBtoA, uint256 frontBtoA, uint256 backBtoA) = pool.pairStreamQueue(pairIdBtoA);
-        // assertEq(frontBtoA, backBtoA); // @todo, front not increamenting. 
-        // assertEq(swapsBtoA[frontBtoA -1 ].completed, true);
+        console.log("AMMMOUNTTT %s",swapsBtoA[frontBtoA - 1].swapAmountRemaining); // should return 0.
 
-        // console.log("AMMMOUNTTT %s",swapsBtoA[frontBtoA - 1].swapAmountRemaining); // should return 0.
-
-        // assertEq(user2TokenABalanceAfter, swapAmountOutBtoABeforeSwap); 
-        // assertEq(user2TokenBBalanceAfter, user2TokenBBalanceBefore - swapBtoAPerStreamLocal); 
+        assertEq(user2TokenABalanceAfter, swapAmountOutBtoABeforeSwap); 
+        assertEq(user2TokenBBalanceAfter, user2TokenBBalanceBefore - swapBtoAPerStreamLocal); 
 
     }
+
+      function test_oppositeDirectionSwapExecution_success2() public {
+        /* 
+            1. Create pool with tokens (100 TKNA)
+            2. Create second pool with tokens (100 TKNB)
+            3. Set pair slippage to 10
+            4. Now we have to swap 30 TKNA to TKNB in a manner that is should have 3 streams
+            5. Now we have to swap  10 TKNB to TKNA in a manner that it should be consumed by first swap
+            4. Calculate streams of both swaps before hand
+            6. Calculate swap per stream before hand
+            7. Calculate swapAmountOut of only 1 stream of swap1 and whole swap2
+            8. Make swap object x2
+            9. Enter swap object x2
+            10 Calculate balance1 of swap2 before
+            11. Assert execution price and streamRemaining of swap2 == 0
+            12. Assert amountOut of swap1 to swapAmountOut1
+            13. calculate of balance1 of swap2 after and assert balance1After = balance1Before + swapAmountOut2
+            14. Assert PoolA reserveA, reserveD
+            15. Assert PoolB reserveA, reserveD
+        */
+
+        vm.startPrank(owner);
+
+        uint256 initialDToMintPoolA = 10e18;
+        uint256 initialDToMintPoolB = 10e18;
+        uint256 SLIPPAGE = 10;
+
+        uint256 tokenAAmount = 100e18;
+        uint256 minLaunchReserveAPoolA = 5e18;
+        uint256 minLaunchReserveDPoolA = 5e18;
+
+        uint256 tokenBAmount = 100e18;
+        uint256 minLaunchReserveAPoolB = 5e18;
+        uint256 minLaunchReserveDPoolB = 5e18; // we can change this for error test
+
+        bytes32 pairIdAtoB = keccak256(abi.encodePacked(address(tokenA), address(tokenB)));
+        bytes32 pairIdBtoA = keccak256(abi.encodePacked(address(tokenB), address(tokenA)));
+
+        router.createPool(
+            address(tokenA), tokenAAmount, minLaunchReserveAPoolA, minLaunchReserveDPoolA, initialDToMintPoolA
+        );
+
+        router.createPool(
+            address(tokenB), tokenBAmount, minLaunchReserveAPoolB, minLaunchReserveDPoolB, initialDToMintPoolB
+        );
+
+        address user1 = address(0xFff);
+        address user2 = address(0xddd);
+
+        uint256 user1TokenABalanceBefore = 100e18;
+        uint256 user2TokenBBalanceBefore = 100e18;
+
+        tokenA.transfer(user1, user1TokenABalanceBefore);
+        tokenB.transfer(user2, user2TokenBBalanceBefore);
+
+        //---------------------------------------------------------------------------------------------//
+
+        // update pair slippage
+        pool.updatePairSlippage(address(tokenA), address(tokenB), SLIPPAGE);
+
+        uint256 tokenASwapAmount = 40e18; //4 streams
+        uint256 tokenBSwapAmount = 15e18; //1 stream
+
+        vm.stopPrank();
+        // sending 1 as exec price as we want them to stream not go to pending
+
+        vm.startPrank(user1);
+        router.swap(address(tokenA), address(tokenB), tokenASwapAmount, 1);
+        vm.stopPrank();
+
+        (uint256 reserveDA,, uint256 reserveAA,,,,,) = pool.poolInfo(address(tokenA));
+
+        (uint256 reserveDB,, uint256 reserveAB,,,,,) = pool.poolInfo(address(tokenB));
+
+        uint256 dToPass = reserveDA <= reserveDB ? reserveDA : reserveDB;
+
+        uint256 streamsBeforeSwapBtoA = poolLogic.calculateStreamCount(tokenBSwapAmount, SLIPPAGE, dToPass); //passed poolB D because its less.
+
+        (Swap[] memory swapsAtoB, uint256 frontAtoB, uint256 backAtoB) = pool.pairStreamQueue(pairIdAtoB);
+
+        uint256 streamsBeforeSwapAtoB = swapsAtoB[frontAtoB].streamsRemaining;
+
+        console.log("B -> A %s", streamsBeforeSwapBtoA); 
+        console.log("A -> B %s", streamsBeforeSwapAtoB); 
+        console.log("A -> B %s", swapsAtoB[frontAtoB].swapAmountRemaining);
+
+        uint256 swapBtoAPerStreamLocal = tokenBSwapAmount / streamsBeforeSwapBtoA;
+
+        (, uint256 swapAmountOutBtoABeforeSwap) =
+            poolLogic.getSwapAmountOut(swapsAtoB[frontAtoB].swapAmountRemaining, reserveAA, reserveAB, reserveDA, reserveDB);
+        vm.startPrank(user2);
+        router.swap(address(tokenB), address(tokenA), tokenBSwapAmount, 1); //@todo: Swap not working. That's why cant test rest of code
+        vm.stopPrank();
+
+        vm.startPrank(owner);
+
+        uint256 user2TokenABalanceAfter = tokenA.balanceOf(user2);
+        uint256 user2TokenBBalanceAfter = tokenB.balanceOf(user2);
+
+        // // get swap from queue
+        (Swap[] memory swapsAtoBAfterSwap, uint256 frontAtoBa, uint256 backAtoBa) = pool.pairStreamQueue(pairIdAtoB);
+        Swap memory swapAtoB = swapsAtoBAfterSwap[frontAtoBa -1 ]; // as A - B is consumed fully
+        (uint256 reserveDAa,, uint256 reserveAAa,,,,,) = pool.poolInfo(address(tokenA));
+
+        (uint256 reserveDBb,, uint256 reserveABb,,,,,) = pool.poolInfo(address(tokenB));
+
+        uint256 dToPassAgain = reserveDAa <= reserveDBb ? reserveDAa : reserveDBb;
+
+        uint256 streamsAfterExecuteOfSwap1 = poolLogic.calculateStreamCount(swapAtoB.swapAmountRemaining, SLIPPAGE, dToPassAgain);
+
+        assertEq(swapAtoB.streamsRemaining, streamsAfterExecuteOfSwap1); // 0 == 0 
+
+        (Swap[] memory swapsBtoA, uint256 frontBtoA, uint256 backBtoA) = pool.pairStreamQueue(pairIdBtoA);
+        assertEq(frontBtoA, backBtoA - 1); // should not be consumed 
+        assertEq(swapsBtoA[frontBtoA].completed, false);
+
+        console.log("AMMMOUNTTT %s",swapsBtoA[frontBtoA].swapAmountRemaining); // should return 0.
+
+        assertEq(user2TokenABalanceAfter, 0); // as swap is not consumed fully 
+        assertEq(user2TokenBBalanceAfter, user2TokenBBalanceBefore - swapBtoAPerStreamLocal); 
+
+    }
+
+      function test_oppositeDirectionSwapExecution_success3() public {
+        /* 
+            1. Create pool with tokens (100 TKNA)
+            2. Create second pool with tokens (100 TKNB)
+            3. Set pair slippage to 10
+            4. Now we have to swap 30 TKNA to TKNB in a manner that is should have 3 streams
+            5. Now we have to swap  10 TKNB to TKNA in a manner that it should be consumed by first swap
+            4. Calculate streams of both swaps before hand
+            6. Calculate swap per stream before hand
+            7. Calculate swapAmountOut of only 1 stream of swap1 and whole swap2
+            8. Make swap object x2
+            9. Enter swap object x2
+            10 Calculate balance1 of swap2 before
+            11. Assert execution price and streamRemaining of swap2 == 0
+            12. Assert amountOut of swap1 to swapAmountOut1
+            13. calculate of balance1 of swap2 after and assert balance1After = balance1Before + swapAmountOut2
+            14. Assert PoolA reserveA, reserveD
+            15. Assert PoolB reserveA, reserveD
+        */
+
+        vm.startPrank(owner);
+
+        uint256 initialDToMintPoolA = 10e18;
+        uint256 initialDToMintPoolB = 10e18;
+        uint256 SLIPPAGE = 10;
+
+        uint256 tokenAAmount = 100e18;
+        uint256 minLaunchReserveAPoolA = 5e18;
+        uint256 minLaunchReserveDPoolA = 5e18;
+
+        uint256 tokenBAmount = 100e18;
+        uint256 minLaunchReserveAPoolB = 5e18;
+        uint256 minLaunchReserveDPoolB = 5e18; // we can change this for error test
+
+        bytes32 pairIdAtoB = keccak256(abi.encodePacked(address(tokenA), address(tokenB)));
+        bytes32 pairIdBtoA = keccak256(abi.encodePacked(address(tokenB), address(tokenA)));
+
+        router.createPool(
+            address(tokenA), tokenAAmount, minLaunchReserveAPoolA, minLaunchReserveDPoolA, initialDToMintPoolA
+        );
+
+        router.createPool(
+            address(tokenB), tokenBAmount, minLaunchReserveAPoolB, minLaunchReserveDPoolB, initialDToMintPoolB
+        );
+
+        address user1 = address(0xFff);
+        address user2 = address(0xddd);
+
+        uint256 user1TokenABalanceBefore = 100e18;
+        uint256 user2TokenBBalanceBefore = 100e18;
+
+        tokenA.transfer(user1, user1TokenABalanceBefore);
+        tokenB.transfer(user2, user2TokenBBalanceBefore);
+
+        //---------------------------------------------------------------------------------------------//
+
+        // update pair slippage
+        pool.updatePairSlippage(address(tokenA), address(tokenB), SLIPPAGE);
+
+        uint256 tokenASwapAmount = 60e18; //6 streams
+        uint256 tokenBSwapAmount = 20e18; //2 stream
+
+        vm.stopPrank();
+        // sending 1 as exec price as we want them to stream not go to pending
+
+        vm.startPrank(user1);
+        router.swap(address(tokenA), address(tokenB), tokenASwapAmount, 1);
+        vm.stopPrank();
+
+        (uint256 reserveDA,, uint256 reserveAA,,,,,) = pool.poolInfo(address(tokenA));
+
+        (uint256 reserveDB,, uint256 reserveAB,,,,,) = pool.poolInfo(address(tokenB));
+
+        uint256 dToPass = reserveDA <= reserveDB ? reserveDA : reserveDB;
+
+        uint256 streamsBeforeSwapBtoA = poolLogic.calculateStreamCount(tokenBSwapAmount, SLIPPAGE, dToPass); //passed poolB D because its less.
+
+        (Swap[] memory swapsAtoB, uint256 frontAtoB, uint256 backAtoB) = pool.pairStreamQueue(pairIdAtoB);
+
+        uint256 streamsBeforeSwapAtoB = swapsAtoB[frontAtoB].streamsRemaining;
+
+        console.log("B -> A %s", streamsBeforeSwapBtoA); 
+        console.log("A -> B %s", streamsBeforeSwapAtoB); 
+        console.log("A -> B %s", swapsAtoB[frontAtoB].swapAmountRemaining);
+
+        (, uint256 swapAmountOutBtoABeforeSwap) =
+            poolLogic.getSwapAmountOut(swapsAtoB[frontAtoB].swapAmountRemaining, reserveAA, reserveAB, reserveDA, reserveDB);
+        vm.startPrank(user2);
+        router.swap(address(tokenB), address(tokenA), tokenBSwapAmount, 1); //@todo: Swap not working. That's why cant test rest of code
+        vm.stopPrank();
+
+        vm.startPrank(owner);
+
+        uint256 user2TokenABalanceAfter = tokenA.balanceOf(user2);
+        uint256 user2TokenBBalanceAfter = tokenB.balanceOf(user2);
+
+        // // get swap from queue
+        (Swap[] memory swapsAtoBAfterSwap, uint256 frontAtoBa, uint256 backAtoBa) = pool.pairStreamQueue(pairIdAtoB);
+        Swap memory swapAtoB = swapsAtoBAfterSwap[frontAtoBa -1 ]; // as A - B is consumed fully
+        (uint256 reserveDAa,, uint256 reserveAAa,,,,,) = pool.poolInfo(address(tokenA));
+
+        (uint256 reserveDBb,, uint256 reserveABb,,,,,) = pool.poolInfo(address(tokenB));
+
+        uint256 dToPassAgain = reserveDAa <= reserveDBb ? reserveDAa : reserveDBb;
+
+        uint256 streamsAfterExecuteOfSwap1 = poolLogic.calculateStreamCount(swapAtoB.swapAmountRemaining, SLIPPAGE, dToPassAgain);
+
+        assertEq(swapAtoB.streamsRemaining, streamsAfterExecuteOfSwap1); // 0 == 0 
+
+        (Swap[] memory swapsBtoA, uint256 frontBtoA, uint256 backBtoA) = pool.pairStreamQueue(pairIdBtoA);
+        assertEq(frontBtoA, backBtoA - 1); // should not be consumed 
+        assertEq(swapsBtoA[frontBtoA].completed, false);
+
+        console.log("AMMMOUNTTT %s",swapsBtoA[frontBtoA].swapAmountRemaining); // should return 0.
+        assertEq(user2TokenABalanceAfter, 0); // as swap is not consumed fully 
+        assertEq(user2TokenBBalanceAfter, user2TokenBBalanceBefore - tokenBSwapAmount); 
+
+    }
+
+
 }

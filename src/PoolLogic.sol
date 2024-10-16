@@ -201,7 +201,6 @@ contract PoolLogic is Ownable, IPoolLogic {
             // B->A
             (uint256 dOutB, uint256 amountOutB) =
                 getSwapAmountOut(oppositeSwap.swapAmountRemaining, reserveA_Out, reserveA_In, reserveD_Out, reserveD_In);
-
             /* 
             I have taken out amountOut of both swap directions
             Now one swap should consume the other one
@@ -219,9 +218,7 @@ contract PoolLogic is Ownable, IPoolLogic {
             AmountOut2 = AmountOut2 + AmountIn1 // 0+50, Alice wanted 250 tokens, but now she has only those 
             tokens which I was selling. Which is 50
         */
-
-            // TKN , TKN
-            if (frontSwap.swapAmountRemaining > amountOutB) {
+            if (frontSwap.swapAmountRemaining <= amountOutB) {
                 bytes memory updateReservesParams =
                     abi.encode(true, tokenIn, tokenOut, frontSwap.swapAmountRemaining, dOutA, amountOutA, dOutA);
                 IPoolActions(POOL_ADDRESS).updateReserves(updateReservesParams);
@@ -275,6 +272,11 @@ contract PoolLogic is Ownable, IPoolLogic {
                     abi.encode(false, tokenIn, tokenOut, amountOutB, dOutB, oppositeSwap.swapAmountRemaining, dOutB);
                     
                 IPoolActions(POOL_ADDRESS).updateReserves(updateReservesParams);
+
+                // consuming oppositeSwap fully
+                bytes memory updatedSwapData_opposite = abi.encode(otherPairId, amountOutB, 0, true, 0,oppositeSwap.streamsCount,oppositeSwap.swapPerStream);
+                IPoolActions(POOL_ADDRESS).updatePairStreamQueueSwap(updatedSwapData_opposite);
+
                 bytes memory updatedSwapData_Front;
                 
                 if(amountOutB != frontSwap.swapPerStream) {
@@ -308,11 +310,8 @@ contract PoolLogic is Ownable, IPoolLogic {
                 }
                 // updating frontSwap
                 IPoolActions(POOL_ADDRESS).updatePairStreamQueueSwap(updatedSwapData_Front);
-                // updating oppositeSwap
-                bytes memory updatedSwapData_opposite = abi.encode(otherPairId, amountOutB, 0, true, 0,oppositeSwap.streamsCount,oppositeSwap.swapPerStream);
-                IPoolActions(POOL_ADDRESS).updatePairStreamQueueSwap(updatedSwapData_opposite);
 
-                completedSwapToken = oppositeSwap.tokenIn;
+                completedSwapToken = oppositeSwap.tokenOut;
                 swapUser = oppositeSwap.user;
                 amountOutSwap = oppositeSwap.amountOut + amountOutB;
 
@@ -439,6 +438,7 @@ contract PoolLogic is Ownable, IPoolLogic {
         override
         returns (uint256)
     {
+        if(amount == 0) return 0;
         // streamQuantity = SwappedAmount/(globalMinSlippage * PoolDepth)
 
         // (10e18 * 10000) / (10000-15 * 15e18)
