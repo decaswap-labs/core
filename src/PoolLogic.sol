@@ -200,9 +200,9 @@ contract PoolLogic is Ownable, IPoolLogic {
                 getSwapAmountOut(frontSwap.swapAmountRemaining, reserveA_In, reserveA_Out, reserveD_In, reserveD_Out);
             // B->A
 
-            console.log(amountOutB,"this is amountOutB");
-            console.log(amountOutB,"this is amountOutB");
-            console.log(amountOutB,"this is amountOutB");
+            // console.log(amountOutB,"this is amountOutB");
+            // console.log(amountOutB,"this is amountOutB");
+            // console.log(amountOutB,"this is amountOutB");
             // 40 A -> 16.6 B
             // 18 B -> 18.1 A
             uint dOutB;
