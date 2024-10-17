@@ -195,25 +195,9 @@ contract PoolLogic is Ownable, IPoolLogic {
 
         if (oppositeBack - oppositeFront != 0) {
             Swap memory oppositeSwap = oppositeSwaps[oppositeFront];
-            // A->B , dout1 is D1, amountOut1 is B
-            (uint256 dOutA, uint256 amountOutA) =
-                getSwapAmountOut(frontSwap.swapAmountRemaining, reserveA_In, reserveA_Out, reserveD_In, reserveD_Out);
-            // B->A
-
-            // console.log(amountOutB,"this is amountOutB");
-            // console.log(amountOutB,"this is amountOutB");
-            // console.log(amountOutB,"this is amountOutB");
-            // 40 A -> 16.6 B
-            // 18 B -> 18.1 A
-            uint dOutB;
+            // A->B, amountOut1 is B
+            uint amountOutA = (frontSwap.swapAmountRemaining * reserveA_In) / reserveA_Out;
             uint amountOutB = (oppositeSwap.swapAmountRemaining * reserveA_Out) / reserveA_In;
-            // (uint256 dOutB, uint256 amountOutB) =
-            //     getSwapAmountOut(oppositeSwap.swapAmountRemaining, reserveA_Out, reserveA_In, reserveD_Out, reserveD_In);
-            
-            // console.log(amountOutB,"amountOutB");
-            // console.log(amountOutA,"amountOutA");
-            // console.log(oppositeSwap.swapAmountRemaining,"oppositeSwap.swapAmountRemaining");
-            // console.log(frontSwap.swapAmountRemaining,"frontSwap.swapAmountRemaining");
             /* 
             I have taken out amountOut of both swap directions
             Now one swap should consume the other one
@@ -233,25 +217,22 @@ contract PoolLogic is Ownable, IPoolLogic {
         */
             if (frontSwap.swapAmountRemaining <= amountOutB) {
                 bytes memory updateReservesParams =
-                    abi.encode(true, tokenIn, tokenOut, frontSwap.swapAmountRemaining, dOutA, amountOutA, dOutA);
+                    abi.encode(true, tokenIn, tokenOut, frontSwap.swapAmountRemaining, 0, amountOutA, 0);
                 IPoolActions(POOL_ADDRESS).updateReserves(updateReservesParams);
                 // updating frontSwap
                 bytes memory updatedSwapData_front = abi.encode(pairId, amountOutA, 0, true, 0,frontSwap.streamsCount,frontSwap.swapPerStream);
                 IPoolActions(POOL_ADDRESS).updatePairStreamQueueSwap(updatedSwapData_front);
                 bytes memory updatedSwapData_opposite;
                 if(amountOutA != oppositeSwap.swapPerStream) {
-                    console.log("is,e auaa");
                     console.log(oppositeSwap.swapAmountRemaining - amountOutA,"oppositeSwap.swapAmountRemaining - amountOutA");
-                    uint reserveD_In_updated = reserveD_In - dOutA;
-                    uint reserveD_Out_updated = reserveD_Out + dOutA;
                     // recalc stream count and swap per stream
                     bytes32 poolId = getPoolId(tokenOut, tokenIn); // for pair slippage only. Not an ID for pair direction queue
-                    uint256 minPoolDepth = reserveD_In_updated <= reserveD_Out_updated ? reserveD_In_updated : reserveD_Out_updated;
+                    uint256 minPoolDepth = reserveD_In <= reserveD_Out ? reserveD_In : reserveD_Out;
                     uint newStreamCount = calculateStreamCount(oppositeSwap.swapAmountRemaining - amountOutA,pool.pairSlippage(poolId),minPoolDepth);
                     console.log(pool.pairSlippage(poolId),"slippage");
                     console.log(minPoolDepth,"minPoolDepth");
-                    console.log(reserveD_In_updated,"reserveD_In_updated");
-                    console.log(reserveD_Out_updated,"reserveD_Out_updated");
+                    console.log(reserveD_In,"reserveD_In");
+                    console.log(reserveD_Out,"reserveD_Out");
         
                     uint newSwapPerStream = (oppositeSwap.swapAmountRemaining - amountOutA) / newStreamCount;
                     // updating oppositeSwap
@@ -289,7 +270,7 @@ contract PoolLogic is Ownable, IPoolLogic {
                 IPoolActions(POOL_ADDRESS).dequeueSwap_pairStreamQueue(pairId);
             } else {
                 bytes memory updateReservesParams =
-                    abi.encode(false, tokenIn, tokenOut, amountOutB, dOutB, oppositeSwap.swapAmountRemaining, dOutB);
+                    abi.encode(false, tokenIn, tokenOut, amountOutB, 0, oppositeSwap.swapAmountRemaining, 0); // no change in D
                     
                 IPoolActions(POOL_ADDRESS).updateReserves(updateReservesParams);
 
@@ -302,11 +283,9 @@ contract PoolLogic is Ownable, IPoolLogic {
                 if(amountOutB != frontSwap.swapPerStream) {
                     console.log(frontSwap.swapPerStream,"frontSwap.swapPerStream");
                     console.log(frontSwap.swapAmountRemaining - amountOutB,"frontSwap.swapAmountRemaining - amountOutB");
-                    uint reserveD_Out_updated = reserveD_Out - dOutA;
-                    uint reserveD_In_updated = reserveD_In + dOutA;
                     // recalc stream count and swap per stream
                     bytes32 poolId = getPoolId(tokenIn, tokenOut); // for pair slippage only. Not an ID for pair direction queue
-                    uint256 minPoolDepth = reserveD_In_updated <= reserveD_Out_updated ? reserveD_In_updated : reserveD_Out_updated;
+                    uint256 minPoolDepth = reserveD_In <= reserveD_Out ? reserveD_In : reserveD_Out;
                     uint newStreamCount = calculateStreamCount(frontSwap.swapAmountRemaining - amountOutB,pool.pairSlippage(poolId),minPoolDepth);
                     uint newSwapPerStream = (frontSwap.swapAmountRemaining - amountOutB) / newStreamCount;
                     updatedSwapData_Front = abi.encode(
