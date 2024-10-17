@@ -7,7 +7,7 @@ import {IPoolActions} from "./interfaces/pool/IPoolActions.sol";
 import {IERC20} from "./interfaces/utils/IERC20.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 import {Swap} from "./lib/SwapQueue.sol";
-
+import "forge-std/console.sol";
 contract PoolLogic is Ownable, IPoolLogic {
     uint256 internal BASE_D_AMOUNT = 1e18;
     uint256 internal DECIMAL = 1e18;
@@ -199,8 +199,21 @@ contract PoolLogic is Ownable, IPoolLogic {
             (uint256 dOutA, uint256 amountOutA) =
                 getSwapAmountOut(frontSwap.swapAmountRemaining, reserveA_In, reserveA_Out, reserveD_In, reserveD_Out);
             // B->A
-            (uint256 dOutB, uint256 amountOutB) =
-                getSwapAmountOut(oppositeSwap.swapAmountRemaining, reserveA_Out, reserveA_In, reserveD_Out, reserveD_In);
+
+            console.log(amountOutB,"this is amountOutB");
+            console.log(amountOutB,"this is amountOutB");
+            console.log(amountOutB,"this is amountOutB");
+            // 40 A -> 16.6 B
+            // 18 B -> 18.1 A
+            uint dOutB;
+            uint amountOutB = (oppositeSwap.swapAmountRemaining * reserveA_Out) / reserveA_In;
+            // (uint256 dOutB, uint256 amountOutB) =
+            //     getSwapAmountOut(oppositeSwap.swapAmountRemaining, reserveA_Out, reserveA_In, reserveD_Out, reserveD_In);
+            
+            // console.log(amountOutB,"amountOutB");
+            // console.log(amountOutA,"amountOutA");
+            // console.log(oppositeSwap.swapAmountRemaining,"oppositeSwap.swapAmountRemaining");
+            // console.log(frontSwap.swapAmountRemaining,"frontSwap.swapAmountRemaining");
             /* 
             I have taken out amountOut of both swap directions
             Now one swap should consume the other one
@@ -227,12 +240,19 @@ contract PoolLogic is Ownable, IPoolLogic {
                 IPoolActions(POOL_ADDRESS).updatePairStreamQueueSwap(updatedSwapData_front);
                 bytes memory updatedSwapData_opposite;
                 if(amountOutA != oppositeSwap.swapPerStream) {
+                    console.log("is,e auaa");
+                    console.log(oppositeSwap.swapAmountRemaining - amountOutA,"oppositeSwap.swapAmountRemaining - amountOutA");
                     uint reserveD_In_updated = reserveD_In - dOutA;
                     uint reserveD_Out_updated = reserveD_Out + dOutA;
                     // recalc stream count and swap per stream
                     bytes32 poolId = getPoolId(tokenOut, tokenIn); // for pair slippage only. Not an ID for pair direction queue
-                    uint256 minPoolDepth = reserveD_In <= reserveD_Out ? reserveD_In : reserveD_Out;
+                    uint256 minPoolDepth = reserveD_In_updated <= reserveD_Out_updated ? reserveD_In_updated : reserveD_Out_updated;
                     uint newStreamCount = calculateStreamCount(oppositeSwap.swapAmountRemaining - amountOutA,pool.pairSlippage(poolId),minPoolDepth);
+                    console.log(pool.pairSlippage(poolId),"slippage");
+                    console.log(minPoolDepth,"minPoolDepth");
+                    console.log(reserveD_In_updated,"reserveD_In_updated");
+                    console.log(reserveD_Out_updated,"reserveD_Out_updated");
+        
                     uint newSwapPerStream = (oppositeSwap.swapAmountRemaining - amountOutA) / newStreamCount;
                     // updating oppositeSwap
                     updatedSwapData_opposite = abi.encode(
@@ -280,11 +300,13 @@ contract PoolLogic is Ownable, IPoolLogic {
                 bytes memory updatedSwapData_Front;
                 
                 if(amountOutB != frontSwap.swapPerStream) {
+                    console.log(frontSwap.swapPerStream,"frontSwap.swapPerStream");
+                    console.log(frontSwap.swapAmountRemaining - amountOutB,"frontSwap.swapAmountRemaining - amountOutB");
                     uint reserveD_Out_updated = reserveD_Out - dOutA;
                     uint reserveD_In_updated = reserveD_In + dOutA;
                     // recalc stream count and swap per stream
                     bytes32 poolId = getPoolId(tokenIn, tokenOut); // for pair slippage only. Not an ID for pair direction queue
-                    uint256 minPoolDepth = reserveD_In <= reserveD_Out ? reserveD_In : reserveD_Out;
+                    uint256 minPoolDepth = reserveD_In_updated <= reserveD_Out_updated ? reserveD_In_updated : reserveD_Out_updated;
                     uint newStreamCount = calculateStreamCount(frontSwap.swapAmountRemaining - amountOutB,pool.pairSlippage(poolId),minPoolDepth);
                     uint newSwapPerStream = (frontSwap.swapAmountRemaining - amountOutB) / newStreamCount;
                     updatedSwapData_Front = abi.encode(
@@ -298,6 +320,8 @@ contract PoolLogic is Ownable, IPoolLogic {
                     );
                 }
                 else {
+                    console.log(amountOutB,"amountOutB");
+                    console.log(frontSwap.swapPerStream,"frontSwap.swapPerStream");
                     updatedSwapData_Front = abi.encode(
                         pairId,
                         oppositeSwap.swapAmountRemaining,
