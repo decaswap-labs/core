@@ -4,13 +4,14 @@ pragma solidity ^0.8.13;
 import {IPool} from "./interfaces/IPool.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 import {IPoolLogicActions} from "./interfaces/pool-logic/IPoolLogicActions.sol";
-import {IERC20} from "./interfaces/utils/IERC20.sol";
+import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import {Queue} from "./lib/SwapQueue.sol";
 import {Swap} from "./lib/SwapQueue.sol";
 import {PoolSwapData} from "./lib/SwapQueue.sol";
 import {SwapSorter} from "./lib/QuickSort.sol";
 
 contract Pool is IPool, Ownable {
+    using SafeERC20 for IERC20;
     using Queue for Queue.QueueStruct;
 
     address public override VAULT_ADDRESS = address(0);
@@ -153,9 +154,8 @@ contract Pool is IPool, Ownable {
         // @note may or may not be needed here.
         mapToken_poolFeeCollected[token] += poolFeeCollected;
 
-        // @todo use OZ or custom safeERC20 implementation to transfer tokens
         // transferring tokens to user
-        IERC20(token).transfer(user, assetToTransfer);
+        IERC20(token).safeTransfer(user, assetToTransfer);
 
         emit LiquidityRemoved(user, token, lpUnits, assetToTransfer, dAmountToDeduct);
     }
@@ -254,7 +254,7 @@ contract Pool is IPool, Ownable {
     }
 
     function transferTokens(address token, address to, uint256 amount) external onlyPoolLogic {
-        IERC20(token).transfer(to, amount);
+        IERC20(token).safeTransfer(to, amount);
     }
 
     function depositVault(address user, uint256 amountIn, address tokenIn) external override onlyRouter {
