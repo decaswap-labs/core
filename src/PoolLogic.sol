@@ -378,11 +378,6 @@ contract PoolLogic is Ownable, IPoolLogic {
             }
         }
 
-        // transferring tokens
-        if (completedSwapToken != address(0)) {
-            IPoolActions(POOL_ADDRESS).transferTokens(completedSwapToken, swapUser, amountOutSwap);
-        }
-
         // --------------------------- HANDLE PENDING SWAP INSERTION ----------------------------- //
         (Swap[] memory swaps_pending, uint256 front_pending, uint256 back_pending) = pool.pairPendingQueue(pairId);
 
@@ -401,6 +396,11 @@ contract PoolLogic is Ownable, IPoolLogic {
                 require(back_pending > front_pending, "Queue is empty");
                 IPoolActions(POOL_ADDRESS).dequeueSwap_pairPendingQueue(pairId);
             }
+        }
+
+        // transferring tokens
+        if (completedSwapToken != address(0)) {
+            IPoolActions(POOL_ADDRESS).transferTokens(completedSwapToken, swapUser, amountOutSwap);
         }
     }
 
