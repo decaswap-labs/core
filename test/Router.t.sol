@@ -981,4 +981,60 @@ contract RouterTest is Test, Utils {
         assertEq(user2TokenABalanceAfter, swapAmountOutBtoABeforeSwap);
         assertEq(user2TokenBBalanceAfter, user2TokenBBalanceBefore - tokenBSwapAmount);
     }
+
+   // // ------------------------------------- PROCESS PAIR ------------------------------- //
+     // test to add swap to stream queue, and execute 1 stream of it
+    function test_processPair_success() public {
+        vm.startPrank(owner);
+
+        uint256 initialDToMintPoolA = 50e18;
+        uint256 initialDToMintPoolB = 10e18;
+        uint256 SLIPPAGE = 10;
+
+        uint256 tokenAAmount = 100e18;
+        uint256 minLaunchReserveAPoolA = 25e18;
+        uint256 minLaunchReserveDPoolA = 25e18;
+
+        uint256 tokenBAmount = 100e18;
+        uint256 minLaunchReserveAPoolB = 25e18;
+        uint256 minLaunchReserveDPoolB = 5e18; // we can change this for error test
+
+        router.createPool(
+            address(tokenA), tokenAAmount, minLaunchReserveAPoolA, minLaunchReserveDPoolA, initialDToMintPoolA
+        );
+
+        router.createPool(
+            address(tokenB), tokenBAmount, minLaunchReserveAPoolB, minLaunchReserveDPoolB, initialDToMintPoolB
+        );
+
+        bytes32 pairId = keccak256(abi.encodePacked(address(tokenA), address(tokenB)));
+
+        // update pair slippage
+        pool.updatePairSlippage(address(tokenA), address(tokenB), SLIPPAGE);
+
+        uint256 tokenASwapAmount = 30e18;
+
+        router.swap(address(tokenA), address(tokenB), tokenASwapAmount, 1);
+    
+        (Swap[] memory swapsBeforeProcess, uint256 front,) = pool.pairStreamQueue(pairId);
+
+        uint256 streamsBeforeSwap = poolLogic.calculateStreamCount(swapsBeforeProcess[front].swapAmountRemaining, SLIPPAGE, initialDToMintPoolB); //passed poolB D because its less.
+
+        uint256 swapPerStreamLocal = swapsBeforeProcess[front].swapAmountRemaining / streamsBeforeSwap;
+
+        router.processPair(address(tokenA), address(tokenB));
+        // get swap from queue
+        (Swap[] memory swapsAfterProcess, uint256 frontP, ) = pool.pairStreamQueue(pairId);
+
+        assertEq(swapsAfterProcess[frontP].swapAmountRemaining, tokenASwapAmount - swapPerStreamLocal*2);
+        assertEq(swapsAfterProcess[frontP].streamsRemaining, streamsBeforeSwap - 1);
+    }
+
+    function test_processPair_invalidToken() public {
+        vm.startPrank(owner);
+
+        vm.expectRevert(IRouterErrors.InvalidPool.selector);
+
+        router.processPair(address(0), address(0));
+    }
 }
