@@ -16,7 +16,7 @@ contract RouterTest is Test, Utils {
     PoolLogic poolLogic;
     MockERC20 public tokenA;
     MockERC20 public tokenB;
-    Router public router;
+    Router public router;`
     address public owner = address(0xD);
     address public nonAuthorized = address(0xE);
 

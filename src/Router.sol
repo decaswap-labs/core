@@ -7,24 +7,13 @@ import {IPoolStates} from "./interfaces/pool/IPoolStates.sol";
 import {IPoolLogic} from "./interfaces/IPoolLogic.sol";
 import {IRouter} from "./interfaces/IRouter.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-<<<<<<< HEAD
-=======
 import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
->>>>>>> 3c69080e88a2a24808d6ec74cd13f4d89d0c8cd1
 
 // @todo decide where to keep events. Router/Pool?
 // @todo remove unused errors
 
-<<<<<<< HEAD
-contract Router is Ownable, IRouter {
-    using SafeERC20 for IERC20;
-
-
-=======
 contract Router is Ownable, ReentrancyGuard, IRouter {
     using SafeERC20 for IERC20;
-
->>>>>>> 3c69080e88a2a24808d6ec74cd13f4d89d0c8cd1
     address public override POOL_ADDRESS;
     IPoolActions pool;
     IPoolStates poolStates;
