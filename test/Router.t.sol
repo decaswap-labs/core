@@ -16,7 +16,7 @@ contract RouterTest is Test, Utils {
     PoolLogic poolLogic;
     MockERC20 public tokenA;
     MockERC20 public tokenB;
-    Router public router;`
+    Router public router;
     address public owner = address(0xD);
     address public nonAuthorized = address(0xE);
 
@@ -654,6 +654,11 @@ contract RouterTest is Test, Utils {
 
         //---------------------------------------------------------------------------------------------//
 
+        /*  swap 1 = 100 TKNA
+            swap 2 = 20 TKNB
+            swap 3 = 20 TKNB
+            swap 4 = 20 tknB  */
+
         // update pair slippage
         pool.updatePairSlippage(address(tokenA), address(tokenB), SLIPPAGE);
 
@@ -718,24 +723,6 @@ contract RouterTest is Test, Utils {
     }
 
     function test_oppositeDirectionSwapDifferentAmountPerStreamSwapAConsumesSwapBExecution_success() public {
-        /*
-            1. Create pool with tokens (100 TKNA)
-            2. Create second pool with tokens (100 TKNB)
-            3. Set pair slippage to 10
-            4. Now we have to swap 30 TKNA to TKNB in a manner that is should have 3 streams
-            5. Now we have to swap  10 TKNB to TKNA in a manner that it should be consumed by first swap
-            4. Calculate streams of both swaps before hand
-            6. Calculate swap per stream before hand
-            7. Calculate swapAmountOut of only 1 stream of swap1 and whole swap2
-            8. Make swap object x2
-            9. Enter swap object x2
-            10 Calculate balance1 of swap2 before
-            11. Assert execution price and streamRemaining of swap2 == 0
-            12. Assert amountOut of swap1 to swapAmountOut1
-            13. calculate of balance1 of swap2 after and assert balance1After = balance1Before + swapAmountOut2
-            14. Assert PoolA reserveA, reserveD
-            15. Assert PoolB reserveA, reserveD
-        */
 
         vm.startPrank(owner);
 
