@@ -7,12 +7,14 @@ import {IPoolStates} from "./interfaces/pool/IPoolStates.sol";
 import {IPoolLogic} from "./interfaces/IPoolLogic.sol";
 import {IRouter} from "./interfaces/IRouter.sol";
 import {IERC20} from "./interfaces/utils/IERC20.sol";
+import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
+
 // @todo decide where to keep events. Router/Pool?
 // @todo OZ safeERC20 or custom implementation?
 // @todo ERC777 supported or not? (For reentrancy).
 // @todo remove unused errors
 
-contract Router is Ownable, IRouter {
+contract Router is Ownable, ReentrancyGuard, IRouter {
     address public override POOL_ADDRESS;
     IPoolActions pool;
     IPoolStates poolStates;
@@ -42,7 +44,7 @@ contract Router is Ownable, IRouter {
         );
     }
 
-    function addLiquidity(address token, uint256 amount) external override {
+    function addLiquidity(address token, uint256 amount) external nonReentrant override {
         // @todo confirm about the appoach, where to keep checks? PoolLogic/Pool/Router??Then refactor
         if (!poolExist(token)) revert InvalidPool();
         if (amount == 0) revert InvalidAmount();
@@ -53,7 +55,7 @@ contract Router is Ownable, IRouter {
         emit LiquidityAdded(msg.sender, token, amount);
     }
 
-    function removeLiquidity(address token, uint256 lpUnits) external override {
+    function removeLiquidity(address token, uint256 lpUnits) external nonReentrant override {
         if (!poolExist(token)) revert InvalidPool();
         if (lpUnits == 0 || lpUnits > poolStates.userLpUnitInfo(msg.sender, token)) revert InvalidAmount();
 
@@ -62,7 +64,7 @@ contract Router is Ownable, IRouter {
         emit LiquidityRemoved(msg.sender, token, lpUnits);
     }
 
-    function swap(address tokenIn, address tokenOut, uint256 amountIn, uint256 executionPrice) external {
+    function swap(address tokenIn, address tokenOut, uint256 amountIn, uint256 executionPrice) external nonReentrant {
         if (amountIn == 0) revert InvalidAmount();
         if (executionPrice == 0) revert InvalidExecutionPrice();
         if (!poolExist(tokenIn) || !poolExist(tokenOut)) revert InvalidPool();
@@ -71,7 +73,7 @@ contract Router is Ownable, IRouter {
         IPoolLogic(poolStates.POOL_LOGIC()).swap(msg.sender, tokenIn, tokenOut, amountIn, executionPrice);
     }
 
-    function processPair(address tokenIn, address tokenOut) external {
+    function processPair(address tokenIn, address tokenOut) external nonReentrant {
         if (!poolExist(tokenIn) || !poolExist(tokenOut)) revert InvalidPool();
         IPoolLogic(poolStates.POOL_LOGIC()).processPair(tokenIn,tokenOut);
     }
