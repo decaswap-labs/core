@@ -17,7 +17,6 @@ interface IPoolLogicActions {
     function calculateLpUnitsToMint(uint256, uint256, uint256) external pure returns (uint256);
 
     function calculateDUnitsToMint(uint256, uint256, uint256, uint256) external view returns (uint256);
-    function updateBaseDAmount(uint256) external;
     function updatePoolAddress(address) external;
 
     function calculateAssetTransfer(uint256, uint256, uint256) external pure returns (uint256);
