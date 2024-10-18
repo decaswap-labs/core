@@ -892,105 +892,93 @@ contract RouterTest is Test, Utils {
 
     }
 
-    // function test_oppositeDirectionSwapSameAmountWholeSwapBothConsumesEachOther_success() public {
-    //     vm.startPrank(owner);
+    function test_oppositeDirectionSwapSameAmountWholeSwapBIsConsumedBySwapA_success() public {
+        vm.startPrank(owner);
 
-    //     uint256 initialDToMintPoolA = 10e18;
-    //     uint256 initialDToMintPoolB = 10e18;
-    //     uint256 SLIPPAGE = 10;
+        uint256 initialDToMintPoolA = 10e18;
+        uint256 initialDToMintPoolB = 10e18;
+        uint256 SLIPPAGE = 10;
 
-    //     uint256 tokenAAmount = 100e18;
-    //     uint256 minLaunchReserveAPoolA = 5e18;
-    //     uint256 minLaunchReserveDPoolA = 5e18;
+        uint256 tokenAAmount = 100e18;
+        uint256 minLaunchReserveAPoolA = 5e18;
+        uint256 minLaunchReserveDPoolA = 5e18;
 
-    //     uint256 tokenBAmount = 100e18;
-    //     uint256 minLaunchReserveAPoolB = 5e18;
-    //     uint256 minLaunchReserveDPoolB = 5e18; // we can change this for error test
+        uint256 tokenBAmount = 100e18;
+        uint256 minLaunchReserveAPoolB = 5e18;
+        uint256 minLaunchReserveDPoolB = 5e18; // we can change this for error test
 
-    //     bytes32 pairIdAtoB = keccak256(abi.encodePacked(address(tokenA), address(tokenB)));
-    //     bytes32 pairIdBtoA = keccak256(abi.encodePacked(address(tokenB), address(tokenA)));
+        bytes32 pairIdAtoB = keccak256(abi.encodePacked(address(tokenA), address(tokenB)));
+        bytes32 pairIdBtoA = keccak256(abi.encodePacked(address(tokenB), address(tokenA)));
 
-    //     router.createPool(
-    //         address(tokenA), tokenAAmount, minLaunchReserveAPoolA, minLaunchReserveDPoolA, initialDToMintPoolA
-    //     );
+        router.createPool(
+            address(tokenA), tokenAAmount, minLaunchReserveAPoolA, minLaunchReserveDPoolA, initialDToMintPoolA
+        );
 
-    //     router.createPool(
-    //         address(tokenB), tokenBAmount, minLaunchReserveAPoolB, minLaunchReserveDPoolB, initialDToMintPoolB
-    //     );
+        router.createPool(
+            address(tokenB), tokenBAmount, minLaunchReserveAPoolB, minLaunchReserveDPoolB, initialDToMintPoolB
+        );
 
-    //     address user1 = address(0xFff);
-    //     address user2 = address(0xddd);
+        address user1 = address(0xFff);
+        address user2 = address(0xddd);
 
-    //     uint256 user1TokenABalanceBefore = 100e18;
-    //     uint256 user2TokenBBalanceBefore = 100e18;
+        uint256 user1TokenABalanceBefore = 100e18;
+        uint256 user2TokenBBalanceBefore = 100e18;
 
-    //     tokenA.transfer(user1, user1TokenABalanceBefore);
-    //     tokenB.transfer(user2, user2TokenBBalanceBefore);
+        tokenA.transfer(user1, user1TokenABalanceBefore);
+        tokenB.transfer(user2, user2TokenBBalanceBefore);
 
-    //     //---------------------------------------------------------------------------------------------//
+        //---------------------------------------------------------------------------------------------//
 
-    //     // update pair slippage
-    //     pool.updatePairSlippage(address(tokenA), address(tokenB), SLIPPAGE);
+        // update pair slippage
+        pool.updatePairSlippage(address(tokenA), address(tokenB), SLIPPAGE);
 
-    //     uint256 tokenASwapAmount = 60e18;
-    //     uint256 tokenBSwapAmount = 50e18;
+        uint256 tokenASwapAmount = 60e18;
+        uint256 tokenBSwapAmount = 50e18;
 
-    //     vm.stopPrank();
-    //     // sending 1 as exec price as we want them to stream not go to pending
+        vm.stopPrank();
+        (uint256 reserveDa,, uint256 reserveA,,,,,) = pool.poolInfo(address(tokenA));
 
-    //     (uint256 reserveDa,, uint256 reserveA,,,,,) = pool.poolInfo(address(tokenA));
+        (uint256 reserveDb,, uint256 reserveB,,,,,) = pool.poolInfo(address(tokenB));
 
-    //     (uint256 reserveDb,, uint256 reserveB,,,,,) = pool.poolInfo(address(tokenB));
+        uint256 dToPass = reserveDa <= reserveDb ? reserveDa : reserveDb;
 
-    //     uint256 dToPass = reserveDa <= reserveDb ? reserveDa : reserveDb;
+        uint256 swapAStreams = poolLogic.calculateStreamCount(tokenASwapAmount, SLIPPAGE, dToPass);
+        uint256 swapAAmountPerStream = tokenASwapAmount / swapAStreams;
+        (, uint256 swapAStream1AmountOut) =
+            poolLogic.getSwapAmountOut(swapAAmountPerStream, reserveA, reserveB, reserveDa, reserveDb);
 
-    //     uint256 swapAStreams = poolLogic.calculateStreamCount(tokenASwapAmount, SLIPPAGE, dToPass);
-    //     uint256 swapAAmountPerStream = tokenASwapAmount / swapAStreams;
-    //     (, uint256 swapAStream1AmountOut) =
-    //         poolLogic.getSwapAmountOut(swapAAmountPerStream, reserveA, reserveB, reserveDa, reserveDb);
+        vm.startPrank(user1);
+        router.swap(address(tokenA), address(tokenB), tokenASwapAmount, 1);
+        vm.stopPrank();
 
-    //     vm.startPrank(user1);
-    //     router.swap(address(tokenA), address(tokenB), tokenASwapAmount, 1);
-    //     vm.stopPrank();
+        (uint256 reserveDaa,, uint256 reserveAa,,,,,) = pool.poolInfo(address(tokenA));
 
-    //     (uint256 reserveDaa,, uint256 reserveAa,,,,,) = pool.poolInfo(address(tokenA));
+        (uint256 reserveDbb,, uint256 reserveBb,,,,,) = pool.poolInfo(address(tokenB));
 
-    //     (uint256 reserveDbb,, uint256 reserveBb,,,,,) = pool.poolInfo(address(tokenB));
+        (Swap[] memory swapsAtoBTemp, uint256 frontAtoBTemp,) = pool.pairStreamQueue(pairIdAtoB);
 
-    //     (Swap[] memory swapsAtoBTemp, uint256 frontAtoBTemp,) = pool.pairStreamQueue(pairIdAtoB);
+        uint256 swapAmountOutAtoBBeforeSwap = (swapsAtoBTemp[frontAtoBTemp].swapAmountRemaining * reserveAa) / reserveBb;
+        uint256 swapAmountOutBtoABeforeSwap = (tokenBSwapAmount * reserveBb) / reserveAa;
 
-    //     uint256 swapAmountOutAtoBBeforeSwap = (swapsAtoBTemp[frontAtoBTemp].swapAmountRemaining * reserveAa) / reserveBb;
-    //     uint256 swapAmountOutBtoABeforeSwap = (tokenBSwapAmount * reserveBb) / reserveAa;
+        console.log(swapAmountOutAtoBBeforeSwap);
+        console.log(swapAmountOutBtoABeforeSwap);
 
-    //     vm.startPrank(user2);
-    //     router.swap(address(tokenB), address(tokenA), tokenBSwapAmount, 1);
-    //     vm.stopPrank();
+        vm.startPrank(user2);
+        router.swap(address(tokenB), address(tokenA), tokenBSwapAmount, 1);
+        vm.stopPrank();
 
-    //     vm.startPrank(owner);
+        vm.startPrank(owner);
 
-    //     uint256 user2TokenABalanceAfter = tokenA.balanceOf(user2);
-    //     uint256 user2TokenBBalanceAfter = tokenB.balanceOf(user2);
+        uint256 user2TokenABalanceAfter = tokenA.balanceOf(user2);
+        uint256 user2TokenBBalanceAfter = tokenB.balanceOf(user2);
 
-    //     uint256 user1TokenABalanceAfter = tokenA.balanceOf(user1);
-    //     uint256 user1TokenBBalanceAfter = tokenB.balanceOf(user1);
+        (Swap[] memory swapsBtoAAfterSwap, uint256 frontBtoAAfterSwap, uint256 backBtoAAfterSwap) =
+            pool.pairStreamQueue(pairIdBtoA);
+        assertEq(frontBtoAAfterSwap, backBtoAAfterSwap);
+        assertEq(swapsBtoAAfterSwap[frontBtoAAfterSwap -1 ].completed, true);
+        assertEq(swapsBtoAAfterSwap[frontBtoAAfterSwap -1 ].swapAmountRemaining, 0);
 
-    //     // // get swap from queue
-    //     (Swap[] memory swapsAtoBAfterSwap, uint256 frontAtoBAfterSwap, uint256 backAtoBAfterSwap) =
-    //         pool.pairStreamQueue(pairIdAtoB);
-    //     // assertEq(frontAtoBAfterSwap,backAtoBAfterSwap);
-    //     // assertEq(swapsAtoBAfterSwap[frontAtoBAfterSwap-1].completed,true);
-    //     // assertEq(swapsAtoBAfterSwap[frontAtoBAfterSwap - 1].swapAmountRemaining,0);
-
-    //     (Swap[] memory swapsBtoAAfterSwap, uint256 frontBtoAAfterSwap, uint256 backBtoAAfterSwap) =
-    //         pool.pairStreamQueue(pairIdBtoA);
-    //     // assertEq(frontBtoAAfterSwap, backBtoAAfterSwap);
-    //     // assertEq(swapsBtoAAfterSwap[frontBtoAAfterSwap -1 ].completed, true);
-    //     // assertEq(swapsBtoAAfterSwap[frontBtoAAfterSwap -1 ].swapAmountRemaining, 0);
-
-    //     assertEq(user2TokenABalanceAfter, swapAmountOutBtoABeforeSwap);
-    //     assertEq(user2TokenBBalanceAfter, user2TokenBBalanceBefore - tokenBSwapAmount);
-
-    //     assertEq(user1TokenABalanceAfter, user1TokenABalanceBefore - tokenASwapAmount);
-    //     assertEq(user1TokenBBalanceAfter, swapAStream1AmountOut + swapAmountOutAtoBBeforeSwap);
-    // }
+        assertEq(user2TokenABalanceAfter, swapAmountOutBtoABeforeSwap);
+        assertEq(user2TokenBBalanceAfter, user2TokenBBalanceBefore - tokenBSwapAmount);
+    }
 }
