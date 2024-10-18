@@ -13,6 +13,7 @@ interface IPoolLogicActions {
     function addLiquidity(address token, address user, uint256 amount) external;
     function removeLiquidity(address token, address user, uint256 lpUnits) external;
     function swap(address user, address tokenIn, address tokenOut, uint256 amountIn, uint256 executionPrice) external;
+    function processPair(address tokenIn, address tokenOut) external;
     function calculateLpUnitsToMint(uint256, uint256, uint256) external pure returns (uint256);
 
     function calculateDUnitsToMint(uint256, uint256, uint256, uint256) external view returns (uint256);

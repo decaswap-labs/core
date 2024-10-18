@@ -71,6 +71,11 @@ contract Router is Ownable, IRouter {
         IPoolLogic(poolStates.POOL_LOGIC()).swap(msg.sender, tokenIn, tokenOut, amountIn, executionPrice);
     }
 
+    function processPair(address tokenIn, address tokenOut) external {
+        if (!poolExist(tokenIn) || !poolExist(tokenOut)) revert InvalidPool();
+        IPoolLogic(poolStates.POOL_LOGIC()).processPair(tokenIn,tokenOut);
+    }
+
     function updatePoolAddress(address newPoolAddress) external override onlyOwner {
         emit PoolAddressUpdated(POOL_ADDRESS, newPoolAddress);
         POOL_ADDRESS = newPoolAddress;

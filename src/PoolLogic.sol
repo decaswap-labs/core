@@ -122,7 +122,7 @@ contract PoolLogic is Ownable, IPoolLogic {
         uint256 minPoolDepth;
 
         bytes32 poolId;
-        bytes32 pairId;
+        
 
         // break into streams
         minPoolDepth = reserveD_In <= reserveD_Out ? reserveD_In : reserveD_Out;
@@ -131,7 +131,7 @@ contract PoolLogic is Ownable, IPoolLogic {
         swapPerStream = amountIn / streamCount;
 
         // initiate swapqueue per direction
-        pairId = keccak256(abi.encodePacked(tokenIn, tokenOut)); // for one direction
+        bytes32 pairId = keccak256(abi.encodePacked(tokenIn, tokenOut)); // for one direction
 
         uint256 currentPrice = getExecutionPrice(reserveA_In, reserveA_Out);
 
@@ -154,10 +154,14 @@ contract PoolLogic is Ownable, IPoolLogic {
             currentPrice
         );
 
-        _executeStream(pairId, tokenIn, tokenOut);
+        _executeStream(tokenIn, tokenOut);
     }
 
-    function _executeStream(bytes32 pairId, address tokenIn, address tokenOut) internal {
+    function processPair(address tokenIn, address tokenOut) external onlyRouter {
+        _executeStream(tokenIn, tokenOut);
+    }
+
+    function _executeStream(address tokenIn, address tokenOut) internal {
         (
             uint256 reserveD_In,
             uint256 poolOwnershipUnitsTotal_In,
@@ -183,6 +187,7 @@ contract PoolLogic is Ownable, IPoolLogic {
         address completedSwapToken;
         address swapUser;
         uint256 amountOutSwap;
+        bytes32 pairId = keccak256(abi.encodePacked(tokenIn, tokenOut));
 
         // loading the front swap from the stream queue
         (Swap[] memory swaps, uint256 front, uint256 back) = pool.pairStreamQueue(pairId);
