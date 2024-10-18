@@ -10,8 +10,6 @@ import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 
 // @todo decide where to keep events. Router/Pool?
-// @todo OZ safeERC20 or custom implementation?
-// @todo ERC777 supported or not? (For reentrancy).
 // @todo remove unused errors
 
 contract Router is Ownable, ReentrancyGuard, IRouter {

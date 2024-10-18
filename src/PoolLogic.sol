@@ -6,12 +6,8 @@ import {IPoolLogic} from "./interfaces/IPoolLogic.sol";
 import {IPoolActions} from "./interfaces/pool/IPoolActions.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 import {Swap} from "./lib/SwapQueue.sol";
-import "forge-std/console.sol";
 
 contract PoolLogic is Ownable, IPoolLogic {
-    uint256 internal BASE_D_AMOUNT = 1e18;
-    uint256 internal DECIMAL = 1e18;
-
     address public override POOL_ADDRESS;
     IPoolStates public pool;
 
@@ -254,17 +250,12 @@ contract PoolLogic is Ownable, IPoolLogic {
                 bytes memory updatedSwapData_opposite;
 
                 if (amountOutA != oppositeSwap.swapPerStream) {
-                    // console.log(oppositeSwap.swapAmountRemaining - amountOutA,"oppositeSwap.swapAmountRemaining - amountOutA");
                     // recalc stream count and swap per stream
                     bytes32 poolId = getPoolId(tokenOut, tokenIn); // for pair slippage only. Not an ID for pair direction queue
                     uint256 minPoolDepth = reserveD_In <= reserveD_Out ? reserveD_In : reserveD_Out;
                     uint256 newStreamCount = calculateStreamCount(
                         oppositeSwap.swapAmountRemaining - amountOutA, pool.pairSlippage(poolId), minPoolDepth
                     );
-                    // console.log(pool.pairSlippage(poolId),"slippage");
-                    // console.log(minPoolDepth,"minPoolDepth");
-                    // console.log(reserveD_In,"reserveD_In");
-                    // console.log(reserveD_Out,"reserveD_Out");
 
                     uint256 newSwapPerStream = (oppositeSwap.swapAmountRemaining - amountOutA) / newStreamCount;
                     // updating oppositeSwap
@@ -313,8 +304,6 @@ contract PoolLogic is Ownable, IPoolLogic {
                 bytes memory updatedSwapData_Front;
 
                 if (amountOutB != frontSwap.swapPerStream) {
-                    // console.log(frontSwap.swapPerStream,"frontSwap.swapPerStream");
-                    // console.log(frontSwap.swapAmountRemaining - amountOutB,"frontSwap.swapAmountRemaining - amountOutB");
                     // recalc stream count and swap per stream
                     bytes32 poolId = getPoolId(tokenIn, tokenOut); // for pair slippage only. Not an ID for pair direction queue
                     uint256 minPoolDepth = reserveD_In <= reserveD_Out ? reserveD_In : reserveD_Out;
@@ -322,8 +311,6 @@ contract PoolLogic is Ownable, IPoolLogic {
                         frontSwap.swapAmountRemaining - amountOutB, pool.pairSlippage(poolId), minPoolDepth
                     );
                 } else {
-                    // console.log(amountOutB,"amountOutB");
-                    // console.log(frontSwap.swapPerStream,"frontSwap.swapPerStream");
                     updatedSwapData_Front = abi.encode(
                         pairId,
                         oppositeSwap.swapAmountRemaining,
@@ -529,11 +516,6 @@ contract PoolLogic is Ownable, IPoolLogic {
 
     function getExecutionPrice(uint256 reserveA1, uint256 reserveA2) public pure override returns (uint256) {
         return (reserveA1 * 1e18 / reserveA2);
-    }
-
-    function updateBaseDAmount(uint256 newBaseDAmount) external override onlyOwner {
-        emit BaseDUpdated(BASE_D_AMOUNT, newBaseDAmount);
-        BASE_D_AMOUNT = newBaseDAmount;
     }
 
     function updatePoolAddress(address poolAddress) external override onlyOwner {
