@@ -44,7 +44,7 @@ contract Router is Ownable, ReentrancyGuard, IRouter {
         );
     }
 
-    function addLiquidity(address token, uint256 amount) external nonReentrant override {
+    function addLiquidity(address token, uint256 amount) external override nonReentrant {
         // @todo confirm about the appoach, where to keep checks? PoolLogic/Pool/Router??Then refactor
         if (!poolExist(token)) revert InvalidPool();
         if (amount == 0) revert InvalidAmount();
@@ -55,7 +55,7 @@ contract Router is Ownable, ReentrancyGuard, IRouter {
         emit LiquidityAdded(msg.sender, token, amount);
     }
 
-    function removeLiquidity(address token, uint256 lpUnits) external nonReentrant override {
+    function removeLiquidity(address token, uint256 lpUnits) external override nonReentrant {
         if (!poolExist(token)) revert InvalidPool();
         if (lpUnits == 0 || lpUnits > poolStates.userLpUnitInfo(msg.sender, token)) revert InvalidAmount();
 
@@ -75,7 +75,7 @@ contract Router is Ownable, ReentrancyGuard, IRouter {
 
     function processPair(address tokenIn, address tokenOut) external nonReentrant {
         if (!poolExist(tokenIn) || !poolExist(tokenOut)) revert InvalidPool();
-        IPoolLogic(poolStates.POOL_LOGIC()).processPair(tokenIn,tokenOut);
+        IPoolLogic(poolStates.POOL_LOGIC()).processPair(tokenIn, tokenOut);
     }
 
     function updatePoolAddress(address newPoolAddress) external override onlyOwner {

@@ -504,7 +504,7 @@ contract RouterTest is Test, Utils {
 
         uint256 pendingSwapAmount = tokenASwapAmount / 2;
 
-        uint256 pendingExecutionPrice = executionPriceAfterSwap*2;
+        uint256 pendingExecutionPrice = executionPriceAfterSwap * 2;
 
         router.swap(address(tokenA), address(tokenB), pendingSwapAmount, pendingExecutionPrice);
 
@@ -578,8 +578,8 @@ contract RouterTest is Test, Utils {
 
         uint256 lengthOfStreamAfter = swapsStreamAfter.length;
 
-        assertEq(lengthOfStreamAfter, lengthOfStreamBefore+1);
-        assertEq(swapsStreamAfter[backA-1].executionPrice , pendingExecutionPrice);
+        assertEq(lengthOfStreamAfter, lengthOfStreamBefore + 1);
+        assertEq(swapsStreamAfter[backA - 1].executionPrice, pendingExecutionPrice);
     }
 
     //test to check the execution of whole swap and test token transfer
@@ -634,16 +634,16 @@ contract RouterTest is Test, Utils {
 
         (Swap[] memory swaps, uint256 front, uint256 back) = pool.pairStreamQueue(pairId);
 
-        assertEq(front,back);
+        assertEq(front, back);
 
-        assertEq(swaps[front-1].completed , true);
+        assertEq(swaps[front - 1].completed, true);
 
         assertEq(userBalanceAAfter, userBalanceABefore - tokenASwapAmount);
 
         assertEq(userBalanceBAfter, userBalanceABefore + swapAmountOutBeforeSwap);
     }
 
-   // test to enter opp direction swap and also execute it in the same stream
+    // test to enter opp direction swap and also execute it in the same stream
     function test_oppositeDirectionSwapSameAmountPerStreamSwapAConsumesSwapBExecution_success() public {
         /*
             1. Create pool with tokens (100 TKNA)
@@ -732,7 +732,7 @@ contract RouterTest is Test, Utils {
         uint256 swapBtoAPerStreamLocal = tokenBSwapAmount / streamsBeforeSwapBtoA;
 
         uint256 swapAmountOutBtoABeforeSwap = (tokenBSwapAmount * reserveAB) / reserveAA;
-        console.log("swapAmountOutBtoABeforeSwap =======>",swapAmountOutBtoABeforeSwap);
+        console.log("swapAmountOutBtoABeforeSwap =======>", swapAmountOutBtoABeforeSwap);
 
         vm.startPrank(user2);
         router.swap(address(tokenB), address(tokenA), tokenBSwapAmount, 1);
@@ -753,19 +753,19 @@ contract RouterTest is Test, Utils {
 
         uint256 dToPassAgain = reserveDAa <= reserveDBb ? reserveDAa : reserveDBb;
 
-        uint256 streamsAfterExecuteOfSwap1 = poolLogic.calculateStreamCount(swapAtoB.swapAmountRemaining, SLIPPAGE, dToPassAgain);
+        uint256 streamsAfterExecuteOfSwap1 =
+            poolLogic.calculateStreamCount(swapAtoB.swapAmountRemaining, SLIPPAGE, dToPassAgain);
 
         assertEq(swapAtoB.streamsRemaining, streamsAfterExecuteOfSwap1);
 
         (Swap[] memory swapsBtoA, uint256 frontBtoA, uint256 backBtoA) = pool.pairStreamQueue(pairIdBtoA);
         assertEq(frontBtoA, backBtoA);
-        assertEq(swapsBtoA[frontBtoA -1 ].completed, true);
+        assertEq(swapsBtoA[frontBtoA - 1].completed, true);
 
-        assertEq(swapsBtoA[frontBtoA - 1].swapAmountRemaining,0); // should return 0.
+        assertEq(swapsBtoA[frontBtoA - 1].swapAmountRemaining, 0); // should return 0.
 
         assertEq(user2TokenABalanceAfter, swapAmountOutBtoABeforeSwap);
         assertEq(user2TokenBBalanceAfter, user2TokenBBalanceBefore - swapBtoAPerStreamLocal);
-
     }
 
     function test_oppositeDirectionSwapDifferentAmountPerStreamSwapAConsumesSwapBExecution_success() public {
@@ -856,7 +856,7 @@ contract RouterTest is Test, Utils {
         uint256 swapBtoAPerStreamLocal = tokenBSwapAmount / streamsBeforeSwapBtoA;
 
         uint256 swapAmountOutBtoABeforeSwap = (tokenBSwapAmount * reserveAB) / reserveAA;
-        console.log("swapAmountOutBtoABeforeSwap =======>",swapAmountOutBtoABeforeSwap);
+        console.log("swapAmountOutBtoABeforeSwap =======>", swapAmountOutBtoABeforeSwap);
 
         vm.startPrank(user2);
         router.swap(address(tokenB), address(tokenA), tokenBSwapAmount, 1);
@@ -877,19 +877,19 @@ contract RouterTest is Test, Utils {
 
         uint256 dToPassAgain = reserveDAa <= reserveDBb ? reserveDAa : reserveDBb;
 
-        uint256 streamsAfterExecuteOfSwap1 = poolLogic.calculateStreamCount(swapAtoB.swapAmountRemaining, SLIPPAGE, dToPassAgain);
+        uint256 streamsAfterExecuteOfSwap1 =
+            poolLogic.calculateStreamCount(swapAtoB.swapAmountRemaining, SLIPPAGE, dToPassAgain);
 
         assertEq(swapAtoB.streamsRemaining, streamsAfterExecuteOfSwap1);
 
         (Swap[] memory swapsBtoA, uint256 frontBtoA, uint256 backBtoA) = pool.pairStreamQueue(pairIdBtoA);
         assertEq(frontBtoA, backBtoA);
-        assertEq(swapsBtoA[frontBtoA -1 ].completed, true);
+        assertEq(swapsBtoA[frontBtoA - 1].completed, true);
 
-        assertEq(swapsBtoA[frontBtoA - 1].swapAmountRemaining,0);
+        assertEq(swapsBtoA[frontBtoA - 1].swapAmountRemaining, 0);
 
         assertEq(user2TokenABalanceAfter, swapAmountOutBtoABeforeSwap);
         assertEq(user2TokenBBalanceAfter, user2TokenBBalanceBefore - swapBtoAPerStreamLocal);
-
     }
 
     function test_oppositeDirectionSwapSameAmountWholeSwapBIsConsumedBySwapA_success() public {
@@ -975,15 +975,15 @@ contract RouterTest is Test, Utils {
         (Swap[] memory swapsBtoAAfterSwap, uint256 frontBtoAAfterSwap, uint256 backBtoAAfterSwap) =
             pool.pairStreamQueue(pairIdBtoA);
         assertEq(frontBtoAAfterSwap, backBtoAAfterSwap);
-        assertEq(swapsBtoAAfterSwap[frontBtoAAfterSwap -1 ].completed, true);
-        assertEq(swapsBtoAAfterSwap[frontBtoAAfterSwap -1 ].swapAmountRemaining, 0);
+        assertEq(swapsBtoAAfterSwap[frontBtoAAfterSwap - 1].completed, true);
+        assertEq(swapsBtoAAfterSwap[frontBtoAAfterSwap - 1].swapAmountRemaining, 0);
 
         assertEq(user2TokenABalanceAfter, swapAmountOutBtoABeforeSwap);
         assertEq(user2TokenBBalanceAfter, user2TokenBBalanceBefore - tokenBSwapAmount);
     }
 
-   // // ------------------------------------- PROCESS PAIR ------------------------------- //
-     // test to add swap to stream queue, and execute 1 stream of it
+    // // ------------------------------------- PROCESS PAIR ------------------------------- //
+    // test to add swap to stream queue, and execute 1 stream of it
     function test_processPair_success() public {
         vm.startPrank(owner);
 
@@ -1015,18 +1015,19 @@ contract RouterTest is Test, Utils {
         uint256 tokenASwapAmount = 30e18;
 
         router.swap(address(tokenA), address(tokenB), tokenASwapAmount, 1);
-    
+
         (Swap[] memory swapsBeforeProcess, uint256 front,) = pool.pairStreamQueue(pairId);
 
-        uint256 streamsBeforeSwap = poolLogic.calculateStreamCount(swapsBeforeProcess[front].swapAmountRemaining, SLIPPAGE, initialDToMintPoolB); //passed poolB D because its less.
+        uint256 streamsBeforeSwap =
+            poolLogic.calculateStreamCount(swapsBeforeProcess[front].swapAmountRemaining, SLIPPAGE, initialDToMintPoolB); //passed poolB D because its less.
 
         uint256 swapPerStreamLocal = swapsBeforeProcess[front].swapAmountRemaining / streamsBeforeSwap;
 
         router.processPair(address(tokenA), address(tokenB));
         // get swap from queue
-        (Swap[] memory swapsAfterProcess, uint256 frontP, ) = pool.pairStreamQueue(pairId);
+        (Swap[] memory swapsAfterProcess, uint256 frontP,) = pool.pairStreamQueue(pairId);
 
-        assertEq(swapsAfterProcess[frontP].swapAmountRemaining, tokenASwapAmount - swapPerStreamLocal*2);
+        assertEq(swapsAfterProcess[frontP].swapAmountRemaining, tokenASwapAmount - swapPerStreamLocal * 2);
         assertEq(swapsAfterProcess[frontP].streamsRemaining, streamsBeforeSwap - 1);
     }
 

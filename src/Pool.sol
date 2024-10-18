@@ -228,7 +228,6 @@ contract Pool is IPool, Ownable {
         poolLogic = IPoolLogicActions(POOL_LOGIC);
     }
 
-
     function updatePairSlippage(address tokenA, address tokenB, uint256 newSlippage) external override onlyOwner {
         bytes32 poolId = getPoolId(tokenA, tokenB);
         pairSlippage[poolId] = newSlippage;
@@ -253,7 +252,6 @@ contract Pool is IPool, Ownable {
 
         emit PoolCreated(token, minLaunchReserveA, minLaunchReserveD);
     }
-
 
     // addLiqParams encoding format => (address token, address user, uint amount, uint256 newLpUnits, uint256 newDUnits, uint256 poolFeeCollected)
     function _addLiquidity(bytes memory addLiqParams) internal {
