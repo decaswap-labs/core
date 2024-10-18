@@ -197,7 +197,7 @@ contract PoolLogic is Ownable, IPoolLogic {
         if (oppositeBack - oppositeFront != 0) {
             Swap memory oppositeSwap = oppositeSwaps[oppositeFront];
 
-            // A->B, amountOut1 is B
+            // A->B, amountOutA is B
             uint256 amountOutA = (frontSwap.swapAmountRemaining * reserveA_In) / reserveA_Out;
             uint256 amountOutB = (oppositeSwap.swapAmountRemaining * reserveA_Out) / reserveA_In;
             /* 
@@ -217,7 +217,29 @@ contract PoolLogic is Ownable, IPoolLogic {
             AmountOut2 = AmountOut2 + AmountIn1 // 0+50, Alice wanted 250 tokens, but now she has only those 
             tokens which I was selling. Which is 50
         */
-            if (frontSwap.swapAmountRemaining <= amountOutB) {
+        // when both swaps consumes each other fully
+        // if(frontSwap.swapAmountRemaining == amountOutB) {
+        //     // consuming frontSwap fully
+        //     bytes memory updatedSwapData_front = abi.encode(pairId, oppositeSwap.swapAmountRemaining, 0, true, 0, frontSwap.streamsCount, frontSwap.swapPerStream);
+        //     IPoolActions(POOL_ADDRESS).updatePairStreamQueueSwap(updatedSwapData_front);
+            
+        //     // consuming oppositeSwap fully
+        //     bytes memory updatedSwapData_opposite = abi.encode(otherPairId, frontSwap.swapAmountRemaining, 0, true, 0, oppositeSwap.streamsCount, oppositeSwap.swapPerStream);
+        //     IPoolActions(POOL_ADDRESS).updatePairStreamQueueSwap(updatedSwapData_opposite);
+                // require(back > front, "Queue is empty");
+                // IPoolActions(POOL_ADDRESS).dequeueSwap_pairStreamQueue(pairId);
+
+                // require(oppositeBack > oppositeFront, "Queue is empty");
+                // IPoolActions(POOL_ADDRESS).dequeueSwap_pairStreamQueue(otherPairId);
+                // // transferring tokens to frontSwapUser
+                // IPoolActions(POOL_ADDRESS).transferTokens(frontSwap.tokenOut, frontSwap.user, oppositeSwap.swapAmountRemaining);
+                // // transferring tokens to oppositeSwapUser
+                // IPoolActions(POOL_ADDRESS).transferTokens(oppositeSwap.tokenOut, oppositeSwap.user, frontSwap.swapAmountRemaining);
+            
+        // }
+        // else 
+        // consume front swap fully when true and vice versa
+        if (frontSwap.swapAmountRemaining < amountOutB) {
                 bytes memory updateReservesParams =
                     abi.encode(true, tokenIn, tokenOut, frontSwap.swapAmountRemaining, 0, amountOutA, 0);
                 IPoolActions(POOL_ADDRESS).updateReserves(updateReservesParams);
