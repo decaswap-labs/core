@@ -6,7 +6,7 @@ import {IPoolActions} from "./interfaces/pool/IPoolActions.sol";
 import {IPoolStates} from "./interfaces/pool/IPoolStates.sol";
 import {IPoolLogic} from "./interfaces/IPoolLogic.sol";
 import {IRouter} from "./interfaces/IRouter.sol";
-import {IERC20} from "./interfaces/utils/IERC20.sol";
+import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 
 // @todo decide where to keep events. Router/Pool?
@@ -15,6 +15,8 @@ import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol
 // @todo remove unused errors
 
 contract Router is Ownable, ReentrancyGuard, IRouter {
+    using SafeERC20 for IERC20;
+
     address public override POOL_ADDRESS;
     IPoolActions pool;
     IPoolStates poolStates;
@@ -38,7 +40,7 @@ contract Router is Ownable, ReentrancyGuard, IRouter {
         if (token == address(0)) revert InvalidToken();
         if (initialDToMint == 0) revert InvalidInitialDAmount();
 
-        IERC20(token).transferFrom(msg.sender, POOL_ADDRESS, amount);
+        IERC20(token).safeTransferFrom(msg.sender, POOL_ADDRESS, amount);
         IPoolLogic(poolStates.POOL_LOGIC()).createPool(
             token, msg.sender, amount, minLaunchReserveA, minLaunchReserveD, initialDToMint
         );
@@ -49,7 +51,7 @@ contract Router is Ownable, ReentrancyGuard, IRouter {
         if (!poolExist(token)) revert InvalidPool();
         if (amount == 0) revert InvalidAmount();
 
-        IERC20(token).transferFrom(msg.sender, POOL_ADDRESS, amount);
+        IERC20(token).safeTransferFrom(msg.sender, POOL_ADDRESS, amount);
         IPoolLogic(poolStates.POOL_LOGIC()).addLiquidity(token, msg.sender, amount);
 
         emit LiquidityAdded(msg.sender, token, amount);
@@ -69,7 +71,7 @@ contract Router is Ownable, ReentrancyGuard, IRouter {
         if (executionPrice == 0) revert InvalidExecutionPrice();
         if (!poolExist(tokenIn) || !poolExist(tokenOut)) revert InvalidPool();
 
-        IERC20(tokenIn).transferFrom(msg.sender, POOL_ADDRESS, amountIn);
+        IERC20(tokenIn).safeTransferFrom(msg.sender, POOL_ADDRESS, amountIn);
         IPoolLogic(poolStates.POOL_LOGIC()).swap(msg.sender, tokenIn, tokenOut, amountIn, executionPrice);
     }
 
