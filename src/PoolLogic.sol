@@ -4,7 +4,6 @@ pragma solidity ^0.8.20;
 import {IPoolStates} from "./interfaces/pool/IPoolStates.sol";
 import {IPoolLogic} from "./interfaces/IPoolLogic.sol";
 import {IPoolActions} from "./interfaces/pool/IPoolActions.sol";
-import {IERC20} from "./interfaces/utils/IERC20.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 import {Swap} from "./lib/SwapQueue.sol";
 import "forge-std/console.sol";
