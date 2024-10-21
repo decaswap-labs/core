@@ -58,7 +58,7 @@ contract PoolLogic is Ownable, IPoolLogic {
             tokenAmount,
             initialDToMint,
             calculateLpUnitsToMint(tokenAmount, 0, 0),
-            calculateDUnitsToMint(tokenAmount, tokenAmount, 0, initialDToMint),
+            initialDToMint,
             0
         );
         IPoolActions(POOL_ADDRESS).initGenesisPool(initPoolParams);
