@@ -97,8 +97,7 @@ contract Router is Ownable, ReentrancyGuard, IRouter {
 
     function poolExist(address tokenAddress) internal view returns (bool) {
         // TODO : Resolve this tuple unbundling issue
-        (uint256 a, uint256 b, uint256 c, uint256 d, uint256 e, bool initialized) =
-            poolStates.poolInfo(tokenAddress);
+        (uint256 a, uint256 b, uint256 c, uint256 d, uint256 e, bool initialized) = poolStates.poolInfo(tokenAddress);
         return initialized;
     }
 }

@@ -90,7 +90,6 @@ contract Pool is IPool, Ownable {
         emit PoolLogicAddressUpdated(address(0), POOL_LOGIC);
     }
 
-
     // creatPoolParams encoding format => (address token, address user, uint256 amount, uint256 minLaunchReserveA, uint256 minLaunchReserveD, uint256 initialDToMint, uint newLpUnits, uint newDUnits, uint256 poolFeeCollected)
     // function createPool(bytes calldata creatPoolParams) external onlyPoolLogic {
     //     (
@@ -121,9 +120,7 @@ contract Pool is IPool, Ownable {
             uint256 newLpUnits,
             uint256 newDUnits,
             uint256 poolFeeCollected
-        ) = abi.decode(
-            initPoolParams, (address, address, uint256, uint256, uint256, uint256, uint256)
-        );
+        ) = abi.decode(initPoolParams, (address, address, uint256, uint256, uint256, uint256, uint256));
         _initPool(token, initialDToMint);
         bytes memory addLiqParam = abi.encode(token, user, amount, newLpUnits, newDUnits, poolFeeCollected);
         mapToken_reserveD[token] += newDUnits;
@@ -264,16 +261,14 @@ contract Pool is IPool, Ownable {
     //     emit PoolCreated(token, minLaunchReserveA, minLaunchReserveD);
     // }
 
-    function _initPool(address token, uint256 initialDToMint)
-        internal
-    {
+    function _initPool(address token, uint256 initialDToMint) internal {
         if (mapToken_initialized[token]) revert DuplicatePool();
 
         mapToken_initialized[token] = true;
         // @todo need confirmation on that. hardcoded?
         mapToken_initialDToMint[token] = initialDToMint;
 
-        emit PoolCreated(token,initialDToMint);
+        emit PoolCreated(token, initialDToMint);
     }
 
     // addLiqParams encoding format => (address token, address user, uint amount, uint256 newLpUnits, uint256 newDUnits, uint256 poolFeeCollected)

@@ -46,7 +46,10 @@ contract PoolLogic is Ownable, IPoolLogic {
     //     IPoolActions(POOL_ADDRESS).createPool(createPoolParams);
     // }
 
-    function initGenesisPool(address token, address user, uint256 tokenAmount, uint256 initialDToMint) external onlyRouter {
+    function initGenesisPool(address token, address user, uint256 tokenAmount, uint256 initialDToMint)
+        external
+        onlyRouter
+    {
         // hardcoding `poolFeeCollected` to zero as pool is just being created
         // reserveA == amount for 1st deposit
         bytes memory initPoolParams = abi.encode(
@@ -59,7 +62,6 @@ contract PoolLogic is Ownable, IPoolLogic {
             0
         );
         IPoolActions(POOL_ADDRESS).initGenesisPool(initPoolParams);
-
     }
 
     function addLiquidity(address token, address user, uint256 amount) external onlyRouter {
@@ -114,7 +116,6 @@ contract PoolLogic is Ownable, IPoolLogic {
             uint256 poolFeeCollected_Out,
             bool initialized_Out
         ) = pool.poolInfo(address(tokenOut));
-
 
         uint256 streamCount;
         uint256 swapPerStream;
@@ -525,8 +526,7 @@ contract PoolLogic is Ownable, IPoolLogic {
 
     function poolExist(address tokenAddress) private view returns (bool) {
         // TODO : Resolve this tuple unbundling issue
-        (uint256 a, uint256 b, uint256 c, uint256 d, uint256 e, bool initialized) =
-            pool.poolInfo(tokenAddress);
+        (uint256 a, uint256 b, uint256 c, uint256 d, uint256 e, bool initialized) = pool.poolInfo(tokenAddress);
         return initialized;
     }
 }
