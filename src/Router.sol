@@ -14,6 +14,7 @@ import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol
 
 contract Router is Ownable, ReentrancyGuard, IRouter {
     using SafeERC20 for IERC20;
+
     address public override POOL_ADDRESS;
     IPoolActions pool;
     IPoolStates poolStates;
@@ -26,21 +27,31 @@ contract Router is Ownable, ReentrancyGuard, IRouter {
         emit PoolAddressUpdated(address(0), POOL_ADDRESS);
     }
 
-    function createPool(
-        address token,
-        uint256 amount,
-        uint256 minLaunchReserveA,
-        uint256 minLaunchReserveD,
-        uint256 initialDToMint
-    ) external onlyOwner {
-        if (amount == 0) revert InvalidAmount();
-        if (token == address(0)) revert InvalidToken();
-        if (initialDToMint == 0) revert InvalidInitialDAmount();
+    // function createPool(
+    //     address token,
+    //     uint256 amount,
+    //     uint256 minLaunchReserveA,
+    //     uint256 minLaunchReserveD,
+    //     uint256 initialDToMint
+    // ) external onlyOwner {
+    //     if (amount == 0) revert InvalidAmount();
+    //     if (token == address(0)) revert InvalidToken();
+    //     if (initialDToMint == 0) revert InvalidInitialDAmount();
 
-        IERC20(token).safeTransferFrom(msg.sender, POOL_ADDRESS, amount);
-        IPoolLogic(poolStates.POOL_LOGIC()).createPool(
-            token, msg.sender, amount, minLaunchReserveA, minLaunchReserveD, initialDToMint
-        );
+    //     IERC20(token).safeTransferFrom(msg.sender, POOL_ADDRESS, amount);
+    //     IPoolLogic(poolStates.POOL_LOGIC()).createPool(
+    //         token, msg.sender, amount, minLaunchReserveA, minLaunchReserveD, initialDToMint
+    //     );
+    // }
+
+    function initGenesisPool(address token, uint256 tokenAmount, uint256 dToMint) external onlyOwner {
+        if (tokenAmount == 0) revert InvalidAmount();
+        if (token == address(0)) revert InvalidToken();
+        if (dToMint == 0) revert InvalidInitialDAmount();
+
+        IERC20(token).safeTransferFrom(msg.sender, POOL_ADDRESS, tokenAmount);
+
+        IPoolLogic(poolStates.POOL_LOGIC()).initGenesisPool(token, msg.sender, tokenAmount, dToMint);
     }
 
     function addLiquidity(address token, uint256 amount) external override nonReentrant {
@@ -86,7 +97,7 @@ contract Router is Ownable, ReentrancyGuard, IRouter {
 
     function poolExist(address tokenAddress) internal view returns (bool) {
         // TODO : Resolve this tuple unbundling issue
-        (uint256 a, uint256 b, uint256 c, uint256 d, uint256 f, uint256 g, uint256 h, bool initialized) =
+        (uint256 a, uint256 b, uint256 c, uint256 d, uint256 e, bool initialized) =
             poolStates.poolInfo(tokenAddress);
         return initialized;
     }

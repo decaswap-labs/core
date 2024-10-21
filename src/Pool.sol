@@ -27,8 +27,6 @@ contract Pool is IPool, Ownable {
         uint256 reserveD;
         uint256 poolOwnershipUnitsTotal;
         uint256 reserveA;
-        uint256 minLaunchReserveA;
-        uint256 minLaunchReserveD;
         uint256 initialDToMint;
         uint256 poolFeeCollected;
         bool initialized;
@@ -43,8 +41,6 @@ contract Pool is IPool, Ownable {
     mapping(address token => uint256 reserveD) private mapToken_reserveD;
     mapping(address token => uint256 poolOwnershipUnitsTotal) private mapToken_poolOwnershipUnitsTotal;
     mapping(address token => uint256 reserveA) private mapToken_reserveA;
-    mapping(address token => uint256 minLaunchReserveA) private mapToken_minLaunchReserveA;
-    mapping(address token => uint256 minLaunchReserveD) private mapToken_minLaunchReserveD;
     mapping(address token => uint256 initialDToMint) private mapToken_initialDToMint;
     mapping(address token => uint256 poolFeeCollected) private mapToken_poolFeeCollected;
     mapping(address token => bool initialized) private mapToken_initialized;
@@ -94,28 +90,43 @@ contract Pool is IPool, Ownable {
         emit PoolLogicAddressUpdated(address(0), POOL_LOGIC);
     }
 
-    //////////////////////////////////////////////////////////////////////////////
-    // NOTE ignore code below for as all will be refactored after storage variable are set
-    // commented logic so that code compiles with current tests
-    ///////////////////////////////////////////////////////////////////////////////
 
     // creatPoolParams encoding format => (address token, address user, uint256 amount, uint256 minLaunchReserveA, uint256 minLaunchReserveD, uint256 initialDToMint, uint newLpUnits, uint newDUnits, uint256 poolFeeCollected)
-    function createPool(bytes calldata creatPoolParams) external onlyPoolLogic {
+    // function createPool(bytes calldata creatPoolParams) external onlyPoolLogic {
+    //     (
+    //         address token,
+    //         address user,
+    //         uint256 amount,
+    //         uint256 minLaunchReserveA,
+    //         uint256 minLaunchReserveD,
+    //         uint256 initialDToMint,
+    //         uint256 newLpUnits,
+    //         uint256 newDUnits,
+    //         uint256 poolFeeCollected
+    //     ) = abi.decode(
+    //         creatPoolParams, (address, address, uint256, uint256, uint256, uint256, uint256, uint256, uint256)
+    //     );
+    //     _createPool(token, minLaunchReserveA, minLaunchReserveD, initialDToMint);
+    //     bytes memory addLiqParam = abi.encode(token, user, amount, newLpUnits, newDUnits, poolFeeCollected);
+    //     _addLiquidity(addLiqParam);
+    // }
+
+    // creatPoolParams encoding format => (address token, address user, uint256 amount, uint256 initialDToMint, uint newLpUnits, uint newDUnits, uint256 poolFeeCollected)
+    function initGenesisPool(bytes calldata initPoolParams) external onlyPoolLogic {
         (
             address token,
             address user,
             uint256 amount,
-            uint256 minLaunchReserveA,
-            uint256 minLaunchReserveD,
             uint256 initialDToMint,
             uint256 newLpUnits,
             uint256 newDUnits,
             uint256 poolFeeCollected
         ) = abi.decode(
-            creatPoolParams, (address, address, uint256, uint256, uint256, uint256, uint256, uint256, uint256)
+            initPoolParams, (address, address, uint256, uint256, uint256, uint256, uint256)
         );
-        _createPool(token, minLaunchReserveA, minLaunchReserveD, initialDToMint);
+        _initPool(token, initialDToMint);
         bytes memory addLiqParam = abi.encode(token, user, amount, newLpUnits, newDUnits, poolFeeCollected);
+        mapToken_reserveD[token] += newDUnits;
         _addLiquidity(addLiqParam);
     }
 
@@ -239,18 +250,30 @@ contract Pool is IPool, Ownable {
         globalSlippage = newGlobalSlippage;
     }
 
-    function _createPool(address token, uint256 minLaunchReserveA, uint256 minLaunchReserveD, uint256 initialDToMint)
+    // function _createPool(address token, uint256 minLaunchReserveA, uint256 minLaunchReserveD, uint256 initialDToMint)
+    //     internal
+    // {
+    //     if (mapToken_initialized[token]) revert DuplicatePool();
+
+    //     mapToken_initialized[token] = true;
+    //     mapToken_minLaunchReserveA[token] = minLaunchReserveA;
+    //     mapToken_minLaunchReserveD[token] = minLaunchReserveD;
+    //     // @todo need confirmation on that. hardcoded?
+    //     mapToken_initialDToMint[token] = initialDToMint;
+
+    //     emit PoolCreated(token, minLaunchReserveA, minLaunchReserveD);
+    // }
+
+    function _initPool(address token, uint256 initialDToMint)
         internal
     {
         if (mapToken_initialized[token]) revert DuplicatePool();
 
         mapToken_initialized[token] = true;
-        mapToken_minLaunchReserveA[token] = minLaunchReserveA;
-        mapToken_minLaunchReserveD[token] = minLaunchReserveD;
         // @todo need confirmation on that. hardcoded?
         mapToken_initialDToMint[token] = initialDToMint;
 
-        emit PoolCreated(token, minLaunchReserveA, minLaunchReserveD);
+        emit PoolCreated(token,initialDToMint);
     }
 
     // addLiqParams encoding format => (address token, address user, uint amount, uint256 newLpUnits, uint256 newDUnits, uint256 poolFeeCollected)
@@ -260,7 +283,6 @@ contract Pool is IPool, Ownable {
 
         mapToken_reserveA[token] += amount;
         mapToken_poolOwnershipUnitsTotal[token] += newLpUnits;
-        mapToken_reserveD[token] += newDUnits;
         // @note may or may not be needed here.
         mapToken_poolFeeCollected[token] += poolFeeCollected;
 
@@ -286,11 +308,8 @@ contract Pool is IPool, Ownable {
         mapToken_reserveA[token] -= assetToTransfer;
         mapToken_reserveD[token] -= dAmountToDeduct;
         mapToken_poolOwnershipUnitsTotal[token] -= lpUnits;
-        // @note may or may not be needed here.
         mapToken_poolFeeCollected[token] += poolFeeCollected;
 
-        // @todo use OZ or custom safeERC20 implementation to transfer tokens
-        // transferring tokens to user
         IERC20(token).safeTransfer(user, assetToTransfer);
 
         emit LiquidityRemoved(user, token, lpUnits, assetToTransfer, dAmountToDeduct);
@@ -303,8 +322,6 @@ contract Pool is IPool, Ownable {
             uint256 reserveD,
             uint256 poolOwnershipUnitsTotal,
             uint256 reserveA,
-            uint256 minLaunchReserveA,
-            uint256 minLaunchReserveD,
             uint256 initialDToMint,
             uint256 poolFeeCollected,
             bool initialized
@@ -314,8 +331,6 @@ contract Pool is IPool, Ownable {
             mapToken_reserveD[tokenAddress],
             mapToken_poolOwnershipUnitsTotal[tokenAddress],
             mapToken_reserveA[tokenAddress],
-            mapToken_minLaunchReserveA[tokenAddress],
-            mapToken_minLaunchReserveD[tokenAddress],
             mapToken_initialDToMint[tokenAddress],
             mapToken_poolFeeCollected[tokenAddress],
             mapToken_initialized[tokenAddress]

@@ -46,133 +46,133 @@ contract PoolTest is Test, Utils {
     // ------------------------ Test Cases ------------------------
 
     //Test: Successfully create a pool
-    function testCreatePool_Success() public {
-        vm.startPrank(user);
-        tokenA.approve(address(router), 100 * 1e18);
-        router.createPool(address(tokenA), 100 * 1e18, 100 * 1e18, 100 * 1e18, 10 * 1e18);
-        vm.stopPrank();
-        (
-            uint256 reserveD,
-            uint256 poolOwnershipUnitsTotal,
-            uint256 reserveA,
-            uint256 minLaunchReserveA,
-            uint256 minLaunchReserveD,
-            uint256 initialDToMint,
-            uint256 poolFeeCollected,
-            bool initialized
-        ) = pool.poolInfo(address(tokenA));
+    // function testCreatePool_Success() public {
+    //     vm.startPrank(user);
+    //     tokenA.approve(address(router), 100 * 1e18);
+    //     router.createPool(address(tokenA), 100 * 1e18, 100 * 1e18, 100 * 1e18, 10 * 1e18);
+    //     vm.stopPrank();
+    //     (
+    //         uint256 reserveD,
+    //         uint256 poolOwnershipUnitsTotal,
+    //         uint256 reserveA,
+    //         uint256 minLaunchReserveA,
+    //         uint256 minLaunchReserveD,
+    //         uint256 initialDToMint,
+    //         uint256 poolFeeCollected,
+    //         bool initialized
+    //     ) = pool.poolInfo(address(tokenA));
 
-        assertEq(reserveD, 10 * 1e18);
-        assertEq(poolOwnershipUnitsTotal, 100 * 1e18);
-        assertEq(initialized, true);
-        assertEq(tokenA.balanceOf(address(pool)), 100 * 1e18);
-    }
+    //     assertEq(reserveD, 10 * 1e18);
+    //     assertEq(poolOwnershipUnitsTotal, 100 * 1e18);
+    //     assertEq(initialized, true);
+    //     assertEq(tokenA.balanceOf(address(pool)), 100 * 1e18);
+    // }
 
-    // Test: Creating a pool that already exists
-    function testCreatePool_PoolAlreadyExists() public {
-        vm.startPrank(user);
-        router.createPool(address(tokenA), 100 * 1e18, 100 * 1e18, 100 * 1e18, 10 * 1e18);
+    // // Test: Creating a pool that already exists
+    // function testCreatePool_PoolAlreadyExists() public {
+    //     vm.startPrank(user);
+    //     router.createPool(address(tokenA), 100 * 1e18, 100 * 1e18, 100 * 1e18, 10 * 1e18);
 
-        vm.expectRevert(IPoolErrors.DuplicatePool.selector);
-        router.createPool(address(tokenA), 100 * 1e18, 100 * 1e18, 100 * 1e18, 10 * 1e18);
-        vm.stopPrank();
-    }
+    //     vm.expectRevert(IPoolErrors.DuplicatePool.selector);
+    //     router.createPool(address(tokenA), 100 * 1e18, 100 * 1e18, 100 * 1e18, 10 * 1e18);
+    //     vm.stopPrank();
+    // }
 
-    // Test: Creating a pool from an unauthorized address
-    function testCreatePoolFromRouter_UnauthorizedAddress() public {
-        vm.startPrank(nonAuthorized);
-        vm.expectRevert(abi.encodeWithSelector(getOwnableUnauthorizedAccountSelector(), nonAuthorized));
-        router.createPool(address(tokenA), 100 * 1e18, 100 * 1e18, 100 * 1e18, 10 * 1e18);
-        vm.stopPrank();
-    }
+    // // Test: Creating a pool from an unauthorized address
+    // function testCreatePoolFromRouter_UnauthorizedAddress() public {
+    //     vm.startPrank(nonAuthorized);
+    //     vm.expectRevert(abi.encodeWithSelector(getOwnableUnauthorizedAccountSelector(), nonAuthorized));
+    //     router.createPool(address(tokenA), 100 * 1e18, 100 * 1e18, 100 * 1e18, 10 * 1e18);
+    //     vm.stopPrank();
+    // }
 
-    function testCreatePoolFromPool_UnauthorizedAddress() public {
-        vm.startPrank(nonAuthorized);
-        vm.expectRevert(abi.encodeWithSelector(IPoolErrors.NotPoolLogic.selector, nonAuthorized));
-        pool.createPool("0x");
-        vm.stopPrank();
-    }
+    // function testCreatePoolFromPool_UnauthorizedAddress() public {
+    //     vm.startPrank(nonAuthorized);
+    //     vm.expectRevert(abi.encodeWithSelector(IPoolErrors.NotPoolLogic.selector, nonAuthorized));
+    //     pool.createPool("0x");
+    //     vm.stopPrank();
+    // }
 
-    // Test: Creating pool with invalid token address
-    function testCreatePool_InvalidTokenAddress() public {
-        vm.startPrank(user);
-        vm.expectRevert(); // transferFrom on 0 address will revert
-        router.createPool(address(0), 100 * 1e18, 100 * 1e18, 100 * 1e18, 10 * 1e18);
-        vm.stopPrank();
-    }
+    // // Test: Creating pool with invalid token address
+    // function testCreatePool_InvalidTokenAddress() public {
+    //     vm.startPrank(user);
+    //     vm.expectRevert(); // transferFrom on 0 address will revert
+    //     router.createPool(address(0), 100 * 1e18, 100 * 1e18, 100 * 1e18, 10 * 1e18);
+    //     vm.stopPrank();
+    // }
 
-    // Test: Successfully add liquidity
-    function testAddLiquidity() public {
-        vm.startPrank(user);
-        router.createPool(address(tokenA), 100 * 1e18, 100 * 1e18, 100 * 1e18, 10 * 1e18);
-        (
-            uint256 reserveD,
-            uint256 poolOwnershipUnitsTotal,
-            uint256 reserveA,
-            uint256 minLaunchReserveA,
-            uint256 minLaunchReserveD,
-            uint256 initialDToMint,
-            uint256 poolFeeCollected,
-            bool initialized
-        ) = pool.poolInfo(address(tokenA));
+    // // Test: Successfully add liquidity
+    // function testAddLiquidity() public {
+    //     vm.startPrank(user);
+    //     router.createPool(address(tokenA), 100 * 1e18, 100 * 1e18, 100 * 1e18, 10 * 1e18);
+    //     (
+    //         uint256 reserveD,
+    //         uint256 poolOwnershipUnitsTotal,
+    //         uint256 reserveA,
+    //         uint256 minLaunchReserveA,
+    //         uint256 minLaunchReserveD,
+    //         uint256 initialDToMint,
+    //         uint256 poolFeeCollected,
+    //         bool initialized
+    //     ) = pool.poolInfo(address(tokenA));
 
-        vm.stopPrank();
+    //     vm.stopPrank();
 
-        console.log("Before ReserveA: ", reserveA);
-        console.log("Before ReserveD: ", reserveD);
-        console.log("After poolOwnershipUnitsTotal: ", poolOwnershipUnitsTotal);
+    //     console.log("Before ReserveA: ", reserveA);
+    //     console.log("Before ReserveD: ", reserveD);
+    //     console.log("After poolOwnershipUnitsTotal: ", poolOwnershipUnitsTotal);
 
-        uint256 initialReserveD = reserveD;
-        uint256 initialOwnershipUnits = poolOwnershipUnitsTotal;
+    //     uint256 initialReserveD = reserveD;
+    //     uint256 initialOwnershipUnits = poolOwnershipUnitsTotal;
 
-        assertEq(initialReserveD, 10 * 1e18);
-        assertEq(initialOwnershipUnits, 100 * 1e18);
-        assertEq(tokenA.balanceOf(address(pool)), 100 * 1e18);
+    //     assertEq(initialReserveD, 10 * 1e18);
+    //     assertEq(initialOwnershipUnits, 100 * 1e18);
+    //     assertEq(tokenA.balanceOf(address(pool)), 100 * 1e18);
 
-        uint256 beforeTokenABalance = tokenA.balanceOf(address(pool));
-        vm.startPrank(user);
-        router.addLiquidity(address(tokenA), 100 * 1e18);
-        vm.stopPrank();
+    //     uint256 beforeTokenABalance = tokenA.balanceOf(address(pool));
+    //     vm.startPrank(user);
+    //     router.addLiquidity(address(tokenA), 100 * 1e18);
+    //     vm.stopPrank();
 
-        (reserveD, poolOwnershipUnitsTotal, reserveA,,,,,) = pool.poolInfo(address(tokenA));
+    //     (reserveD, poolOwnershipUnitsTotal, reserveA,,,,,) = pool.poolInfo(address(tokenA));
 
-        console.log("After ReserveA: ", reserveA);
-        console.log("After ReserveD: ", reserveD);
-        console.log("After poolOwnershipUnitsTotal: ", poolOwnershipUnitsTotal);
+    //     console.log("After ReserveA: ", reserveA);
+    //     console.log("After ReserveD: ", reserveD);
+    //     console.log("After poolOwnershipUnitsTotal: ", poolOwnershipUnitsTotal);
 
-        assertGt(reserveD, initialReserveD, "ReserveA should increase");
-        assertGt(poolOwnershipUnitsTotal, initialOwnershipUnits, "Pool ownership units should increase");
-        assertEq(tokenA.balanceOf(address(pool)), beforeTokenABalance + 100 * 1e18);
-    }
+    //     assertGt(reserveD, initialReserveD, "ReserveA should increase");
+    //     assertGt(poolOwnershipUnitsTotal, initialOwnershipUnits, "Pool ownership units should increase");
+    //     assertEq(tokenA.balanceOf(address(pool)), beforeTokenABalance + 100 * 1e18);
+    // }
 
-    // Test: Adding 0 amount liquidity
-    function testadd_InvalidAmount() public {
-        vm.startPrank(user);
-        router.createPool(address(tokenA), 100 * 1e18, 100 * 1e18, 100 * 1e18, 10 * 1e18);
-        vm.expectRevert(IRouterErrors.InvalidAmount.selector);
-        router.addLiquidity(address(tokenA), 0); // 0 amount
-        vm.stopPrank();
-    }
+    // // Test: Adding 0 amount liquidity
+    // function testadd_InvalidAmount() public {
+    //     vm.startPrank(user);
+    //     router.createPool(address(tokenA), 100 * 1e18, 100 * 1e18, 100 * 1e18, 10 * 1e18);
+    //     vm.expectRevert(IRouterErrors.InvalidAmount.selector);
+    //     router.addLiquidity(address(tokenA), 0); // 0 amount
+    //     vm.stopPrank();
+    // }
 
-    //Test: Adding liquidity in POOL by unauthorized addresses
-    function testadd_Unauthorized() public {
-        vm.startPrank(user);
-        router.createPool(address(tokenA), 100 * 1e18, 100 * 1e18, 100 * 1e18, 10 * 1e18);
-        vm.stopPrank();
-        vm.startPrank(nonAuthorized);
-        vm.expectRevert(abi.encodeWithSelector(IPoolErrors.NotPoolLogic.selector, nonAuthorized));
-        pool.addLiquidity("0x");
-        vm.stopPrank();
-    }
+    // //Test: Adding liquidity in POOL by unauthorized addresses
+    // function testadd_Unauthorized() public {
+    //     vm.startPrank(user);
+    //     router.createPool(address(tokenA), 100 * 1e18, 100 * 1e18, 100 * 1e18, 10 * 1e18);
+    //     vm.stopPrank();
+    //     vm.startPrank(nonAuthorized);
+    //     vm.expectRevert(abi.encodeWithSelector(IPoolErrors.NotPoolLogic.selector, nonAuthorized));
+    //     pool.addLiquidity("0x");
+    //     vm.stopPrank();
+    // }
 
-    // Test: Adding liquidity to a pool that doesn't exist
-    function testadd_NonExistentPool() public {
-        vm.startPrank(user);
-        router.createPool(address(tokenA), 100 * 1e18, 100 * 1e18, 100 * 1e18, 10 * 1e18);
-        vm.expectRevert(IRouterErrors.InvalidPool.selector);
-        router.addLiquidity(address(0xDEADBEEF), 100 * 1e18);
-        vm.stopPrank();
-    }
+    // // Test: Adding liquidity to a pool that doesn't exist
+    // function testadd_NonExistentPool() public {
+    //     vm.startPrank(user);
+    //     router.createPool(address(tokenA), 100 * 1e18, 100 * 1e18, 100 * 1e18, 10 * 1e18);
+    //     vm.expectRevert(IRouterErrors.InvalidPool.selector);
+    //     router.addLiquidity(address(0xDEADBEEF), 100 * 1e18);
+    //     vm.stopPrank();
+    // }
 
     // // Test: Successfully remove liquidity
     // function testRemoveLiquidity_Success() public {

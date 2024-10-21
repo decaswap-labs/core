@@ -22,28 +22,44 @@ contract PoolLogic is Ownable, IPoolLogic {
         emit PoolAddressUpdated(address(0), POOL_ADDRESS);
     }
 
-    function createPool(
-        address token,
-        address user,
-        uint256 amount,
-        uint256 minLaunchReserveA,
-        uint256 minLaunchReserveD,
-        uint256 initialDToMint
-    ) external onlyRouter {
+    // function createPool(
+    //     address token,
+    //     address user,
+    //     uint256 amount,
+    //     uint256 minLaunchReserveA,
+    //     uint256 minLaunchReserveD,
+    //     uint256 initialDToMint
+    // ) external onlyRouter {
+    //     // hardcoding `poolFeeCollected` to zero as pool is just being created
+    //     // reserveA == amount for 1st deposit
+    //     bytes memory createPoolParams = abi.encode(
+    //         token,
+    //         user,
+    //         amount,
+    //         minLaunchReserveA,
+    //         minLaunchReserveD,
+    //         initialDToMint,
+    //         calculateLpUnitsToMint(amount, 0, 0),
+    //         calculateDUnitsToMint(amount, amount, 0, initialDToMint),
+    //         0
+    //     );
+    //     IPoolActions(POOL_ADDRESS).createPool(createPoolParams);
+    // }
+
+    function initGenesisPool(address token, address user, uint256 tokenAmount, uint256 initialDToMint) external onlyRouter {
         // hardcoding `poolFeeCollected` to zero as pool is just being created
         // reserveA == amount for 1st deposit
-        bytes memory createPoolParams = abi.encode(
+        bytes memory initPoolParams = abi.encode(
             token,
             user,
-            amount,
-            minLaunchReserveA,
-            minLaunchReserveD,
+            tokenAmount,
             initialDToMint,
-            calculateLpUnitsToMint(amount, 0, 0),
-            calculateDUnitsToMint(amount, amount, 0, initialDToMint),
+            calculateLpUnitsToMint(tokenAmount, 0, 0),
+            calculateDUnitsToMint(tokenAmount, tokenAmount, 0, initialDToMint),
             0
         );
-        IPoolActions(POOL_ADDRESS).createPool(createPoolParams);
+        IPoolActions(POOL_ADDRESS).initGenesisPool(initPoolParams);
+
     }
 
     function addLiquidity(address token, address user, uint256 amount) external onlyRouter {
@@ -51,8 +67,6 @@ contract PoolLogic is Ownable, IPoolLogic {
             uint256 reserveD,
             uint256 poolOwnershipUnitsTotal,
             uint256 reserveA,
-            uint256 minLaunchReserveA,
-            uint256 minLaunchReserveD,
             uint256 initialDToMint,
             uint256 poolFeeCollected,
             bool initialized
@@ -69,8 +83,6 @@ contract PoolLogic is Ownable, IPoolLogic {
             uint256 reserveD,
             uint256 poolOwnershipUnitsTotal,
             uint256 reserveA,
-            uint256 minLaunchReserveA,
-            uint256 minLaunchReserveD,
             uint256 initialDToMint,
             uint256 poolFeeCollected,
             bool initialized
@@ -89,8 +101,6 @@ contract PoolLogic is Ownable, IPoolLogic {
             uint256 reserveD_In,
             uint256 poolOwnershipUnitsTotal_In,
             uint256 reserveA_In,
-            uint256 minLaunchReserveA_In,
-            uint256 minLaunchReserveD_In,
             uint256 initialDToMint_In,
             uint256 poolFeeCollected_In,
             bool initialized_In
@@ -100,17 +110,11 @@ contract PoolLogic is Ownable, IPoolLogic {
             uint256 reserveD_Out,
             uint256 poolOwnershipUnitsTotal_Out,
             uint256 reserveA_Out,
-            uint256 minLaunchReserveA_Out,
-            uint256 minLaunchReserveD_Out,
             uint256 initialDToMint_Out,
             uint256 poolFeeCollected_Out,
             bool initialized_Out
         ) = pool.poolInfo(address(tokenOut));
 
-        //check if the reserves are greater than min launch
-        if (minLaunchReserveA_In > reserveA_In || minLaunchReserveD_Out > reserveD_Out) {
-            revert MinLaunchReservesNotReached();
-        }
 
         uint256 streamCount;
         uint256 swapPerStream;
@@ -160,8 +164,6 @@ contract PoolLogic is Ownable, IPoolLogic {
             uint256 reserveD_In,
             uint256 poolOwnershipUnitsTotal_In,
             uint256 reserveA_In,
-            uint256 minLaunchReserveA_In,
-            uint256 minLaunchReserveD_In,
             uint256 initialDToMint_In,
             uint256 poolFeeCollected_In,
             bool initialized_In
@@ -171,8 +173,6 @@ contract PoolLogic is Ownable, IPoolLogic {
             uint256 reserveD_Out,
             uint256 poolOwnershipUnitsTotal_Out,
             uint256 reserveA_Out,
-            uint256 minLaunchReserveA_Out,
-            uint256 minLaunchReserveD_Out,
             uint256 initialDToMint_Out,
             uint256 poolFeeCollected_Out,
             bool initialized_Out
@@ -370,9 +370,9 @@ contract PoolLogic is Ownable, IPoolLogic {
         if (back_pending - front_pending > 0) {
             Swap memory frontPendingSwap = swaps_pending[front_pending];
 
-            (,, uint256 reserveA_In_New,,,,,) = pool.poolInfo(address(frontPendingSwap.tokenIn));
+            (,, uint256 reserveA_In_New,,,) = pool.poolInfo(address(frontPendingSwap.tokenIn));
 
-            (,, uint256 reserveA_Out_New,,,,,) = pool.poolInfo(address(frontPendingSwap.tokenOut));
+            (,, uint256 reserveA_Out_New,,,) = pool.poolInfo(address(frontPendingSwap.tokenOut));
 
             uint256 executionPriceInOrder = frontPendingSwap.executionPrice;
             uint256 executionPriceLatest = getExecutionPrice(reserveA_In_New, reserveA_Out_New);
@@ -525,7 +525,7 @@ contract PoolLogic is Ownable, IPoolLogic {
 
     function poolExist(address tokenAddress) private view returns (bool) {
         // TODO : Resolve this tuple unbundling issue
-        (uint256 a, uint256 b, uint256 c, uint256 d, uint256 f, uint256 g, uint256 h, bool initialized) =
+        (uint256 a, uint256 b, uint256 c, uint256 d, uint256 e, bool initialized) =
             pool.poolInfo(tokenAddress);
         return initialized;
     }
