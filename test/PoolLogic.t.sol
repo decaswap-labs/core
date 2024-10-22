@@ -4,6 +4,7 @@ pragma solidity ^0.8.13;
 import "forge-std/Test.sol";
 import "../src/Pool.sol";
 import "../src/PoolLogic.sol";
+import "../src/Router.sol";
 import "../src/interfaces/router/IRouterErrors.sol";
 import "../src/interfaces/pool-logic/IPoolLogicErrors.sol";
 import "../src/interfaces/pool/IPoolErrors.sol";
@@ -15,8 +16,10 @@ contract PoolLogicTest is Test, Utils {
     PoolLogic poolLogic;
     MockERC20 public tokenA;
     MockERC20 public tokenB;
+    Router public router;
     address public owner = address(0xD);
     address public nonAuthorized = address(0xE);
+
 
     function setUp() public {
         vm.startPrank(owner);
@@ -25,17 +28,65 @@ contract PoolLogicTest is Test, Utils {
         tokenB = new MockERC20("Token B", "TKB", 18);
 
         poolLogic = new PoolLogic(owner, address(0)); // setting zero address for poolAddress as not deployed yet.
-        pool = new Pool(address(0), address(0xA), address(poolLogic));
+        pool = new Pool(address(0), address(router), address(poolLogic));
 
         // Approve pool contract to spend tokens
         tokenA.approve(address(pool), 1000e18);
         tokenB.approve(address(pool), 1000e18);
+        router = new Router(owner, address(pool));
 
-        pool.updateRouterAddress(owner);
+        pool.updateRouterAddress(address(router));
         poolLogic.updatePoolAddress(address(pool)); // Setting poolAddress (kind of initialization)
 
         vm.stopPrank();
     }
+
+    // ================================== GENESIS POOL ============================== //
+
+    function test_initGenesisPool_success() public{
+        vm.startPrank(owner);
+        uint256 addLiquidityTokenAmount = 100e18;
+        tokenA.transfer(address(router), addLiquidityTokenAmount);
+        vm.stopPrank();
+
+        vm.startPrank(address(router));
+        uint256 dToMint = 50e18;
+        uint256 lpUnitsBefore = poolLogic.calculateLpUnitsToMint(addLiquidityTokenAmount, 0, 0);
+        tokenA.transfer(address(pool), addLiquidityTokenAmount);
+
+        poolLogic.initGenesisPool(address(tokenA), owner, addLiquidityTokenAmount, dToMint);
+
+        uint256 lpUnitsAfter = pool.userLpUnitInfo(owner, address(tokenA));
+
+        assertEq(lpUnitsBefore, lpUnitsAfter);
+
+        (
+            uint256 reserveD,
+            uint256 poolOwnershipUnitsTotal,
+            uint256 reserveA,
+            uint256 initialDToMint,
+            uint256 poolFeeCollected,
+            bool initialized
+        ) = pool.poolInfo(address(tokenA));
+
+        uint256 poolBalanceAfter = tokenA.balanceOf(address(pool));
+
+        assertEq(reserveD, dToMint);
+        assertEq(poolOwnershipUnitsTotal, lpUnitsAfter);
+        assertEq(reserveA ,  addLiquidityTokenAmount);
+        assertEq(poolBalanceAfter, addLiquidityTokenAmount);
+        assertEq(initialDToMint, dToMint);
+        assertEq(initialized, true);
+    }
+
+    function test_initGenesisPool_invalidOwner() public {
+        vm.startPrank(owner);
+
+        vm.expectRevert(abi.encodeWithSelector(getNotRouterLogicSelector(), owner));
+
+        poolLogic.initGenesisPool(address(tokenA), owner, 1, 1);
+    }
+
 
     //------------- CREATE POOL TEST ---------------- //
     // function test_createPool_success() public {

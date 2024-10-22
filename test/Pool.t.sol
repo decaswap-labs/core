@@ -17,30 +17,94 @@ contract PoolTest is Test, Utils {
     PoolLogic poolLogic;
     MockERC20 public tokenA;
     MockERC20 public tokenB;
-    address public vault = address(1);
     Router public router;
-    address public user = address(4);
-    address public nonAuthorized = address(5);
+    address public owner = address(0xD);
+    address public nonAuthorized = address(0xE);
 
     function setUp() public {
+        vm.startPrank(owner);
+
         tokenA = new MockERC20("Token A", "TKA", 18);
         tokenB = new MockERC20("Token B", "TKB", 18);
-        poolLogic = new PoolLogic(user, address(0)); // setting zero address for poolAddress as not deployed yet.
-        vm.prank(user);
-        pool = new Pool(vault, address(router), address(poolLogic));
-        // Mint tokens for liquidity adding
-        tokenA.mint(user, 1000 ether);
-        tokenB.mint(user, 1000 ether);
+
+        poolLogic = new PoolLogic(owner, address(0)); // setting zero address for poolAddress as not deployed yet.
+        pool = new Pool(address(0), address(router), address(poolLogic));
 
         // Approve pool contract to spend tokens
-        vm.prank(user);
-        tokenA.approve(address(pool), 1000 ether);
-        tokenB.approve(address(pool), 1000 ether);
+        tokenA.approve(address(pool), 1000e18);
+        tokenB.approve(address(pool), 1000e18);
+        router = new Router(owner, address(pool));
 
-        router = new Router(user, address(pool));
-        vm.startPrank(user);
         pool.updateRouterAddress(address(router));
         poolLogic.updatePoolAddress(address(pool)); // Setting poolAddress (kind of initialization)
+
+        vm.stopPrank();
+    }
+
+    // =================== GENESIS POOL ==================== //
+
+    function test_initGenesisPool_success() public{
+        vm.startPrank(owner);
+        uint256 addLiquidityTokenAmount = 100e18;
+        tokenA.transfer(address(poolLogic), addLiquidityTokenAmount);
+        vm.stopPrank();
+
+        vm.startPrank(address(poolLogic));
+        uint256 dToMint = 50e18;
+        uint256 lpUnitsBefore = poolLogic.calculateLpUnitsToMint(addLiquidityTokenAmount, 0, 0);
+        tokenA.transfer(address(pool), addLiquidityTokenAmount);
+
+        bytes memory initPoolParams = abi.encode(
+            address(tokenA),
+            owner,
+            addLiquidityTokenAmount,
+            dToMint,
+            lpUnitsBefore,
+            dToMint,
+            0
+        );
+
+        pool.initGenesisPool(initPoolParams);
+
+        uint256 lpUnitsAfter = pool.userLpUnitInfo(owner, address(tokenA));
+
+        assertEq(lpUnitsBefore, lpUnitsAfter);
+
+        (
+            uint256 reserveD,
+            uint256 poolOwnershipUnitsTotal,
+            uint256 reserveA,
+            uint256 initialDToMint,
+            uint256 poolFeeCollected,
+            bool initialized
+        ) = pool.poolInfo(address(tokenA));
+
+        uint256 poolBalanceAfter = tokenA.balanceOf(address(pool));
+
+        assertEq(reserveD, dToMint);
+        assertEq(poolOwnershipUnitsTotal, lpUnitsAfter);
+        assertEq(reserveA ,  addLiquidityTokenAmount);
+        assertEq(poolBalanceAfter, addLiquidityTokenAmount);
+        assertEq(initialDToMint, dToMint);
+        assertEq(initialized, true);
+    }
+
+    function test_initGenesisPool_invalidOwner() public {
+        vm.startPrank(owner);
+
+        vm.expectRevert(abi.encodeWithSelector(getNotPoolLogicSelector(), owner));
+
+        bytes memory initPoolParams = abi.encode(
+            address(tokenA),
+            owner,
+            0,
+            0,
+            0,
+            0,
+            0
+        );
+
+        pool.initGenesisPool(initPoolParams);
     }
 
     // ------------------------ Test Cases ------------------------

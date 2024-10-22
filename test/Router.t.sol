@@ -40,6 +40,76 @@ contract RouterTest is Test, Utils {
         vm.stopPrank();
     }
 
+    // ==================== GENESIS POOL ======================= //
+
+    function test_initGenesisPool_success() public{
+        vm.startPrank(owner);
+
+        uint256 addLiquidityTokenAmount = 100e18;
+
+        uint256 dToMint = 50e18;
+
+        uint256 lpUnitsBefore = poolLogic.calculateLpUnitsToMint(addLiquidityTokenAmount, 0, 0);
+
+        tokenA.approve(address(router), addLiquidityTokenAmount);
+
+        router.initGenesisPool(address(tokenA), addLiquidityTokenAmount, dToMint);
+
+        uint256 lpUnitsAfter = pool.userLpUnitInfo(owner, address(tokenA));
+
+        assertEq(lpUnitsBefore, lpUnitsAfter);
+
+        (
+            uint256 reserveD,
+            uint256 poolOwnershipUnitsTotal,
+            uint256 reserveA,
+            uint256 initialDToMint,
+            uint256 poolFeeCollected,
+            bool initialized
+        ) = pool.poolInfo(address(tokenA));
+
+        uint256 poolBalanceAfter = tokenA.balanceOf(address(pool));
+
+        assertEq(reserveD, dToMint);
+        assertEq(poolOwnershipUnitsTotal, lpUnitsAfter);
+        assertEq(reserveA ,  addLiquidityTokenAmount);
+        assertEq(poolBalanceAfter, addLiquidityTokenAmount);
+        assertEq(initialDToMint, dToMint);
+        assertEq(initialized, true);
+    }
+
+    function test_initGenesisPool_invalidTokenAmount() public{
+        vm.startPrank(owner);
+
+        vm.expectRevert(IRouterErrors.InvalidAmount.selector);
+
+        router.initGenesisPool(address(tokenA), 0, 1);
+    }
+
+    function test_initGenesisPool_invalidDAmount() public{
+        vm.startPrank(owner);
+
+        vm.expectRevert(IRouterErrors.InvalidInitialDAmount.selector);
+
+        router.initGenesisPool(address(tokenA), 1, 0);
+    }
+
+    function test_initGenesisPool_invalidToken() public{
+        vm.startPrank(owner);
+
+        vm.expectRevert(IRouterErrors.InvalidToken.selector);
+
+        router.initGenesisPool(address(0), 1, 0);
+    }
+
+    function test_initGenesisPool_notOwner() public{
+        vm.startPrank(nonAuthorized);
+
+        vm.expectRevert(abi.encodeWithSelector(getOwnableUnauthorizedAccountSelector(), nonAuthorized));
+
+        router.initGenesisPool(address(tokenA), 1, 1);
+    }
+
     //------------- CREATE POOL TEST ---------------- //
 
     // test to create pool success
