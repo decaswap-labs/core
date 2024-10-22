@@ -42,7 +42,7 @@ contract RouterTest is Test, Utils {
 
     // ==================== GENESIS POOL ======================= //
 
-    function test_initGenesisPool_success() public{
+    function test_initGenesisPool_success() public {
         vm.startPrank(owner);
 
         uint256 addLiquidityTokenAmount = 100e18;
@@ -72,13 +72,13 @@ contract RouterTest is Test, Utils {
 
         assertEq(reserveD, dToMint);
         assertEq(poolOwnershipUnitsTotal, lpUnitsAfter);
-        assertEq(reserveA ,  addLiquidityTokenAmount);
+        assertEq(reserveA, addLiquidityTokenAmount);
         assertEq(poolBalanceAfter, addLiquidityTokenAmount);
         assertEq(initialDToMint, dToMint);
         assertEq(initialized, true);
     }
 
-    function test_initGenesisPool_invalidTokenAmount() public{
+    function test_initGenesisPool_invalidTokenAmount() public {
         vm.startPrank(owner);
 
         vm.expectRevert(IRouterErrors.InvalidAmount.selector);
@@ -86,7 +86,7 @@ contract RouterTest is Test, Utils {
         router.initGenesisPool(address(tokenA), 0, 1);
     }
 
-    function test_initGenesisPool_invalidDAmount() public{
+    function test_initGenesisPool_invalidDAmount() public {
         vm.startPrank(owner);
 
         vm.expectRevert(IRouterErrors.InvalidInitialDAmount.selector);
@@ -94,7 +94,7 @@ contract RouterTest is Test, Utils {
         router.initGenesisPool(address(tokenA), 1, 0);
     }
 
-    function test_initGenesisPool_invalidToken() public{
+    function test_initGenesisPool_invalidToken() public {
         vm.startPrank(owner);
 
         vm.expectRevert(IRouterErrors.InvalidToken.selector);
@@ -102,7 +102,7 @@ contract RouterTest is Test, Utils {
         router.initGenesisPool(address(0), 1, 0);
     }
 
-    function test_initGenesisPool_notOwner() public{
+    function test_initGenesisPool_notOwner() public {
         vm.startPrank(nonAuthorized);
 
         vm.expectRevert(abi.encodeWithSelector(getOwnableUnauthorizedAccountSelector(), nonAuthorized));

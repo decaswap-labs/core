@@ -20,7 +20,6 @@ contract PoolLogicTest is Test, Utils {
     address public owner = address(0xD);
     address public nonAuthorized = address(0xE);
 
-
     function setUp() public {
         vm.startPrank(owner);
 
@@ -43,7 +42,7 @@ contract PoolLogicTest is Test, Utils {
 
     // ================================== GENESIS POOL ============================== //
 
-    function test_initGenesisPool_success() public{
+    function test_initGenesisPool_success() public {
         vm.startPrank(owner);
         uint256 addLiquidityTokenAmount = 100e18;
         tokenA.transfer(address(router), addLiquidityTokenAmount);
@@ -73,7 +72,7 @@ contract PoolLogicTest is Test, Utils {
 
         assertEq(reserveD, dToMint);
         assertEq(poolOwnershipUnitsTotal, lpUnitsAfter);
-        assertEq(reserveA ,  addLiquidityTokenAmount);
+        assertEq(reserveA, addLiquidityTokenAmount);
         assertEq(poolBalanceAfter, addLiquidityTokenAmount);
         assertEq(initialDToMint, dToMint);
         assertEq(initialized, true);
@@ -86,7 +85,6 @@ contract PoolLogicTest is Test, Utils {
 
         poolLogic.initGenesisPool(address(tokenA), owner, 1, 1);
     }
-
 
     //------------- CREATE POOL TEST ---------------- //
     // function test_createPool_success() public {

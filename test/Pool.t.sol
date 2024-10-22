@@ -43,7 +43,7 @@ contract PoolTest is Test, Utils {
 
     // =================== GENESIS POOL ==================== //
 
-    function test_initGenesisPool_success() public{
+    function test_initGenesisPool_success() public {
         vm.startPrank(owner);
         uint256 addLiquidityTokenAmount = 100e18;
         tokenA.transfer(address(poolLogic), addLiquidityTokenAmount);
@@ -54,15 +54,8 @@ contract PoolTest is Test, Utils {
         uint256 lpUnitsBefore = poolLogic.calculateLpUnitsToMint(addLiquidityTokenAmount, 0, 0);
         tokenA.transfer(address(pool), addLiquidityTokenAmount);
 
-        bytes memory initPoolParams = abi.encode(
-            address(tokenA),
-            owner,
-            addLiquidityTokenAmount,
-            dToMint,
-            lpUnitsBefore,
-            dToMint,
-            0
-        );
+        bytes memory initPoolParams =
+            abi.encode(address(tokenA), owner, addLiquidityTokenAmount, dToMint, lpUnitsBefore, dToMint, 0);
 
         pool.initGenesisPool(initPoolParams);
 
@@ -83,7 +76,7 @@ contract PoolTest is Test, Utils {
 
         assertEq(reserveD, dToMint);
         assertEq(poolOwnershipUnitsTotal, lpUnitsAfter);
-        assertEq(reserveA ,  addLiquidityTokenAmount);
+        assertEq(reserveA, addLiquidityTokenAmount);
         assertEq(poolBalanceAfter, addLiquidityTokenAmount);
         assertEq(initialDToMint, dToMint);
         assertEq(initialized, true);
@@ -94,15 +87,7 @@ contract PoolTest is Test, Utils {
 
         vm.expectRevert(abi.encodeWithSelector(getNotPoolLogicSelector(), owner));
 
-        bytes memory initPoolParams = abi.encode(
-            address(tokenA),
-            owner,
-            0,
-            0,
-            0,
-            0,
-            0
-        );
+        bytes memory initPoolParams = abi.encode(address(tokenA), owner, 0, 0, 0, 0, 0);
 
         pool.initGenesisPool(initPoolParams);
     }
