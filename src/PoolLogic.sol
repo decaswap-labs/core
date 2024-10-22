@@ -58,6 +58,27 @@ contract PoolLogic is Ownable, IPoolLogic {
         IPoolActions(POOL_ADDRESS).initGenesisPool(initPoolParams);
     }
 
+    function initPool(
+        address token,
+        address liquidityToken,
+        address user,
+        uint256 tokenAmount,
+        uint256 liquidityTokenAmount
+    ) external {
+        bytes memory initPoolParams = abi.encode(
+            token,
+            liquidityToken,
+            user,
+            tokenAmount,
+            liquidityTokenAmount,
+            0, // to be calc
+            calculateLpUnitsToMint(tokenAmount, 0, 0),
+            0,
+            0
+        );
+        IPoolActions(POOL_ADDRESS).initPool(initPoolParams);
+    }
+
     function addLiquidity(address token, address user, uint256 amount) external onlyRouter {
         (
             uint256 reserveD,

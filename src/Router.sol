@@ -45,13 +45,29 @@ contract Router is Ownable, ReentrancyGuard, IRouter {
     // }
 
     function initGenesisPool(address token, uint256 tokenAmount, uint256 dToMint) external onlyOwner {
+        if (poolExist(token)) revert DuplicatePool();
         if (tokenAmount == 0) revert InvalidAmount();
-        if (token == address(0)) revert InvalidToken();
         if (dToMint == 0) revert InvalidInitialDAmount();
 
         IERC20(token).safeTransferFrom(msg.sender, POOL_ADDRESS, tokenAmount);
 
         IPoolLogic(poolStates.POOL_LOGIC()).initGenesisPool(token, msg.sender, tokenAmount, dToMint);
+    }
+
+    function initPool(address token, address liquidityToken, uint256 tokenAmount, uint256 liquidityTokenAmount)
+        external
+        returns (bool success)
+    {
+        if (!poolExist(liquidityToken)) revert InvalidPool();
+        if (poolExist(token)) revert DuplicatePool();
+        if (tokenAmount == 0) revert InvalidAmount();
+        if (liquidityTokenAmount == 0) revert InvalidLiquidityTokenAmount();
+
+        IERC20(token).safeTransferFrom(msg.sender, POOL_ADDRESS, tokenAmount);
+
+        IPoolLogic(poolStates.POOL_LOGIC()).initPool(
+            token, liquidityToken, msg.sender, tokenAmount, liquidityTokenAmount
+        );
     }
 
     function addLiquidity(address token, uint256 amount) external override nonReentrant {
@@ -96,6 +112,7 @@ contract Router is Ownable, ReentrancyGuard, IRouter {
     }
 
     function poolExist(address tokenAddress) internal view returns (bool) {
+        if (tokenAddress == address(0)) revert InvalidToken();
         // TODO : Resolve this tuple unbundling issue
         (uint256 a, uint256 b, uint256 c, uint256 d, uint256 e, bool initialized) = poolStates.poolInfo(tokenAddress);
         return initialized;

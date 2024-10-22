@@ -8,6 +8,8 @@ interface IPoolActions {
     // function createPool(bytes calldata creatPoolParams) external;
     // creatPoolParams encoding format => (address token, address user, uint256 amount, uint256 initialDToMint, uint newLpUnits, uint newDUnits, uint256 poolFeeCollected)
     function initGenesisPool(bytes calldata initPoolParams) external;
+    // creatPoolParams encoding format => (address token, address liquidityToken, address user, uint256 amount, uint256 liquidityTokenAmount, uint256 initialDToMint, uint newLpUnits, uint newDUnits, uint256 poolFeeCollected)
+    function initPool(bytes calldata initPoolParams) external;
     // addLiqParams encoding format => (address token, address user, uint amount, uint256 newLpUnits, uint256 newDUnits, uint256 poolFeeCollected)
     function addLiquidity(bytes memory addLiqParams) external;
     // removeLiqParams encoding format => (address token, address user, uint lpUnits, uint256 assetToTransfer, uint256 dAmountToDeduct, uint256 poolFeeCollected)

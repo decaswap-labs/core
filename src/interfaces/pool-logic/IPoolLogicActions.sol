@@ -11,6 +11,13 @@ interface IPoolLogicActions {
     //     uint256 initialDToMint
     // ) external;
     function initGenesisPool(address token, address user, uint256 tokenAmount, uint256 initialDToMint) external;
+    function initPool(
+        address token,
+        address liquidityToken,
+        address user,
+        uint256 tokenAmount,
+        uint256 liquidityTokenAmount
+    ) external;
     function addLiquidity(address token, address user, uint256 amount) external;
     function removeLiquidity(address token, address user, uint256 lpUnits) external;
     function swap(address user, address tokenIn, address tokenOut, uint256 amountIn, uint256 executionPrice) external;

@@ -127,6 +127,28 @@ contract Pool is IPool, Ownable {
         _addLiquidity(addLiqParam);
     }
 
+    // creatPoolParams encoding format => (address token, address liquidityToken, address user, uint256 amount, uint256 liquidityTokenAmount, uint256 initialDToMint, uint newLpUnits, uint newDUnits, uint256 poolFeeCollected)
+    function initPool(bytes calldata initPoolParams) external onlyPoolLogic {
+        (
+            address token,
+            address liquidityToken,
+            address user,
+            uint256 amount,
+            uint256 liquidityTokenAmount,
+            uint256 initialDToMint,
+            uint256 newLpUnits,
+            uint256 newDUnits,
+            uint256 poolFeeCollected
+        ) = abi.decode(
+            initPoolParams, (address, address, address, uint256, uint256, uint256, uint256, uint256, uint256)
+        );
+        _initPool(token, initialDToMint);
+        bytes memory addLiqParam = abi.encode(token, user, amount, newLpUnits, newDUnits, poolFeeCollected);
+        mapToken_reserveD[token] += newDUnits;
+        mapToken_reserveD[liquidityToken] -= newDUnits;
+        _addLiquidity(addLiqParam);
+    }
+
     function dequeueSwap_poolStreamQueue(bytes32 pairId) external onlyPoolLogic {
         mapPairId_poolStreamQueue_front[pairId]++;
     }
