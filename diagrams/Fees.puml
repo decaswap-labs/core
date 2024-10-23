@@ -1,0 +1,74 @@
+@startuml Fees
+!pragma teoz true
+
+title Fees
+
+actor LP as LPer
+actor Bot as B
+
+
+
+box "PoolLogic.sol" #LightYellow
+participant executeStream as ES
+participant streamLiquidity as SL
+participant updateLpDecleration as ULP
+database lPToDeclerations as LP
+end box
+
+box "Fees Variables & Logic" #LightBlue
+    database epochToFees as EF
+    database totalLpUnits as TLP
+    database epochCounter as E
+    participant streamEpochFees as SF
+end box
+
+box "Income.sol" #LightPink
+    database poolToEpochToFees as PTE
+    database poolToEpochToPDepth as P
+    participant calculateFeeAllocation as C
+    participant depositFees as DF
+    participant withdrawPoolFees as WF
+end box
+
+
+
+group Liquidity Provider
+LPer --> LP: deposit, recording:\nepoch datas\nP' units\nuser address
+end
+
+group Fees Accumulation
+B --> ES : execute\nstream\nfor pool
+ES -> ES: calculate\nfees
+ES --> EF: epochToFees +=\n15BPS
+end
+
+group Transfer Fees
+B --> SF: call
+SF <--> EF: reads fees accumulated in current epoch
+SF <--> TLP: reads total LP units for this epoch
+SF <--> E: reads current epoch
+SF -> SF: pack call data:\nepoch\nLP units\nfees to transfer
+SF --> E: epochCounter++
+SF --> DF: `.call` depositFees
+DF -> DF: add tokens balance
+DF --> PTE: map epochToFees
+DF --> P: map epochToPDepth
+end
+
+group Withdraw LP Fee Allocation
+LPer --> WF: calls withdrawPoolFees. must pass pool address
+WF <--> LP: reads LP structs into memory for designated pool, considering currentEpoch and the epochRange in the struct
+WF <--> PTE: reads fees accumulated in relative epochs
+WF --> C: calls allocation calculator
+C <--> PTE: reads epoch fees viable for claim
+C <--> P: reads epoch depths
+C -> C: calculates LP's share of fees
+C --> WF: returns USDC fee allocation for LP \n+ datas required to update LP decleration(s)
+WF -> WF: recreates\nLP struct(s)
+WF --> ULP: & writes
+ULP --> LP: to storage 
+ULP --> WF: returning bool
+WF --> SL: liquidity streamed out from Income contract to LP's EOA
+SL --> LPer
+end
+@enduml
