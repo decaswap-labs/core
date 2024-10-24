@@ -1,30 +1,48 @@
 @startuml Router
 !pragma teoz true
 
-title Router.sol
+title Streaming Asset
 
-actor User as U
-box "F" #LightYellow
-participant "Example Participant 1" as EP1
-end box
-box "Example Box 2" #LightBlue
-    database ExampleDatabase1 as ED1
-    database ExampleDatabase2 as ED2
-end box
-database ExampleBridge as EB
-box "Example Box 3" #LightPink
-    database ExampleDatabase3 as ED3
-    database ExampleDatabase4 as ED4
+actor LP as LP
+
+' // There's a pool with 100A tokens and 10D tokens
+' // Streaming D => I am providing tokenB amount and will buy D from PoolB
+' // Then that D will be added in the poolA, so I am buying D, and adding D
+' // no tokenA is added here. Arb will balance the pool
+
+box "Router" #LightBlue
+    participant addLiquidityOnlyD as RA
 end box
 
-U --> EP1 : Example Action 1
-  EP1 --> ED1: Example Action 2
-  ED1 --> ED2: Example Action 3
-  ED2 --> ED1: Example Action 4
-  ED1 --> EB: Example Action 5
-  EB --> ED3: Example Action 6
-  ED3 --> ED4: Example Action 7
-  ED3 --> ED1: Example Action 8
-  ED1 --> ED1: Example Action 9
+box "PoolLogic" #LightYellow
+    participant _addLiquidityOnlyD as PLA
+    participant _streamLiquidity as SLA
+    participant _mintLPPoints as MLP
+end box
 
+box "Pool" #LightGreen
+    participant addLiquidityStreamQueue as ALQ
+    database LiquidityQueue as DBLP
+    database LiquidityArray as LPA
+    participant updateReserves as UPR
+end box
+
+box "FeesLogic" #LightPink
+    participant _mintLPPoints as MLPF
+    database poolToEpochToLp as LPD
+end box
+
+group D Stream Execution
+LP --> RA : ERC20.transfer of tokenB
+RA --> PLA : Forward\nERC20 tokens\nmetadata
+PLA --> ALQ : Stores the add liquity\nstream object
+ALQ -> DBLP : Updates the queue of D streams
+PLA -> SLA : Bumps the addliquidity queue\nProcess the streams\nBuy D from another pool
+PLA --> UPR : Updates the reserves of PoolA and PoolB with\nnew D and tokenB amount
+PLA -> MLP : Calculates new LP units to mint
+end
+PLA -> MLP : calls creation of decleration
+MLP --> MLPF : passes metadata
+MLPF --> LPD : write the struct into mapping
+PLA -> LPA: Adds Liquidity Struct  
 @enduml
