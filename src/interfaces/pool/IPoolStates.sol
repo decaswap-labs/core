@@ -11,8 +11,6 @@ interface IPoolStates {
             uint256 reserveD,
             uint256 poolOwnershipUnitsTotal,
             uint256 reserveA,
-            uint256 minLaunchReserveA,
-            uint256 minLaunchReserveD,
             uint256 initialDToMint,
             uint256 poolFeeCollected,
             bool initialized
