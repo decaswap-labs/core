@@ -6,7 +6,7 @@ import "@openzeppelin/contracts/access/Ownable.sol";
 import {IPoolLogicActions} from "./interfaces/pool-logic/IPoolLogicActions.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import {Queue} from "./lib/SwapQueue.sol";
-import {Swap} from "./lib/SwapQueue.sol";
+import {Swap, LiquidityStream} from "./lib/SwapQueue.sol"; // @todo keep structs in a different place
 import {PoolSwapData} from "./lib/SwapQueue.sol";
 import {SwapSorter} from "./lib/QuickSort.sol";
 
@@ -52,6 +52,11 @@ contract Pool is IPool, Ownable {
     // mapping(bytes32 => Queue.QueueStruct) public pairStreamQueue;
     // mapping(bytes32 => Queue.QueueStruct) public pairPendingQueue;
     // mapping(bytes32 => Queue.QueueStruct) public poolStreamQueue;
+
+    // DStreamQueue struct
+    mapping(bytes32 pairId => LiquidityStream[] liquidityStream) public mapPairId_streamQueue_liquidityStream;
+    mapping(bytes32 pairId => uint256 front) public mapPairId_streamQueue_front;
+    mapping(bytes32 pairId => uint256 back) public mapPairId_streamQueue_back;
 
     // poolStreamQueue struct
     mapping(bytes32 pairId => Swap[] data) public mapPairId_poolStreamQueue_Swaps;
@@ -110,7 +115,7 @@ contract Pool is IPool, Ownable {
     //     _addLiquidity(addLiqParam);
     // }
 
-    // creatPoolParams encoding format => (address token, address user, uint256 amount, uint256 initialDToMint, uint newLpUnits, uint newDUnits, uint256 poolFeeCollected)
+    // initGenesisPool encoding format => (address token, address user, uint256 amount, uint256 initialDToMint, uint newLpUnits, uint newDUnits, uint256 poolFeeCollected)
     function initGenesisPool(bytes calldata initPoolParams) external onlyPoolLogic {
         (
             address token,
@@ -127,25 +132,12 @@ contract Pool is IPool, Ownable {
         _addLiquidity(addLiqParam);
     }
 
-    // creatPoolParams encoding format => (address token, address liquidityToken, address user, uint256 amount, uint256 liquidityTokenAmount, uint256 initialDToMint, uint newLpUnits, uint newDUnits, uint256 poolFeeCollected)
+    // initPool encoding format => (address token, address user, uint256 amount, uint newLpUnits, uint256 poolFeeCollected)
     function initPool(bytes calldata initPoolParams) external onlyPoolLogic {
-        (
-            address token,
-            address liquidityToken,
-            address user,
-            uint256 amount,
-            uint256 liquidityTokenAmount,
-            uint256 initialDToMint,
-            uint256 newLpUnits,
-            uint256 newDUnits,
-            uint256 poolFeeCollected
-        ) = abi.decode(
-            initPoolParams, (address, address, address, uint256, uint256, uint256, uint256, uint256, uint256)
-        );
-        _initPool(token, initialDToMint);
-        bytes memory addLiqParam = abi.encode(token, user, amount, newLpUnits, newDUnits, poolFeeCollected);
-        mapToken_reserveD[token] += newDUnits;
-        mapToken_reserveD[liquidityToken] -= newDUnits;
+        (address token, address user, uint256 amount, uint256 newLpUnits, uint256 poolFeeCollected) =
+            abi.decode(initPoolParams, (address, address, uint256, uint256, uint256));
+        _initPool(token, 0);
+        bytes memory addLiqParam = abi.encode(token, user, amount, newLpUnits, 0, poolFeeCollected);
         _addLiquidity(addLiqParam);
     }
 
@@ -174,6 +166,11 @@ contract Pool is IPool, Ownable {
     function enqueueSwap_pairPendingQueue(bytes32 pairId, Swap memory swap) external onlyPoolLogic {
         mapPairId_pairPendingQueue_Swaps[pairId].push(swap);
         mapPairId_pairPendingQueue_back[pairId]++;
+    }
+
+    function enqueueLiquidityStream(bytes32 pairId, LiquidityStream memory liquidityStream) external onlyPoolLogic {
+        mapPairId_streamQueue_liquidityStream[pairId].push(liquidityStream);
+        mapPairId_streamQueue_back[pairId]++;
     }
 
     // addLiqParams encoding format => (address token, address user, uint amount, uint256 newLpUnits, uint256 newDUnits, uint256 poolFeeCollected)
@@ -212,6 +209,17 @@ contract Pool is IPool, Ownable {
         }
     }
 
+    // updateReservesParams encoding format => (address tokenA, address tokenB, uint256 reserveA_A, uint256 reserveA_B, uint256 changeInD)
+    function updateReservesWhenStreamingLiq(bytes memory updatedReservesParams) external onlyPoolLogic {
+        (address tokenA, address tokenB, uint256 reserveA_A, uint256 reserveA_B, uint256 changeInD) =
+            abi.decode(updatedReservesParams, (address, address, uint256, uint256, uint256));
+        mapToken_reserveA[tokenA] += reserveA_A;
+        mapToken_reserveD[tokenA] += changeInD;
+
+        mapToken_reserveA[tokenB] += reserveA_B;
+        mapToken_reserveD[tokenB] -= changeInD;
+    }
+
     // updatedSwapData encoding format => (bytes32 pairId, uint256 amountOut, uint256 swapAmountRemaining, bool completed, uint256 streamsRemaining, uint256 streamCount, uint256 swapPerStream)
     function updatePairStreamQueueSwap(bytes memory updatedSwapData) external onlyPoolLogic {
         (
@@ -230,6 +238,25 @@ contract Pool is IPool, Ownable {
         swap.streamsRemaining = streamsRemaining;
         swap.streamsCount = streamCount;
         swap.swapPerStream = swapPerStream;
+    }
+
+    // updatedStreamData encoding format => (bytes32 pairId, uint256 amountAToDeduct, uint256 amountBToDeduct, uint256 poolAStreamsRemaining,uint256 poolBStreamsRemaining, uint dAmountOut)
+    function updateStreamQueueLiqStream(bytes memory updatedStreamData) external onlyPoolLogic {
+        (
+            bytes32 pairId,
+            uint256 amountAToDeduct,
+            uint256 amountBToDeduct,
+            uint256 poolAStreamsRemaining,
+            uint256 poolBStreamsRemaining,
+            uint256 dAmountOut
+        ) = abi.decode(updatedStreamData, (bytes32, uint256, uint256, uint256, uint256, uint256));
+        LiquidityStream storage liquidityStream =
+            mapPairId_streamQueue_liquidityStream[pairId][mapPairId_streamQueue_front[pairId]];
+        liquidityStream.poolAStream.swapAmountRemaining -= amountAToDeduct;
+        liquidityStream.poolBStream.swapAmountRemaining -= amountBToDeduct;
+        liquidityStream.poolAStream.streamsRemaining = poolAStreamsRemaining;
+        liquidityStream.poolBStream.streamsRemaining = poolBStreamsRemaining;
+        liquidityStream.dAmountOut += dAmountOut;
     }
 
     // @todo ask if we should sort it here, or pass sorted array from logic and just save
@@ -379,6 +406,18 @@ contract Pool is IPool, Ownable {
             mapPairId_pairPendingQueue_Swaps[pairId],
             mapPairId_pairPendingQueue_front[pairId],
             mapPairId_pairPendingQueue_back[pairId]
+        );
+    }
+
+    function liquidityStreamQueue(bytes32 pairId)
+        external
+        view
+        returns (LiquidityStream[] memory liquidityStream, uint256 front, uint256 back)
+    {
+        return (
+            mapPairId_streamQueue_liquidityStream[pairId],
+            mapPairId_streamQueue_front[pairId],
+            mapPairId_streamQueue_back[pairId]
         );
     }
 

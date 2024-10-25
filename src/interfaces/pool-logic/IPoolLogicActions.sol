@@ -18,6 +18,9 @@ interface IPoolLogicActions {
         uint256 tokenAmount,
         uint256 liquidityTokenAmount
     ) external;
+
+    function addLiqDualToken(address tokenA, address tokenB, address user, uint256 amountA, uint256 amountB) external;
+    function processLiqStream(address tokenA, address tokenB) external;
     function addLiquidity(address token, address user, uint256 amount) external;
     function removeLiquidity(address token, address user, uint256 lpUnits) external;
     function swap(address user, address tokenIn, address tokenOut, uint256 amountIn, uint256 executionPrice) external;

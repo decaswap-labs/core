@@ -64,10 +64,29 @@ contract Router is Ownable, ReentrancyGuard, IRouter {
         if (liquidityTokenAmount == 0) revert InvalidLiquidityTokenAmount();
 
         IERC20(token).safeTransferFrom(msg.sender, POOL_ADDRESS, tokenAmount);
+        IERC20(liquidityToken).safeTransferFrom(msg.sender, POOL_ADDRESS, liquidityTokenAmount);
 
         IPoolLogic(poolStates.POOL_LOGIC()).initPool(
             token, liquidityToken, msg.sender, tokenAmount, liquidityTokenAmount
         );
+    }
+
+    function addLiqDualToken(address tokenA, address tokenB, uint256 amountA, uint256 amountB) external {
+        if (!poolExist(tokenA)) revert InvalidPool();
+        if (!poolExist(tokenB)) revert InvalidPool();
+        if (amountA == 0) revert InvalidAmount();
+        if (amountB == 0) revert InvalidAmount();
+
+        IERC20(tokenA).safeTransferFrom(msg.sender, POOL_ADDRESS, amountA);
+        IERC20(tokenB).safeTransferFrom(msg.sender, POOL_ADDRESS, amountB);
+
+        IPoolLogic(poolStates.POOL_LOGIC()).addLiqDualToken(tokenA, tokenB, msg.sender, amountA, amountB);
+    }
+
+    function processLiqStream(address poolA, address poolB) external {
+        require(poolA != poolB, "Same pools");
+        if (!poolExist(poolA) || !poolExist(poolB)) revert InvalidPool();
+        IPoolLogic(poolStates.POOL_LOGIC()).processLiqStream(poolA, poolB);
     }
 
     function addLiquidity(address token, uint256 amount) external override nonReentrant {
@@ -100,6 +119,7 @@ contract Router is Ownable, ReentrancyGuard, IRouter {
     }
 
     function processPair(address tokenIn, address tokenOut) external nonReentrant {
+        require(tokenIn != tokenOut, "Same tokens");
         if (!poolExist(tokenIn) || !poolExist(tokenOut)) revert InvalidPool();
         IPoolLogic(poolStates.POOL_LOGIC()).processPair(tokenIn, tokenOut);
     }
