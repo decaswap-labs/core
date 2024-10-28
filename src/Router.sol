@@ -14,9 +14,10 @@ import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol
 
 contract Router is Ownable, ReentrancyGuard, IRouter {
     using SafeERC20 for IERC20;
+
     address public override POOL_ADDRESS;
-    IPoolActions pool;
-    IPoolStates poolStates;
+    IPoolActions public pool;
+    IPoolStates public poolStates;
 
     constructor(address ownerAddress, address poolAddress) Ownable(ownerAddress) {
         POOL_ADDRESS = poolAddress;
@@ -86,8 +87,7 @@ contract Router is Ownable, ReentrancyGuard, IRouter {
 
     function poolExist(address tokenAddress) internal view returns (bool) {
         // TODO : Resolve this tuple unbundling issue
-        (uint256 a, uint256 b, uint256 c, uint256 d, uint256 f, uint256 g, uint256 h, bool initialized) =
-            poolStates.poolInfo(tokenAddress);
+        (,,,,,,, bool initialized) = poolStates.poolInfo(tokenAddress);
         return initialized;
     }
 }

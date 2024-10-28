@@ -127,6 +127,12 @@ contract PoolLogic is Ownable, IPoolLogic {
         _executeStream(tokenIn, tokenOut);
     }
 
+    /**
+     *
+     * @param tokenIn the token that is being swapped
+     * @param tokenOut the token that is being received
+     * //TODO: Deduct fees from amount out = 5BPS.
+     */
     function _executeStream(address tokenIn, address tokenOut) internal {
         bytes32 pairId = keccak256(abi.encodePacked(tokenIn, tokenOut));
         // loading the front swap from the stream queue
@@ -154,7 +160,7 @@ contract PoolLogic is Ownable, IPoolLogic {
             // we can update the swap stream queue
             updatedSwapData_front = abi.encode(
                 pairId,
-                0,
+                frontSwap.amountOut,
                 frontSwap.swapAmountRemaining,
                 frontSwap.completed,
                 frontSwap.streamsRemaining,
@@ -370,11 +376,6 @@ contract PoolLogic is Ownable, IPoolLogic {
                 break;
             }
         }
-
-        // 5. we transfer the tokens to the users
-        // if (frontPayout.amount > 0) {
-        //     IPoolActions(POOL_ADDRESS).transferTokens(frontPayout.token, frontPayout.swapUser, frontPayout.amount);
-        // }
 
         for (uint256 i = 0; i < oppositePayouts.length; i++) {
             if (oppositePayouts[i].amount > 0) {
