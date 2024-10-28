@@ -144,33 +144,85 @@ contract PoolLogic is Ownable, IPoolLogic {
 
         bytes32 pairId = keccak256(abi.encodePacked(tokenA, tokenB));
         // enqueue
-        // since pool is being initialized and reserves are added directly in poolA, poolA stream will be empty
+        _enqueueLiqStream(
+            pairId,
+            user,
+            TYPE_OF_LP.DUAL_TOKEN,
+            StreamDetails({
+                token: tokenA,
+                amount: amountA,
+                streamCount: streamCountA,
+                streamsRemaining: streamCountA,
+                swapPerStream: swapPerStreamA,
+                swapAmountRemaining: amountA
+            }), // poolA stream
+            StreamDetails({
+                token: tokenB,
+                amount: amountB,
+                streamCount: streamCountB,
+                streamsRemaining: streamCountB,
+                swapPerStream: swapPerStreamB,
+                swapAmountRemaining: amountB
+            }) // poolB stream
+        );
+
+        _streamLiquidity(tokenA, tokenB);
+    }
+
+    function streamDToPool(address tokenA, address tokenB, address user, uint256 amountB) external onlyRouter {
+        (
+            uint256 reserveD_B,
+            uint256 poolOwnershipUnitsTotal_B,
+            uint256 reserveA_B,
+            uint256 initialDToMint_B,
+            uint256 poolFeeCollected_B,
+            bool initialized_B
+        ) = pool.poolInfo(tokenB);
+
+        bytes32 poolId = getPoolId(tokenA, tokenB); // for pair slippage only. Not an ID for pair direction queue
+
+        uint256 streamCountB = calculateStreamCount(amountB, pool.pairSlippage(poolId), reserveD_B);
+        uint256 swapPerStreamB = amountB / streamCountB;
+
+        bytes32 pairId = keccak256(abi.encodePacked(tokenA, tokenB));
+        // poolAStream will be empty as tokens are added to poolB and D is streamed from B -> A
+        StreamDetails memory poolAStream;
+        // enqueue
+        _enqueueLiqStream(
+            pairId,
+            user,
+            TYPE_OF_LP.SINGLE_TOKEN,
+            poolAStream, // poolA stream
+            StreamDetails({
+                token: tokenB,
+                amount: amountB,
+                streamCount: streamCountB,
+                streamsRemaining: streamCountB,
+                swapPerStream: swapPerStreamB,
+                swapAmountRemaining: amountB
+            }) // poolB stream
+        );
+
+        _streamLiquidity(tokenA, tokenB);
+    }
+
+    function _enqueueLiqStream(
+        bytes32 pairId,
+        address user,
+        TYPE_OF_LP typeofLp,
+        StreamDetails memory poolAStream,
+        StreamDetails memory poolBStream
+    ) internal {
         IPoolActions(POOL_ADDRESS).enqueueLiquidityStream(
             pairId,
             LiquidityStream({
                 user: user,
-                poolAStream: StreamDetails({
-                    token: tokenA,
-                    amount: amountA,
-                    streamCount: streamCountA,
-                    streamsRemaining: streamCountA,
-                    swapPerStream: swapPerStreamA,
-                    swapAmountRemaining: amountA
-                }), // poolA stream
-                poolBStream: StreamDetails({
-                    token: tokenB,
-                    amount: amountB,
-                    streamCount: streamCountB,
-                    streamsRemaining: streamCountB,
-                    swapPerStream: swapPerStreamB,
-                    swapAmountRemaining: amountB
-                }), // poolB stream
+                poolAStream: poolAStream, // poolA stream
+                poolBStream: poolBStream, // poolB stream
                 dAmountOut: 0,
-                typeofLp: TYPE_OF_LP.DUAL_TOKEN
+                typeofLp: typeofLp
             })
         );
-
-        _streamLiquidity(tokenA, tokenB);
     }
 
     function processLiqStream(address poolA, address poolB) external onlyRouter {
@@ -180,7 +232,6 @@ contract PoolLogic is Ownable, IPoolLogic {
     function _streamLiquidity(address poolA, address poolB) internal {
         bytes32 pairId = keccak256(abi.encodePacked(poolA, poolB));
         (LiquidityStream[] memory liquidityStreams, uint256 front, uint256 back) = pool.liquidityStreamQueue(pairId);
-
         // true = there are streams pending
         if (back - front != 0) {
             (
