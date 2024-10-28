@@ -30,8 +30,8 @@ contract RouterTest is Test, Utils {
         pool = new Pool(address(0), address(router), address(poolLogic));
 
         // Approve pool contract to spend tokens
-        tokenA.approve(address(pool), 1000e18);
-        tokenB.approve(address(pool), 1000e18);
+        tokenA.approve(address(router), 1000e18);
+        tokenB.approve(address(router), 1000e18);
         router = new Router(owner, address(pool));
 
         pool.updateRouterAddress(address(router));
@@ -110,7 +110,35 @@ contract RouterTest is Test, Utils {
         router.initGenesisPool(address(tokenA), 1, 1);
     }
 
-    //------------- CREATE POOL TEST ---------------- //
+    //------------- INIT PERMISSIONLESS POOL ---------------- //
+
+    function _initGenesisPool() internal {
+        vm.startPrank(owner);
+
+        uint256 addLiquidityTokenAmount = 100e18;
+
+        uint256 dToMint = 50e18;
+
+        tokenA.approve(address(router), addLiquidityTokenAmount);
+
+        router.initGenesisPool(address(tokenA), addLiquidityTokenAmount, dToMint);
+
+        vm.stopPrank();
+    }
+
+    function test_initPool_success() public {
+        _initGenesisPool();
+
+        vm.startPrank(owner);
+
+        uint256 tokenBLiquidityAmount = 100e18;
+        uint256 tokenAStreamLiquidityAmount = 50e18;
+
+        tokenA.approve(address(router), tokenAStreamLiquidityAmount);
+        tokenB.approve(address(router), tokenBLiquidityAmount);
+
+        router.initPool(address(tokenB), address(tokenA), tokenBLiquidityAmount, tokenAStreamLiquidityAmount);
+    }
 
     // test to create pool success
     // function test_createPool_success() public {
