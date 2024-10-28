@@ -182,7 +182,7 @@ contract PoolLogic is Ownable, IPoolLogic {
         (LiquidityStream[] memory liquidityStreams, uint256 front, uint256 back) = pool.liquidityStreamQueue(pairId);
 
         // true = there are streams pending
-        if (front - back != 0) {
+        if (back - front != 0) {
             (
                 uint256 reserveD_B,
                 uint256 poolOwnershipUnitsTotal_B,
