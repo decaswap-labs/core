@@ -214,7 +214,7 @@ contract PoolLogic is Ownable, IPoolLogic {
 
             // update reserves
             bytes memory updatedReserves = abi.encode(poolA, poolB, poolAReservesToAdd, poolBReservesToAdd, changeInD);
-            IPoolActions(address(POOL_ADDRESS)).updateReservesWhenStreamingLiq(updatedReserves);
+            IPoolActions(POOL_ADDRESS).updateReservesWhenStreamingLiq(updatedReserves);
 
             // update stream struct
             bytes memory updatedStreamData = abi.encode(
@@ -225,7 +225,15 @@ contract PoolLogic is Ownable, IPoolLogic {
                 poolBNewStreamsRemaining,
                 changeInD
             );
-            IPoolActions(address(POOL_ADDRESS)).updateStreamQueueLiqStream(updatedStreamData);
+            IPoolActions(POOL_ADDRESS).updateStreamQueueLiqStream(updatedStreamData);
+
+            // means the stream is completed
+            if (
+                liquidityStream.poolAStream.swapAmountRemaining == 0
+                    && liquidityStream.poolBStream.swapAmountRemaining == 0
+            ) {
+                IPoolActions(POOL_ADDRESS).dequeueSwap_poolStreamQueue(pairId);
+            }
         }
     }
 
