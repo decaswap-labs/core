@@ -94,6 +94,62 @@ contract RouterTest_Swap is RouterTest {
         assertEq(swap.completed, false);
     }
 
+    function test_router_swap_totallyExecuteSwapFromReserves() public {
+        (uint256 reserveD_tokenA_beforeSwap,, uint256 reserveA_tokenA_beforeSwap,,,,,) = pool.poolInfo(address(tokenA));
+        (uint256 reserveD_tokenB_beforeSwap,, uint256 reserveA_tokenB_beforeSwap,,,,,) = pool.poolInfo(address(tokenB));
+
+        uint256 executionPriceBeforeSwap =
+            poolLogic.getExecutionPrice(reserveA_tokenA_beforeSwap, reserveA_tokenB_beforeSwap);
+
+        // to add the swap in the straming queue we need to have a swap price execution lower or equal to the current price
+        uint256 swapExecutionPrice = executionPriceBeforeSwap;
+
+        uint256 minPoolDepth = reserveD_tokenA_beforeSwap <= reserveD_tokenB_beforeSwap
+            ? reserveD_tokenA_beforeSwap
+            : reserveD_tokenB_beforeSwap;
+        bytes32 poolId = poolLogic.getPoolId(address(tokenA), address(tokenB)); // for pair slippage only. Not an ID for pair direction queue
+
+        uint256 tokenASwapAmount = 0.1 ether;
+        uint256 streamCount = poolLogic.calculateStreamCount(tokenASwapAmount, pool.pairSlippage(poolId), minPoolDepth);
+        uint256 swapPerStream = tokenASwapAmount / streamCount;
+
+        uint256 swapperTokenABalance_beforeSwap = tokenA.balanceOf(owner);
+        uint256 poolTokenABalance_beforeSwap = tokenA.balanceOf(address(pool));
+        uint256 poolTokenBBalance_beforeSwap = tokenB.balanceOf(address(pool));
+        (uint256 dToUpdate, uint256 tokenBAmountOut) = poolLogic.getSwapAmountOut(
+            swapPerStream,
+            reserveA_tokenA_beforeSwap,
+            reserveA_tokenB_beforeSwap,
+            reserveD_tokenA_beforeSwap,
+            reserveD_tokenB_beforeSwap
+        );
+
+        vm.startPrank(owner);
+        tokenA.approve(address(router), tokenASwapAmount);
+        router.swap(address(tokenA), address(tokenB), tokenASwapAmount, swapExecutionPrice);
+        vm.stopPrank();
+
+        uint256 swapperTokenABalance_afterSwap = tokenA.balanceOf(owner);
+        uint256 poolTokenABalance_afterSwap = tokenA.balanceOf(address(pool));
+        uint256 poolTokenBBalance_afterSwap = tokenB.balanceOf(address(pool));
+
+        (uint256 reserveD_tokenA_afterSwap,, uint256 reserveA_tokenA_afterSwap,,,,,) = pool.poolInfo(address(tokenA));
+        (uint256 reserveD_tokenB_afterSwap,, uint256 reserveA_tokenB_afterSwap,,,,,) = pool.poolInfo(address(tokenB));
+
+        uint256 executionPriceAfterSwap =
+            poolLogic.getExecutionPrice(reserveA_tokenA_afterSwap, reserveA_tokenB_afterSwap);
+        (, uint256 front, uint256 back) = pool.pairStreamQueue(pairId);
+        assertEq(back, front);
+        assertEq(reserveA_tokenA_beforeSwap, reserveA_tokenA_afterSwap - swapPerStream);
+        assertEq(reserveA_tokenB_beforeSwap, reserveA_tokenB_afterSwap + tokenBAmountOut);
+        assertEq(reserveD_tokenA_afterSwap, reserveD_tokenA_beforeSwap - dToUpdate);
+        assertEq(reserveD_tokenB_afterSwap, reserveD_tokenB_beforeSwap + dToUpdate);
+        assertGt(executionPriceAfterSwap, executionPriceBeforeSwap);
+        assertEq(swapperTokenABalance_afterSwap, swapperTokenABalance_beforeSwap - tokenASwapAmount);
+        assertEq(poolTokenABalance_afterSwap, poolTokenABalance_beforeSwap + tokenASwapAmount);
+        assertEq(poolTokenBBalance_afterSwap, poolTokenBBalance_beforeSwap - tokenBAmountOut);
+    }
+
     /**
      * @notice This test will add a swap to the streaming queue and partially execute it
      * because the streamCount will be above 1, the swap won't be totally executed but only partially
