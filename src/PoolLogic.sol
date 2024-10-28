@@ -53,7 +53,7 @@ contract PoolLogic is Ownable, IPoolLogic {
         // hardcoding `poolFeeCollected` to zero as pool is just being created
         // reserveA == amount for 1st deposit
         bytes memory initPoolParams = abi.encode(
-            token, user, tokenAmount, initialDToMint, calculateLpUnitsToMint(tokenAmount, 0, 0), initialDToMint, 0
+            token, user, tokenAmount, initialDToMint, calculateLpUnitsToMint(0, tokenAmount, 0, 0, 0), initialDToMint, 0
         );
         IPoolActions(POOL_ADDRESS).initGenesisPool(initPoolParams);
     }
@@ -104,7 +104,8 @@ contract PoolLogic is Ownable, IPoolLogic {
             })
         );
 
-        bytes memory initPoolParams = abi.encode(token, user, tokenAmount, calculateLpUnitsToMint(tokenAmount, 0, 0), 0);
+        bytes memory initPoolParams =
+            abi.encode(token, user, tokenAmount, calculateLpUnitsToMint(0, tokenAmount, 0, 0, 0), 0);
 
         IPoolActions(POOL_ADDRESS).initPool(initPoolParams);
 
@@ -297,7 +298,7 @@ contract PoolLogic is Ownable, IPoolLogic {
             uint256 poolFeeCollected,
             bool initialized
         ) = pool.poolInfo(address(token));
-        uint256 newLpUnits = calculateLpUnitsToMint(amount, reserveA, poolOwnershipUnitsTotal);
+        uint256 newLpUnits = calculateLpUnitsToMint(poolOwnershipUnitsTotal, amount, reserveA, 0, reserveD);
         reserveA += amount;
         uint256 newDUnits = calculateDUnitsToMint(amount, reserveA, reserveD, initialDToMint);
         bytes memory addLiqParams = abi.encode(token, user, amount, newLpUnits, newDUnits, 0); // poolFeeCollected = 0 until logic is finalized
@@ -644,16 +645,22 @@ contract PoolLogic is Ownable, IPoolLogic {
         return keccak256(abi.encodePacked(A, B));
     }
 
-    function calculateLpUnitsToMint(uint256 amount, uint256 reserveA, uint256 totalLpUnits)
-        public
-        pure
-        returns (uint256)
-    {
+    function calculateLpUnitsToMint(
+        uint256 lpUnitsDepth, // P => depth of lpUnits
+        uint256 amount, // a => assets incoming
+        uint256 reserveA, // A => assets depth
+        uint256 dIncoming, // d
+        uint256 dUnitsDepth // D => depth of dUnits
+    ) public pure returns (uint256) {
+        // p = P * (dA + Da + 2da)/(dA + Da + 2DA)
         if (reserveA == 0) {
             return amount;
         }
 
-        return totalLpUnits * amount / (amount + reserveA);
+        uint256 num = (dIncoming * reserveA) + (dUnitsDepth * amount) + (2 * dIncoming * amount);
+        uint256 den = (dIncoming * reserveA) + (dUnitsDepth * amount) + (2 * dUnitsDepth * reserveA);
+
+        return lpUnitsDepth * (num / den);
     }
 
     function calculateDUnitsToMint(uint256 amount, uint256 reserveA, uint256 reserveD, uint256 initialDToMint)

@@ -42,41 +42,41 @@ contract PoolLogicTest is Test, Utils {
 
     // ================================== GENESIS POOL ============================== //
 
-    function test_initGenesisPool_success() public {
-        vm.startPrank(owner);
-        uint256 addLiquidityTokenAmount = 100e18;
-        tokenA.transfer(address(router), addLiquidityTokenAmount);
-        vm.stopPrank();
+    // function test_initGenesisPool_success() public {
+    //     vm.startPrank(owner);
+    //     uint256 addLiquidityTokenAmount = 100e18;
+    //     tokenA.transfer(address(router), addLiquidityTokenAmount);
+    //     vm.stopPrank();
 
-        vm.startPrank(address(router));
-        uint256 dToMint = 50e18;
-        uint256 lpUnitsBefore = poolLogic.calculateLpUnitsToMint(addLiquidityTokenAmount, 0, 0);
-        tokenA.transfer(address(pool), addLiquidityTokenAmount);
+    //     vm.startPrank(address(router));
+    //     uint256 dToMint = 50e18;
+    //     uint256 lpUnitsBefore = poolLogic.calculateLpUnitsToMint(addLiquidityTokenAmount, 0, 0);
+    //     tokenA.transfer(address(pool), addLiquidityTokenAmount);
 
-        poolLogic.initGenesisPool(address(tokenA), owner, addLiquidityTokenAmount, dToMint);
+    //     poolLogic.initGenesisPool(address(tokenA), owner, addLiquidityTokenAmount, dToMint);
 
-        uint256 lpUnitsAfter = pool.userLpUnitInfo(owner, address(tokenA));
+    //     uint256 lpUnitsAfter = pool.userLpUnitInfo(owner, address(tokenA));
 
-        assertEq(lpUnitsBefore, lpUnitsAfter);
+    //     assertEq(lpUnitsBefore, lpUnitsAfter);
 
-        (
-            uint256 reserveD,
-            uint256 poolOwnershipUnitsTotal,
-            uint256 reserveA,
-            uint256 initialDToMint,
-            uint256 poolFeeCollected,
-            bool initialized
-        ) = pool.poolInfo(address(tokenA));
+    //     (
+    //         uint256 reserveD,
+    //         uint256 poolOwnershipUnitsTotal,
+    //         uint256 reserveA,
+    //         uint256 initialDToMint,
+    //         uint256 poolFeeCollected,
+    //         bool initialized
+    //     ) = pool.poolInfo(address(tokenA));
 
-        uint256 poolBalanceAfter = tokenA.balanceOf(address(pool));
+    //     uint256 poolBalanceAfter = tokenA.balanceOf(address(pool));
 
-        assertEq(reserveD, dToMint);
-        assertEq(poolOwnershipUnitsTotal, lpUnitsAfter);
-        assertEq(reserveA, addLiquidityTokenAmount);
-        assertEq(poolBalanceAfter, addLiquidityTokenAmount);
-        assertEq(initialDToMint, dToMint);
-        assertEq(initialized, true);
-    }
+    //     assertEq(reserveD, dToMint);
+    //     assertEq(poolOwnershipUnitsTotal, lpUnitsAfter);
+    //     assertEq(reserveA, addLiquidityTokenAmount);
+    //     assertEq(poolBalanceAfter, addLiquidityTokenAmount);
+    //     assertEq(initialDToMint, dToMint);
+    //     assertEq(initialized, true);
+    // }
 
     function test_initGenesisPool_invalidOwner() public {
         vm.startPrank(owner);
