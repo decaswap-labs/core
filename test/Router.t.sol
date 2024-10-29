@@ -49,7 +49,8 @@ contract RouterTest is Test, Utils {
 
         uint256 dToMint = 50e18;
 
-        uint256 lpUnitsBefore = poolLogic.calculateLpUnitsToMint(0, addLiquidityTokenAmount, addLiquidityTokenAmount, dToMint, dUnitsDepth);
+        uint256 lpUnitsBefore =
+            poolLogic.calculateLpUnitsToMint(0, addLiquidityTokenAmount, addLiquidityTokenAmount, dToMint, 0);
 
         tokenA.approve(address(router), addLiquidityTokenAmount);
 
