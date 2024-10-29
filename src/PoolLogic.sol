@@ -53,7 +53,7 @@ contract PoolLogic is Ownable, IPoolLogic {
         // hardcoding `poolFeeCollected` to zero as pool is just being created
         // reserveA == amount for 1st deposit
         bytes memory initPoolParams = abi.encode(
-            token, user, tokenAmount, initialDToMint, calculateLpUnitsToMint(0, tokenAmount, 0, 0, 0), initialDToMint, 0
+            token, user, tokenAmount, initialDToMint, calculateLpUnitsToMint(0, tokenAmount, tokenAmount, 0, 0), initialDToMint, 0
         );
         IPoolActions(POOL_ADDRESS).initGenesisPool(initPoolParams);
     }
@@ -105,7 +105,7 @@ contract PoolLogic is Ownable, IPoolLogic {
         );
 
         bytes memory initPoolParams =
-            abi.encode(token, user, tokenAmount, calculateLpUnitsToMint(0, tokenAmount, 0, 0, 0), 0);
+            abi.encode(token, user, tokenAmount, calculateLpUnitsToMint(0, tokenAmount, tokenAmount, 0, 0), 0);
 
         IPoolActions(POOL_ADDRESS).initPool(initPoolParams);
 
@@ -298,8 +298,8 @@ contract PoolLogic is Ownable, IPoolLogic {
             uint256 poolFeeCollected,
             bool initialized
         ) = pool.poolInfo(address(token));
-        uint256 newLpUnits = calculateLpUnitsToMint(poolOwnershipUnitsTotal, amount, reserveA, 0, reserveD);
         reserveA += amount;
+        uint256 newLpUnits = calculateLpUnitsToMint(poolOwnershipUnitsTotal, amount, reserveA, 0, reserveD);
         uint256 newDUnits = calculateDUnitsToMint(amount, reserveA, reserveD, initialDToMint);
         bytes memory addLiqParams = abi.encode(token, user, amount, newLpUnits, newDUnits, 0); // poolFeeCollected = 0 until logic is finalized
         IPoolActions(POOL_ADDRESS).addLiquidity(addLiqParams);
