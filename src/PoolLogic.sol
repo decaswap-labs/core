@@ -53,7 +53,7 @@ contract PoolLogic is Ownable, IPoolLogic {
         // hardcoding `poolFeeCollected` to zero as pool is just being created
         // reserveA == amount for 1st deposit
         bytes memory initPoolParams = abi.encode(
-            token, user, tokenAmount, initialDToMint, calculateLpUnitsToMint(0, tokenAmount, tokenAmount, 0, 0), initialDToMint, 0
+            token, user, tokenAmount, initialDToMint, calculateLpUnitsToMint(0, tokenAmount, tokenAmount, initialDToMint, initialDToMint), initialDToMint, 0
         );
         IPoolActions(POOL_ADDRESS).initGenesisPool(initPoolParams);
     }
@@ -653,7 +653,7 @@ contract PoolLogic is Ownable, IPoolLogic {
         uint256 dUnitsDepth // D => depth of dUnits
     ) public pure returns (uint256) {
         // p = P * (dA + Da + 2da)/(dA + Da + 2DA)
-        if (reserveA == 0) {
+        if (lpUnitsDepth == 0) {
             return amount;
         }
 
