@@ -73,6 +73,7 @@ contract RouterTest is Test, Utils {
 
         assertEq(reserveD, dToMint);
         assertEq(poolOwnershipUnitsTotal, lpUnitsAfter);
+        assertEq(lpUnitsBefore, lpUnitsAfter);
         assertEq(reserveA, addLiquidityTokenAmount);
         assertEq(poolBalanceAfter, addLiquidityTokenAmount);
         assertEq(initialDToMint, dToMint);
@@ -113,289 +114,148 @@ contract RouterTest is Test, Utils {
 
     //------------- INIT PERMISSIONLESS POOL ---------------- //
 
-    function _initGenesisPool() internal {
+    function _initGenesisPool(uint256 d, uint256 a) internal {
         vm.startPrank(owner);
 
-        uint256 addLiquidityTokenAmount = 100e18;
+        tokenA.approve(address(router), a);
 
-        uint256 dToMint = 50e18;
-
-        tokenA.approve(address(router), addLiquidityTokenAmount);
-
-        router.initGenesisPool(address(tokenA), addLiquidityTokenAmount, dToMint);
+        router.initGenesisPool(address(tokenA), a, d);
 
         vm.stopPrank();
     }
 
-    function test_initPool_success() public {
-        _initGenesisPool();
+    function test_initPoolWithMultipleStreams_success() public {
+        uint256 tokenBLiquidityAmount = 100e18;
+
+        uint256 dToMint = 10e18;
+
+        _initGenesisPool(dToMint, tokenBLiquidityAmount);
 
         vm.startPrank(owner);
 
-        uint256 tokenBLiquidityAmount = 100e18;
         uint256 tokenAStreamLiquidityAmount = 50e18;
 
-        tokenA.approve(address(router), tokenAStreamLiquidityAmount);
         tokenB.approve(address(router), tokenBLiquidityAmount);
+        tokenA.approve(address(router), tokenAStreamLiquidityAmount);
+
+        uint256 tokenAStreamCountBefore = poolLogic.calculateStreamCount(tokenAStreamLiquidityAmount, pool.globalSlippage(), dToMint);
+        uint256 swapPerStream = tokenAStreamLiquidityAmount / tokenAStreamCountBefore;
+
+        (
+            uint256 reserveDBeforeA,
+            ,
+            uint256 reserveABeforeA,
+            ,
+            ,
+        ) = pool.poolInfo(address(tokenA));
+
+        (
+            uint256 reserveDBeforeB,
+            uint256 poolOwnershipUnitsTotalBeforeB,
+            uint256 reserveABeforeB,
+            ,
+            ,
+        ) = pool.poolInfo(address(tokenB));
+
+        (uint256 dToTransfer,) = poolLogic.getSwapAmountOut(swapPerStream, reserveABeforeA, 0, reserveDBeforeA, 0);
+        uint256 lpUnitsBefore =  poolLogic.calculateLpUnitsToMint(0, tokenBLiquidityAmount, tokenBLiquidityAmount, 0, 0);
+
+        uint256 tokenBBalanceBefore = tokenB.balanceOf(owner);
 
         router.initPool(address(tokenB), address(tokenA), tokenBLiquidityAmount, tokenAStreamLiquidityAmount);
+
+        uint256 tokenBBalanceAfter = tokenB.balanceOf(owner);
+
+        (
+            uint256 reserveDAfterA,
+            ,
+            uint256 reserveAAfterA,
+            ,
+            ,
+        ) = pool.poolInfo(address(tokenA));
+
+        (
+            uint256 reserveDAfterB,
+            uint256 poolOwnershipUnitsTotalAfterB,
+            uint256 reserveAAfterB,
+            ,
+            ,
+        ) = pool.poolInfo(address(tokenB));
+
+        bytes32 pairId = keccak256(abi.encodePacked(address(tokenB), address(tokenA)));
+
+        (LiquidityStream[] memory streams, uint256 front, uint256 back) = pool.liquidityStreamQueue(pairId);
+
+        assertEq(streams[front].poolBStream.streamsRemaining , tokenAStreamCountBefore - 1);
+        assertEq(streams[front].poolBStream.swapPerStream , swapPerStream);
+        assertEq(streams[front].poolBStream.swapAmountRemaining , tokenAStreamLiquidityAmount - swapPerStream);
+        
+        assertEq(streams[front].poolAStream.streamCount, 0);
+        assertEq(streams[front].poolAStream.swapPerStream, 0);
+
+        assertEq(reserveDAfterA, reserveDBeforeA - dToTransfer);
+        assertEq(reserveAAfterA , reserveABeforeA + swapPerStream);
+
+        assertEq(poolOwnershipUnitsTotalAfterB, poolOwnershipUnitsTotalBeforeB + lpUnitsBefore);
+        assertEq(reserveDAfterB, reserveDBeforeB + dToTransfer);
+        assertEq(reserveAAfterB, reserveABeforeB + tokenBLiquidityAmount);
+
+        assertEq(tokenBBalanceAfter, tokenBBalanceBefore-tokenBLiquidityAmount);
     }
 
-    // test to create pool success
-    // function test_createPool_success() public {
-    //     vm.startPrank(owner);
+    function _initGenesisPoolsForBadCases() internal {
+        vm.startPrank(owner);
 
-    //     uint256 tokenAAmount = 1000e18;
-    //     uint256 minLaunchReserveAa = 500e18;
-    //     uint256 minLaunchReserveDd = 50e18;
-    //     uint256 initialDToMintt = 50e18;
+        tokenA.approve(address(router), 100e18);
+        router.initGenesisPool(address(tokenA), 100e18, 10e18);
 
-    //     tokenA.approve(address(router), tokenAAmount);
+        vm.stopPrank();
+    }
 
-    //     uint256 balanceBefore = tokenA.balanceOf(owner);
+    function test_initPool_invalidPool() public {
+        vm.startPrank(owner);
 
-    //     router.createPool(address(tokenA), tokenAAmount, minLaunchReserveAa, minLaunchReserveDd, initialDToMintt);
+        vm.expectRevert(IRouterErrors.InvalidPool.selector);
 
-    //     (
-    //         uint256 reserveD,
-    //         uint256 poolOwnershipUnitsTotal,
-    //         uint256 reserveA,
-    //         uint256 minLaunchReserveA,
-    //         uint256 minLaunchReserveD,
-    //         uint256 initialDToMint,
-    //         uint256 poolFeeCollected,
-    //         bool initialized
-    //     ) = pool.poolInfo(address(tokenA));
-
-    //     uint256 userLpUnits = pool.userLpUnitInfo(owner, address(tokenA));
+        router.initPool(address(tokenB), address(0xEedd), 1, 1);
+    }
 
-    //     uint256 balanceAfter = tokenA.balanceOf(owner);
+    function test_initPool_duplicatePool() public {
 
-    //     assertEq(reserveA, tokenAAmount);
-    //     assertEq(reserveD, initialDToMintt);
-    //     assertEq(minLaunchReserveA, minLaunchReserveAa);
-    //     assertEq(minLaunchReserveD, minLaunchReserveDd);
-    //     assertEq(balanceAfter, balanceBefore - tokenAAmount);
-    //     assertEq(userLpUnits, poolOwnershipUnitsTotal);
+        // _initGenesisPoolsForBadCases();
 
-    //     vm.stopPrank();
-    // }
+        // vm.startPrank(owner);
 
-    // // test to check crte pool method fails if pool already exists
-    // function test_createPool_poolAlreadyExists() public {
-    //     vm.startPrank(owner);
+        // vm.expectRevert(IRouterErrors.DuplicatePool.selector);
 
-    //     uint256 tokenAAmount = 1000e18;
-    //     uint256 minLaunchReserveAa = 500e18;
-    //     uint256 minLaunchReserveDd = 50e18;
-    //     uint256 initialDToMintt = 50e18;
+        // router.initPool(address(tokenA), address(tokenB), 1, 1); @todo: shall throw duplicate pool error
+    }
 
-    //     tokenA.approve(address(router), tokenAAmount);
-    //     router.createPool(address(tokenA), tokenAAmount, minLaunchReserveAa, minLaunchReserveDd, initialDToMintt);
+    function test_initPool_invalidAmount() public {
 
-    //     vm.expectRevert(IPoolErrors.DuplicatePool.selector);
-    //     router.createPool(address(tokenA), tokenAAmount, minLaunchReserveAa, minLaunchReserveDd, initialDToMintt);
+        _initGenesisPoolsForBadCases();
 
-    //     vm.stopPrank();
-    // }
+        vm.startPrank(owner);
 
-    // // test to check crte pool method fails if access from invalid addrs
-    // function test_createPool_unauthorizedAddress() public {
-    //     vm.startPrank(nonAuthorized);
+        vm.expectRevert(IRouterErrors.InvalidAmount.selector);
 
-    //     uint256 tokenAAmount = 1000e18;
-    //     uint256 minLaunchReserveAa = 500e18;
-    //     uint256 minLaunchReserveDd = 50e18;
-    //     uint256 initialDToMintt = 50e18;
+        router.initPool(address(tokenB), address(tokenA), 0, 1);
+    }
 
-    //     tokenA.approve(address(router), tokenAAmount);
+    function test_initPool_invalidLiquidityAmount() public {
 
-    //     uint256 balanceBefore = tokenA.balanceOf(owner);
+        _initGenesisPoolsForBadCases();
 
-    //     vm.expectRevert(abi.encodeWithSelector(getOwnableUnauthorizedAccountSelector(), nonAuthorized));
+        vm.startPrank(owner);
 
-    //     router.createPool(address(tokenA), tokenAAmount, minLaunchReserveAa, minLaunchReserveDd, initialDToMintt);
+        vm.expectRevert(IRouterErrors.InvalidLiquidityTokenAmount.selector);
 
-    //     vm.stopPrank();
-    // }
+        router.initPool(address(tokenB), address(tokenA), 1, 0);
+    }
 
-    // // ------------ ADD LIQUIDITY TEST --------------- //
 
-    // // test to add ldty success
-    // function test_addLiquidity_success() public {
-    //     vm.startPrank(owner);
 
-    //     uint256 tokenAAmount = 1000e18;
-    //     uint256 minLaunchReserveAa = 500e18;
-    //     uint256 minLaunchReserveDd = 50e18;
-    //     uint256 initialDToMintt = 50e18;
-
-    //     tokenA.approve(address(router), tokenAAmount);
-    //     uint256 balanceBefore = tokenA.balanceOf(owner);
-    //     router.createPool(address(tokenA), tokenAAmount, minLaunchReserveAa, minLaunchReserveDd, initialDToMintt);
-
-    //     (
-    //         uint256 reserveDBefore,
-    //         uint256 poolOwnershipUnitsTotalBefore,
-    //         uint256 reserveABefore,
-    //         uint256 minLaunchReserveABefore,
-    //         uint256 minLaunchReserveDBefore,
-    //         uint256 initialDToMintBefore,
-    //         uint256 poolFeeCollectedBefore,
-    //         bool initializedB
-    //     ) = pool.poolInfo(address(tokenA));
-
-    //     uint256 amountALiquidity = 1000e18;
-
-    //     uint256 lpUnitsToMint =
-    //         poolLogic.calculateLpUnitsToMint(amountALiquidity, reserveABefore, poolOwnershipUnitsTotalBefore);
-    //     uint256 dUnitsToMint =
-    //         poolLogic.calculateDUnitsToMint(amountALiquidity, reserveABefore + amountALiquidity, reserveDBefore, 0);
-    //     uint256 userLpUnitsBefore = pool.userLpUnitInfo(owner, address(tokenA));
-
-    //     tokenA.approve(address(router), amountALiquidity);
-
-    //     router.addLiquidity(address(tokenA), amountALiquidity);
-
-    //     (
-    //         uint256 reserveDAfter,
-    //         uint256 poolOwnershipUnitsTotalAfter,
-    //         uint256 reserveAAfter,
-    //         uint256 minLaunchReserveAAfter, //unchanged
-    //         uint256 minLaunchReserveDAfter, //unchanged
-    //         uint256 initialDToMintAfter, //unchanged
-    //         uint256 poolFeeCollectedAfter, //unchanged
-    //         bool initializedA
-    //     ) = pool.poolInfo(address(tokenA));
-
-    //     uint256 userLpUnitsAfter = pool.userLpUnitInfo(owner, address(tokenA));
-
-    //     assertEq(reserveAAfter, reserveABefore + amountALiquidity);
-    //     assertEq(reserveDAfter, reserveDBefore + dUnitsToMint);
-    //     assertEq(poolOwnershipUnitsTotalAfter, poolOwnershipUnitsTotalBefore + lpUnitsToMint);
-    //     assertEq(userLpUnitsAfter, userLpUnitsBefore + lpUnitsToMint);
-    // }
-
-    // // test to check add ldty method fails given invalid tkn
-    // function test_addLiquidity_invalidToken() public {
-    //     vm.startPrank(owner);
-
-    //     vm.expectRevert(IRouterErrors.InvalidPool.selector);
-
-    //     router.addLiquidity(address(tokenB), 1);
-
-    //     vm.stopPrank();
-    // }
-
-    // // test to check add ldty method fails given invalid amnt
-    // function test_addLiquidity_invalidAmount() public {
-    //     vm.startPrank(owner);
-
-    //     uint256 tokenAAmount = 1000e18;
-    //     uint256 minLaunchReserveAa = 500e18;
-    //     uint256 minLaunchReserveDd = 50e18;
-    //     uint256 initialDToMintt = 50e18;
-
-    //     tokenA.approve(address(router), tokenAAmount);
-    //     uint256 balanceBefore = tokenA.balanceOf(owner);
-    //     router.createPool(address(tokenA), tokenAAmount, minLaunchReserveAa, minLaunchReserveDd, initialDToMintt);
-
-    //     vm.expectRevert(IRouterErrors.InvalidAmount.selector);
-
-    //     uint256 amountALiquidity = 0;
-
-    //     router.addLiquidity(address(tokenA), amountALiquidity);
-
-    //     vm.stopPrank();
-    // }
-
-    // // ------------ REMOVE LIQUIDITY TEST ------------- //
-
-    // // test to remove lqdty successfuly
-    // function test_removeLiquidity_success() public {
-    //     vm.startPrank(owner);
-
-    //     uint256 tokenAAmount = 1000e18;
-    //     uint256 minLaunchReserveAa = 500e18;
-    //     uint256 minLaunchReserveDd = 50e18;
-    //     uint256 initialDToMintt = 50e18;
-
-    //     tokenA.approve(address(router), tokenAAmount);
-    //     router.createPool(address(tokenA), tokenAAmount, minLaunchReserveAa, minLaunchReserveDd, initialDToMintt);
-
-    //     uint256 balanceBefore = tokenA.balanceOf(owner);
-
-    //     (
-    //         uint256 reserveDBefore,
-    //         uint256 poolOwnershipUnitsTotalBefore,
-    //         uint256 reserveABefore,
-    //         uint256 minLaunchReserveABefore,
-    //         uint256 minLaunchReserveDBefore,
-    //         uint256 initialDToMintBefore,
-    //         uint256 poolFeeCollectedBefore,
-    //         bool initializedB
-    //     ) = pool.poolInfo(address(tokenA));
-
-    //     uint256 userLpAmount = pool.userLpUnitInfo(owner, address(tokenA));
-
-    //     uint256 assetToTransfer =
-    //         poolLogic.calculateAssetTransfer(userLpAmount, reserveABefore, poolOwnershipUnitsTotalBefore);
-    //     uint256 dToDeduct = poolLogic.calculateDToDeduct(userLpAmount, reserveDBefore, poolOwnershipUnitsTotalBefore);
-
-    //     router.removeLiquidity(address(tokenA), userLpAmount);
-
-    //     (
-    //         uint256 reserveDAfter,
-    //         uint256 poolOwnershipUnitsTotalAfter,
-    //         uint256 reserveAAfter,
-    //         uint256 minLaunchReserveAAfter, //unchanged
-    //         uint256 minLaunchReserveDAfter, //uncahnged
-    //         uint256 initialDToMintAfter, //unchanged
-    //         uint256 poolFeeCollectedAfter, //unchanged
-    //         bool initializedd //unchanged
-    //     ) = pool.poolInfo(address(tokenA));
-
-    //     uint256 userLpUnitsAfter = pool.userLpUnitInfo(address(tokenA), owner);
-    //     uint256 balanceAfter = tokenA.balanceOf(owner);
-
-    //     assertEq(balanceAfter, balanceBefore + assetToTransfer);
-    //     assertEq(reserveDAfter, reserveDBefore - dToDeduct);
-    //     assertEq(reserveAAfter, reserveABefore - assetToTransfer);
-    //     assertEq(poolOwnershipUnitsTotalAfter, poolOwnershipUnitsTotalBefore - userLpAmount);
-    // }
-
-    // // test to check rmv lqty fails given invalid tkn
-    // function test_removeLiquidity_invalidToken() public {
-    //     vm.startPrank(owner);
-
-    //     vm.expectRevert(IRouterErrors.InvalidPool.selector);
-
-    //     router.removeLiquidity(address(tokenB), 1);
-
-    //     vm.stopPrank();
-    // }
-
-    // // test to check rmv lqty fails given invalid amnt
-    // function test_removeLiquidity_invalidAmount() public {
-    //     vm.startPrank(owner);
-
-    //     uint256 tokenAAmount = 1000e18;
-    //     uint256 minLaunchReserveAa = 500e18;
-    //     uint256 minLaunchReserveDd = 50e18;
-    //     uint256 initialDToMintt = 50e18;
-
-    //     tokenA.approve(address(router), tokenAAmount);
-
-    //     router.createPool(address(tokenA), tokenAAmount, minLaunchReserveAa, minLaunchReserveDd, initialDToMintt);
-
-    //     vm.expectRevert(IRouterErrors.InvalidAmount.selector);
-
-    //     uint256 lpUnits = 0;
-
-    //     router.removeLiquidity(address(tokenA), lpUnits);
-
-    //     vm.stopPrank();
-    // }
+// ==================================================================================================================== //
 
     // // ------------ UPDATE POOL ADDRESS --------------- //
 
