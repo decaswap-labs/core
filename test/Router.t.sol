@@ -124,7 +124,7 @@ contract RouterTest is Test, Utils {
         vm.stopPrank();
     }
 
-    function test_initPoolWithMultipleStreams_success() public {
+    function test_initPool_success() public {
         uint256 tokenBLiquidityAmount = 100e18;
 
         uint256 dToMint = 10e18;
