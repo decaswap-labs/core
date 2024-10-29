@@ -94,6 +94,15 @@ contract Router is Ownable, ReentrancyGuard, IRouter {
         IPoolLogic(poolStates.POOL_LOGIC()).streamDToPool(tokenA, tokenB, msg.sender, amountB);
     }
 
+    function addToPoolSingle(address token, uint256 amount) external {
+        if (!poolExist(token)) revert InvalidPool();
+        if (amount == 0) revert InvalidAmount();
+
+        IERC20(token).safeTransferFrom(msg.sender, POOL_ADDRESS, amount);
+
+        IPoolLogic(poolStates.POOL_LOGIC()).addToPoolSingle(token, msg.sender, amount);
+    }
+
     function processLiqStream(address poolA, address poolB) external {
         require(poolA != poolB, "Same pools");
         if (!poolExist(poolA) || !poolExist(poolB)) revert InvalidPool();

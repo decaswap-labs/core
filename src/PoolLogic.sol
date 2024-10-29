@@ -207,6 +207,41 @@ contract PoolLogic is Ownable, IPoolLogic {
         _streamLiquidity(tokenA, tokenB);
     }
 
+    function addToPoolSingle(address token, address user, uint256 amount) external onlyRouter {
+        (
+            uint256 reserveD_A,
+            uint256 poolOwnershipUnitsTotal_A,
+            uint256 reserveA_A,
+            uint256 initialDToMint_A,
+            uint256 poolFeeCollected_A,
+            bool initialized_A
+        ) = pool.poolInfo(token);
+
+        uint256 streamCountA = calculateStreamCount(amount, pool.globalSlippage(), reserveD_A);
+        uint256 swapPerStreamA = amount / streamCountA;
+
+        // encoding address with itself so pairId is same here and in _streamLiquidity() and _streamLiquidity() don't break
+        bytes32 pairId = keccak256(abi.encodePacked(token, token));
+        StreamDetails memory poolBStream;
+        // enqueue
+        _enqueueLiqStream(
+            pairId,
+            user,
+            TYPE_OF_LP.SINGLE_TOKEN,
+            StreamDetails({
+                token: token,
+                amount: amount,
+                streamCount: streamCountA,
+                streamsRemaining: streamCountA,
+                swapPerStream: swapPerStreamA,
+                swapAmountRemaining: amount
+            }), // poolA stream
+            poolBStream // poolB stream
+        );
+
+        _streamLiquidity(token, token);
+    }
+
     function _enqueueLiqStream(
         bytes32 pairId,
         address user,
