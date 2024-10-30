@@ -222,13 +222,16 @@ contract RouterTest is Test, Utils {
 
     function test_initPool_duplicatePool() public {
 
-        // _initGenesisPoolsForBadCases();
+        _initGenesisPoolsForBadCases();
 
-        // vm.startPrank(owner);
+        vm.startPrank(owner);
 
-        // vm.expectRevert(IRouterErrors.DuplicatePool.selector);
+        tokenB.approve(address(router), 100e18);
+        router.initGenesisPool(address(tokenB), 100e18, 10e18);
 
-        // router.initPool(address(tokenA), address(tokenB), 1, 1); @todo: shall throw duplicate pool error
+        vm.expectRevert(IRouterErrors.DuplicatePool.selector);
+
+        router.initPool(address(tokenA), address(tokenB), 1, 1); 
     }
 
     function test_initPool_invalidAmount() public {
