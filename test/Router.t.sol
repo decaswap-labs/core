@@ -138,27 +138,17 @@ contract RouterTest is Test, Utils {
         tokenB.approve(address(router), tokenBLiquidityAmount);
         tokenA.approve(address(router), tokenAStreamLiquidityAmount);
 
-        uint256 tokenAStreamCountBefore = poolLogic.calculateStreamCount(tokenAStreamLiquidityAmount, pool.globalSlippage(), dToMint);
+        uint256 tokenAStreamCountBefore =
+            poolLogic.calculateStreamCount(tokenAStreamLiquidityAmount, pool.globalSlippage(), dToMint);
         uint256 swapPerStream = tokenAStreamLiquidityAmount / tokenAStreamCountBefore;
 
-        (
-            uint256 reserveDBeforeA,
-            ,
-            uint256 reserveABeforeA,
-            ,
-            ,
-        ) = pool.poolInfo(address(tokenA));
+        (uint256 reserveDBeforeA,, uint256 reserveABeforeA,,,) = pool.poolInfo(address(tokenA));
 
-        (
-            uint256 reserveDBeforeB,
-            uint256 poolOwnershipUnitsTotalBeforeB,
-            uint256 reserveABeforeB,
-            ,
-            ,
-        ) = pool.poolInfo(address(tokenB));
+        (uint256 reserveDBeforeB, uint256 poolOwnershipUnitsTotalBeforeB, uint256 reserveABeforeB,,,) =
+            pool.poolInfo(address(tokenB));
 
         (uint256 dToTransfer,) = poolLogic.getSwapAmountOut(swapPerStream, reserveABeforeA, 0, reserveDBeforeA, 0);
-        uint256 lpUnitsBefore =  poolLogic.calculateLpUnitsToMint(0, tokenBLiquidityAmount, tokenBLiquidityAmount, 0, 0);
+        uint256 lpUnitsBefore = poolLogic.calculateLpUnitsToMint(0, tokenBLiquidityAmount, tokenBLiquidityAmount, 0, 0);
 
         uint256 tokenBBalanceBefore = tokenB.balanceOf(owner);
 
@@ -166,41 +156,30 @@ contract RouterTest is Test, Utils {
 
         uint256 tokenBBalanceAfter = tokenB.balanceOf(owner);
 
-        (
-            uint256 reserveDAfterA,
-            ,
-            uint256 reserveAAfterA,
-            ,
-            ,
-        ) = pool.poolInfo(address(tokenA));
+        (uint256 reserveDAfterA,, uint256 reserveAAfterA,,,) = pool.poolInfo(address(tokenA));
 
-        (
-            uint256 reserveDAfterB,
-            uint256 poolOwnershipUnitsTotalAfterB,
-            uint256 reserveAAfterB,
-            ,
-            ,
-        ) = pool.poolInfo(address(tokenB));
+        (uint256 reserveDAfterB, uint256 poolOwnershipUnitsTotalAfterB, uint256 reserveAAfterB,,,) =
+            pool.poolInfo(address(tokenB));
 
         bytes32 pairId = keccak256(abi.encodePacked(address(tokenB), address(tokenA)));
 
         (LiquidityStream[] memory streams, uint256 front, uint256 back) = pool.liquidityStreamQueue(pairId);
 
-        assertEq(streams[front].poolBStream.streamsRemaining , tokenAStreamCountBefore - 1);
-        assertEq(streams[front].poolBStream.swapPerStream , swapPerStream);
-        assertEq(streams[front].poolBStream.swapAmountRemaining , tokenAStreamLiquidityAmount - swapPerStream);
-        
+        assertEq(streams[front].poolBStream.streamsRemaining, tokenAStreamCountBefore - 1);
+        assertEq(streams[front].poolBStream.swapPerStream, swapPerStream);
+        assertEq(streams[front].poolBStream.swapAmountRemaining, tokenAStreamLiquidityAmount - swapPerStream);
+
         assertEq(streams[front].poolAStream.streamCount, 0);
         assertEq(streams[front].poolAStream.swapPerStream, 0);
 
         assertEq(reserveDAfterA, reserveDBeforeA - dToTransfer);
-        assertEq(reserveAAfterA , reserveABeforeA + swapPerStream);
+        assertEq(reserveAAfterA, reserveABeforeA + swapPerStream);
 
         assertEq(poolOwnershipUnitsTotalAfterB, poolOwnershipUnitsTotalBeforeB + lpUnitsBefore);
         assertEq(reserveDAfterB, reserveDBeforeB + dToTransfer);
         assertEq(reserveAAfterB, reserveABeforeB + tokenBLiquidityAmount);
 
-        assertEq(tokenBBalanceAfter, tokenBBalanceBefore-tokenBLiquidityAmount);
+        assertEq(tokenBBalanceAfter, tokenBBalanceBefore - tokenBLiquidityAmount);
     }
 
     function _initGenesisPoolsForBadCases() internal {
@@ -221,7 +200,6 @@ contract RouterTest is Test, Utils {
     }
 
     function test_initPool_duplicatePool() public {
-
         _initGenesisPoolsForBadCases();
 
         vm.startPrank(owner);
@@ -231,11 +209,10 @@ contract RouterTest is Test, Utils {
 
         vm.expectRevert(IRouterErrors.DuplicatePool.selector);
 
-        router.initPool(address(tokenA), address(tokenB), 1, 1); 
+        router.initPool(address(tokenA), address(tokenB), 1, 1);
     }
 
     function test_initPool_invalidAmount() public {
-
         _initGenesisPoolsForBadCases();
 
         vm.startPrank(owner);
@@ -246,7 +223,6 @@ contract RouterTest is Test, Utils {
     }
 
     function test_initPool_invalidLiquidityAmount() public {
-
         _initGenesisPoolsForBadCases();
 
         vm.startPrank(owner);
@@ -256,9 +232,7 @@ contract RouterTest is Test, Utils {
         router.initPool(address(tokenB), address(tokenA), 1, 0);
     }
 
-
-
-// ==================================================================================================================== //
+    // ==================================================================================================================== //
 
     // // ------------ UPDATE POOL ADDRESS --------------- //
 

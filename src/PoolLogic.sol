@@ -277,6 +277,14 @@ contract PoolLogic is Ownable, IPoolLogic {
         // true = there are streams pending
         if (back - front != 0) {
             (
+                uint256 reserveD_A,
+                uint256 poolOwnershipUnitsTotal_A,
+                uint256 reserveA_A,
+                uint256 initialDToMint_A,
+                uint256 poolFeeCollected_A,
+                bool initialized_A
+            ) = pool.poolInfo(poolA);
+            (
                 uint256 reserveD_B,
                 uint256 poolOwnershipUnitsTotal_B,
                 uint256 reserveA_B,
@@ -290,24 +298,38 @@ contract PoolLogic is Ownable, IPoolLogic {
 
             uint256 poolANewStreamsRemaining = liquidityStream.poolAStream.streamsRemaining;
             uint256 poolAReservesToAdd;
+            uint256 lpUnitsAToMint;
 
             uint256 poolBNewStreamsRemaining = liquidityStream.poolBStream.streamsRemaining;
             uint256 poolBReservesToAdd;
+            uint256 lpUnitsBToMint;
 
             if (liquidityStream.poolAStream.swapAmountRemaining != 0) {
                 poolANewStreamsRemaining--;
                 poolAReservesToAdd = liquidityStream.poolAStream.swapPerStream;
+                lpUnitsAToMint = calculateLpUnitsToMint(
+                    poolOwnershipUnitsTotal_A, poolAReservesToAdd, poolAReservesToAdd + reserveA_A, 0, reserveD_A
+                );
             }
 
             if (liquidityStream.poolBStream.swapAmountRemaining != 0) {
                 poolBNewStreamsRemaining--;
                 poolBReservesToAdd = liquidityStream.poolBStream.swapPerStream;
                 (changeInD,) = getSwapAmountOut(liquidityStream.poolBStream.swapPerStream, reserveA_B, 0, reserveD_B, 0);
+                // @todo confirm this, should I account for D?? as we do for reserves.
+                lpUnitsBToMint = calculateLpUnitsToMint(
+                    poolOwnershipUnitsTotal_B, poolBReservesToAdd, poolBReservesToAdd + reserveA_B, 0, reserveD_B
+                );
             }
 
             // update reserves
             bytes memory updatedReserves = abi.encode(poolA, poolB, poolAReservesToAdd, poolBReservesToAdd, changeInD);
             IPoolActions(POOL_ADDRESS).updateReservesWhenStreamingLiq(updatedReserves);
+
+            // updating lpUnits
+            bytes memory updatedLpUnitsInfo =
+                abi.encode(poolA, poolB, liquidityStream.user, lpUnitsAToMint, lpUnitsBToMint);
+            IPoolActions(POOL_ADDRESS).updateUserLpUnits(updatedLpUnitsInfo);
 
             // update stream struct
             bytes memory updatedStreamData = abi.encode(

@@ -259,6 +259,15 @@ contract Pool is IPool, Ownable {
         liquidityStream.dAmountOut += dAmountOut;
     }
 
+    // updatedLpUnits encoding format => (address tokenA, address tokenB, address user, uint lpUnitsA, uint lpUnitsB)
+    function updateUserLpUnits(bytes memory updatedLpUnits) external onlyPoolLogic {
+        (address tokenA, address tokenB, address user, uint256 lpUnitsA, uint256 lpUnitsB) =
+            abi.decode(updatedLpUnits, (address, address, address, uint256, uint256));
+
+        userLpUnitInfo[user][tokenA] += lpUnitsA;
+        userLpUnitInfo[user][tokenB] += lpUnitsB;
+    }
+
     // @todo ask if we should sort it here, or pass sorted array from logic and just save
     function sortPairPendingQueue(bytes32 pairId) external onlyPoolLogic {
         // Sort the array w.r.t price

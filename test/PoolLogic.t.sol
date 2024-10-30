@@ -95,14 +95,14 @@ contract PoolLogicTest is Test, Utils {
         tokenB.transfer(address(pool), a);
         tokenA.transfer(address(pool), b);
         vm.stopPrank();
-        
+
         vm.startPrank(address(router));
         poolLogic.initGenesisPool(address(tokenA), owner, a, d);
         vm.stopPrank();
     }
 
     function test_initPool_success() public {
-        uint256 tokenBLiquidityAmount = 100e18;        
+        uint256 tokenBLiquidityAmount = 100e18;
         uint256 tokenAStreamLiquidityAmount = 50e18;
         uint256 dToMint = 10e18;
 
@@ -110,63 +110,41 @@ contract PoolLogicTest is Test, Utils {
 
         vm.startPrank(address(router));
 
-        uint256 tokenAStreamCountBefore = poolLogic.calculateStreamCount(tokenAStreamLiquidityAmount, pool.globalSlippage(), dToMint);
+        uint256 tokenAStreamCountBefore =
+            poolLogic.calculateStreamCount(tokenAStreamLiquidityAmount, pool.globalSlippage(), dToMint);
         uint256 swapPerStream = tokenAStreamLiquidityAmount / tokenAStreamCountBefore;
 
-        (
-            uint256 reserveDBeforeA,
-            ,
-            uint256 reserveABeforeA,
-            ,
-            ,
-        ) = pool.poolInfo(address(tokenA));
+        (uint256 reserveDBeforeA,, uint256 reserveABeforeA,,,) = pool.poolInfo(address(tokenA));
 
-        (
-            uint256 reserveDBeforeB,
-            uint256 poolOwnershipUnitsTotalBeforeB,
-            uint256 reserveABeforeB,
-            ,
-            ,
-        ) = pool.poolInfo(address(tokenB));
+        (uint256 reserveDBeforeB, uint256 poolOwnershipUnitsTotalBeforeB, uint256 reserveABeforeB,,,) =
+            pool.poolInfo(address(tokenB));
 
         (uint256 dToTransfer,) = poolLogic.getSwapAmountOut(swapPerStream, reserveABeforeA, 0, reserveDBeforeA, 0);
-        uint256 lpUnitsBefore =  poolLogic.calculateLpUnitsToMint(0, tokenBLiquidityAmount, tokenBLiquidityAmount, 0, 0);
+        uint256 lpUnitsBefore = poolLogic.calculateLpUnitsToMint(0, tokenBLiquidityAmount, tokenBLiquidityAmount, 0, 0);
 
         poolLogic.initPool(address(tokenB), address(tokenA), owner, tokenBLiquidityAmount, tokenAStreamLiquidityAmount);
-        (
-            uint256 reserveDAfterA,
-            ,
-            uint256 reserveAAfterA,
-            ,
-            ,
-        ) = pool.poolInfo(address(tokenA));
+        (uint256 reserveDAfterA,, uint256 reserveAAfterA,,,) = pool.poolInfo(address(tokenA));
 
-        (
-            uint256 reserveDAfterB,
-            uint256 poolOwnershipUnitsTotalAfterB,
-            uint256 reserveAAfterB,
-            ,
-            ,
-        ) = pool.poolInfo(address(tokenB));
+        (uint256 reserveDAfterB, uint256 poolOwnershipUnitsTotalAfterB, uint256 reserveAAfterB,,,) =
+            pool.poolInfo(address(tokenB));
 
         bytes32 pairId = keccak256(abi.encodePacked(address(tokenB), address(tokenA)));
 
         (LiquidityStream[] memory streams, uint256 front, uint256 back) = pool.liquidityStreamQueue(pairId);
 
-        assertEq(streams[front].poolBStream.streamsRemaining , tokenAStreamCountBefore - 1);
-        assertEq(streams[front].poolBStream.swapPerStream , swapPerStream);
-        assertEq(streams[front].poolBStream.swapAmountRemaining , tokenAStreamLiquidityAmount - swapPerStream);
-        
+        assertEq(streams[front].poolBStream.streamsRemaining, tokenAStreamCountBefore - 1);
+        assertEq(streams[front].poolBStream.swapPerStream, swapPerStream);
+        assertEq(streams[front].poolBStream.swapAmountRemaining, tokenAStreamLiquidityAmount - swapPerStream);
+
         assertEq(streams[front].poolAStream.streamCount, 0);
         assertEq(streams[front].poolAStream.swapPerStream, 0);
 
         assertEq(reserveDAfterA, reserveDBeforeA - dToTransfer);
-        assertEq(reserveAAfterA , reserveABeforeA + swapPerStream);
+        assertEq(reserveAAfterA, reserveABeforeA + swapPerStream);
 
         assertEq(poolOwnershipUnitsTotalAfterB, poolOwnershipUnitsTotalBeforeB + lpUnitsBefore);
         assertEq(reserveDAfterB, reserveDBeforeB + dToTransfer);
         assertEq(reserveAAfterB, reserveABeforeB + tokenBLiquidityAmount);
-
     }
 
     function test_initPool_invalidOwner() public {
@@ -176,5 +154,4 @@ contract PoolLogicTest is Test, Utils {
 
         poolLogic.initPool(address(tokenB), address(tokenA), owner, 1, 1);
     }
-
 }

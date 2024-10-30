@@ -52,7 +52,7 @@ contract PoolTest is Test, Utils {
         vm.startPrank(address(poolLogic));
         uint256 dToMint = 50e18;
         uint256 lpUnitsBefore =
-            poolLogic.calculateLpUnitsToMint(0, addLiquidityTokenAmount, addLiquidityTokenAmount, dToMint, 0);       
+            poolLogic.calculateLpUnitsToMint(0, addLiquidityTokenAmount, addLiquidityTokenAmount, dToMint, 0);
         tokenA.transfer(address(pool), addLiquidityTokenAmount);
 
         bytes memory initPoolParams =
@@ -91,7 +91,7 @@ contract PoolTest is Test, Utils {
 
         bytes memory initPoolParams = abi.encode(address(tokenA), owner, 0, 0, 0, 0, 0);
 
-        pool.initGenesisPool(initPoolParams);  
+        pool.initGenesisPool(initPoolParams);
     }
 
     //------------- INIT PERMISSIONLESS POOL ---------------- //
@@ -101,11 +101,10 @@ contract PoolTest is Test, Utils {
         tokenB.transfer(address(pool), tokenLiquidityB);
         tokenA.transfer(address(pool), tokenLiquidityA);
         vm.stopPrank();
-        
+
         vm.startPrank(address(poolLogic));
 
-        uint256 lpUnitsBefore =
-            poolLogic.calculateLpUnitsToMint(0, tokenLiquidityA, tokenLiquidityA, dToMint, 0);  
+        uint256 lpUnitsBefore = poolLogic.calculateLpUnitsToMint(0, tokenLiquidityA, tokenLiquidityA, dToMint, 0);
         bytes memory initPoolParams =
             abi.encode(address(tokenA), owner, tokenLiquidityA, dToMint, lpUnitsBefore, dToMint, 0);
         pool.initGenesisPool(initPoolParams);
@@ -113,7 +112,7 @@ contract PoolTest is Test, Utils {
     }
 
     function test_initPool_success() public {
-        uint256 tokenBLiquidityAmount = 100e18;        
+        uint256 tokenBLiquidityAmount = 100e18;
         uint256 tokenAStreamLiquidityAmount = 50e18;
         uint256 dToMint = 10e18;
 
@@ -121,47 +120,33 @@ contract PoolTest is Test, Utils {
 
         vm.startPrank(address(poolLogic));
 
-        uint256 tokenAStreamCountBefore = poolLogic.calculateStreamCount(tokenAStreamLiquidityAmount, pool.globalSlippage(), dToMint);
+        uint256 tokenAStreamCountBefore =
+            poolLogic.calculateStreamCount(tokenAStreamLiquidityAmount, pool.globalSlippage(), dToMint);
         uint256 swapPerStream = tokenAStreamLiquidityAmount / tokenAStreamCountBefore;
 
-        (
-            uint256 reserveDBeforeB,
-            uint256 poolOwnershipUnitsTotalBeforeB,
-            uint256 reserveABeforeB,
-            ,
-            ,
-        ) = pool.poolInfo(address(tokenB));
+        (uint256 reserveDBeforeB, uint256 poolOwnershipUnitsTotalBeforeB, uint256 reserveABeforeB,,,) =
+            pool.poolInfo(address(tokenB));
 
-        uint256 lpUnitsBefore =  poolLogic.calculateLpUnitsToMint(0, tokenBLiquidityAmount, tokenBLiquidityAmount, 0, 0);
+        uint256 lpUnitsBefore = poolLogic.calculateLpUnitsToMint(0, tokenBLiquidityAmount, tokenBLiquidityAmount, 0, 0);
 
-
-        bytes memory initPoolParams =
-            abi.encode(address(tokenB), owner, tokenBLiquidityAmount, lpUnitsBefore, 0);
+        bytes memory initPoolParams = abi.encode(address(tokenB), owner, tokenBLiquidityAmount, lpUnitsBefore, 0);
 
         pool.initPool(initPoolParams);
 
-        (
-            uint256 reserveDAfterB,
-            uint256 poolOwnershipUnitsTotalAfterB,
-            uint256 reserveAAfterB,
-            ,
-            ,
-        ) = pool.poolInfo(address(tokenB));
+        (uint256 reserveDAfterB, uint256 poolOwnershipUnitsTotalAfterB, uint256 reserveAAfterB,,,) =
+            pool.poolInfo(address(tokenB));
 
         assertEq(reserveDAfterB, reserveDBeforeB);
         assertEq(reserveAAfterB, reserveABeforeB + tokenBLiquidityAmount);
-
     }
-    
+
     function test_initPool_invalidOwner() public {
         vm.startPrank(owner);
 
         vm.expectRevert(abi.encodeWithSelector(getNotPoolLogicSelector(), owner));
 
-        bytes memory initPoolParams =
-            abi.encode(address(tokenB), owner, 1, 1, 0);
+        bytes memory initPoolParams = abi.encode(address(tokenB), owner, 1, 1, 0);
 
-        pool.initPool(initPoolParams);  
+        pool.initPool(initPoolParams);
     }
 }
-

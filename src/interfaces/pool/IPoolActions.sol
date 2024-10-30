@@ -10,6 +10,8 @@ interface IPoolActions {
     function initGenesisPool(bytes calldata initPoolParams) external;
     // initPool encoding format => (address token, address user, uint256 amount, uint newLpUnits, uint256 poolFeeCollected)
     function initPool(bytes calldata initPoolParams) external;
+    // updatedLpUnits encoding format => (address tokenA, address tokenB, address user, uint lpUnitsA, uint lpUnitsB)
+    function updateUserLpUnits(bytes memory updatedLpUnits) external;
     // addLiqParams encoding format => (address token, address user, uint amount, uint256 newLpUnits, uint256 newDUnits, uint256 poolFeeCollected)
     function addLiquidity(bytes memory addLiqParams) external;
     // removeLiqParams encoding format => (address token, address user, uint lpUnits, uint256 assetToTransfer, uint256 dAmountToDeduct, uint256 poolFeeCollected)
