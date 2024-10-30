@@ -5,9 +5,13 @@ import {IPoolStates} from "./interfaces/pool/IPoolStates.sol";
 import {IPoolLogic} from "./interfaces/IPoolLogic.sol";
 import {IPoolActions} from "./interfaces/pool/IPoolActions.sol";
 import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
-import {Swap} from "./lib/SwapQueue.sol";
+import {Swap} from "src/lib/SwapQueue.sol";
+import {DSMath} from "src/lib/DSMath.sol";
+import {console} from "forge-std/console.sol";
 
 contract PoolLogic is Ownable, IPoolLogic {
+    using DSMath for uint256;
+
     address public override POOL_ADDRESS;
     IPoolStates public pool;
 
@@ -95,6 +99,10 @@ contract PoolLogic is Ownable, IPoolLogic {
         poolId = getPoolId(tokenIn, tokenOut); // for pair slippage only. Not an ID for pair direction queue
         streamCount = calculateStreamCount(amountIn, pool.pairSlippage(poolId), minPoolDepth);
         swapPerStream = amountIn / streamCount;
+        console.log("Stream Count: ", streamCount);
+        console.log("Swap Per Stream: ", swapPerStream);
+        console.log("total: ", streamCount * swapPerStream);
+        console.log("MODULO: ", amountIn % streamCount);
 
         // initiate swapqueue per direction
         bytes32 pairId = keccak256(abi.encodePacked(tokenIn, tokenOut)); // for one direction
@@ -128,7 +136,8 @@ contract PoolLogic is Ownable, IPoolLogic {
     }
 
     /**
-     *
+     * @notice here we are executing the stream for the given pair
+     * we are processing the front swap from the stream queue
      * @param tokenIn the token that is being swapped
      * @param tokenOut the token that is being received
      * //TODO: Deduct fees from amount out = 5BPS.
@@ -276,10 +285,10 @@ contract PoolLogic is Ownable, IPoolLogic {
             uint256 tokenOutAmountIn = oppositeSwap.swapAmountRemaining;
 
             // we need to calculate the amount of tokenOut for the given tokenInAmountIn
-            uint256 tokenOutAmountOut = (tokenInAmountIn * reserveA_In) / reserveA_Out;
+            uint256 tokenOutAmountOut = getAmountOut(tokenInAmountIn, reserveA_In, reserveA_Out);
 
             // we need to calculate the amount of tokenIn for the given tokenOutAmountIn
-            uint256 tokenInAmountOut = (tokenOutAmountIn * reserveA_Out) / reserveA_In;
+            uint256 tokenInAmountOut = getAmountOut(tokenOutAmountIn, reserveA_Out, reserveA_In);
 
             // we need to check if the amount of tokenIn that we need to send to the user is less than the amount of tokenIn that is remaining to be processed
             if (tokenInAmountIn > tokenInAmountOut) {
@@ -353,12 +362,6 @@ contract PoolLogic is Ownable, IPoolLogic {
                         calculateStreamCount(newTokenOutAmountIn, pool.pairSlippage(poolId), minPoolDepth);
                     uint256 swapPerStream = newTokenOutAmountIn / streamCount;
 
-                    // updating memory oppositeSwap
-                    oppositeSwap.streamsCount = streamCount;
-                    oppositeSwap.swapPerStream = swapPerStream;
-                    oppositeSwap.swapAmountRemaining = newTokenOutAmountIn;
-                    oppositeSwap.amountOut += tokenInAmountOut;
-
                     // updating oppositeSwap
                     bytes memory updatedSwapData_opposite = abi.encode(
                         oppositePairId,
@@ -388,6 +391,14 @@ contract PoolLogic is Ownable, IPoolLogic {
         return frontSwap;
     }
 
+    /**
+     * @notice here we are maintaining the queue for the given pairId only
+     * if the price is less than the execution price we add the swap to the stream queue
+     * if the price is greater than the execution price we add the swap to the pending queue
+     * @param pairId bytes32 the pairId for the given pair
+     * @param swapDetails Swap the swap details
+     * @param currentPrice uint256 the current price of the pair
+     */
     function _maintainQueue(bytes32 pairId, Swap memory swapDetails, uint256 currentPrice) internal {
         // if execution price 0 (stream queue) , otherwise another queue
         // add into queue
@@ -426,7 +437,7 @@ contract PoolLogic is Ownable, IPoolLogic {
             return amount;
         }
 
-        return totalLpUnits * amount / (amount + reserveA);
+        return totalLpUnits.wmul(amount).wdiv(amount + reserveA);
     }
 
     function calculateDUnitsToMint(uint256 amount, uint256 reserveA, uint256 reserveD, uint256 initialDToMint)
@@ -438,7 +449,7 @@ contract PoolLogic is Ownable, IPoolLogic {
             return initialDToMint;
         }
 
-        return reserveD * amount / (reserveA);
+        return reserveD.wmul(amount).wdiv(reserveA);
     }
 
     // 0.15% will be 15 poolSlippage. 100% is 100000 units
@@ -463,7 +474,7 @@ contract PoolLogic is Ownable, IPoolLogic {
         override
         returns (uint256)
     {
-        return (reserveA * lpUnits) / totalLpUnits;
+        return (reserveA.wmul(lpUnits)).wdiv(totalLpUnits);
     }
 
     function calculateDToDeduct(uint256 lpUnits, uint256 reserveD, uint256 totalLpUnits)
@@ -472,7 +483,7 @@ contract PoolLogic is Ownable, IPoolLogic {
         override
         returns (uint256)
     {
-        return reserveD * (lpUnits / totalLpUnits);
+        return reserveD.wmul(lpUnits).wdiv(totalLpUnits);
     }
 
     function getSwapAmountOut(
@@ -489,7 +500,7 @@ contract PoolLogic is Ownable, IPoolLogic {
         //         10 * 1e18
         //         100000000000000000000
         //         1000000000000000000
-        uint256 d1 = (amountIn * reserveD1) / (amountIn + reserveA);
+        uint256 d1 = (amountIn.wmul(reserveD1)).wdiv(amountIn + reserveA);
         return (d1, ((d1 * reserveB) / (d1 + reserveD2)));
     }
 
@@ -499,7 +510,7 @@ contract PoolLogic is Ownable, IPoolLogic {
         override
         returns (uint256)
     {
-        return (dAmount * reserveA) / (dAmount + reserveD);
+        return (dAmount.wmul(reserveA)).wdiv(dAmount + reserveD);
     }
 
     function getDOut(uint256 tokenAmount, uint256 reserveA, uint256 reserveD)
@@ -508,11 +519,18 @@ contract PoolLogic is Ownable, IPoolLogic {
         override
         returns (uint256)
     {
-        return (tokenAmount * reserveD) / (tokenAmount + reserveA);
+        return (tokenAmount.wmul(reserveD)).wdiv(tokenAmount + reserveA);
     }
 
     function getExecutionPrice(uint256 reserveA1, uint256 reserveA2) public pure override returns (uint256) {
-        return (reserveA1 * 1e18 / reserveA2);
+        return reserveA1.wdiv(reserveA2);
+    }
+
+    function getAmountOut(uint256 amountIn, uint256 reserveIn, uint256 reserveOut) public pure returns (uint256) {
+        console.log("Modulo calculation !!!!!!!!!!!!!!!!", (amountIn.wmul(reserveIn)) % reserveOut);
+        console.log("Left Part !!!!!!!!!!!!!!!!!!!!: ", amountIn.wmul(reserveIn));
+        console.log("Result !!!!!!!!!!!!!!!!!!!!: ", amountIn.wmul(reserveIn).wdiv(reserveOut));
+        return amountIn.wmul(reserveIn).wdiv(reserveOut);
     }
 
     function updatePoolAddress(address poolAddress) external override onlyOwner {

@@ -12,17 +12,17 @@ contract RouterTest is Deploys {
     function _createPools() internal {
         vm.startPrank(owner);
 
-        uint256 initialDToMintPoolA = 50e18;
-        uint256 initialDToMintPoolB = 10e18;
+        uint256 initialDToMintPoolA = 30e18;
+        uint256 initialDToMintPoolB = 20e18;
         uint256 SLIPPAGE = 10;
 
-        uint256 tokenAAmount = 100e18;
-        uint256 minLaunchReserveAPoolA = 25e18;
-        uint256 minLaunchReserveDPoolA = 25e18;
+        uint256 tokenAAmount = 10000e18;
+        uint256 minLaunchReserveAPoolA = 10e18;
+        uint256 minLaunchReserveDPoolA = 10e18;
 
-        uint256 tokenBAmount = 100e18;
-        uint256 minLaunchReserveAPoolB = 25e18;
-        uint256 minLaunchReserveDPoolB = 5e18; // we can change this for error test
+        uint256 tokenBAmount = 10000e18;
+        uint256 minLaunchReserveAPoolB = 10e18;
+        uint256 minLaunchReserveDPoolB = 10e18; // we can change this for error test
 
         router.createPool(
             address(tokenA), tokenAAmount, minLaunchReserveAPoolA, minLaunchReserveDPoolA, initialDToMintPoolA

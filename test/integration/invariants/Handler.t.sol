@@ -6,6 +6,7 @@ import {Router} from "src/Router.sol";
 import {PoolLogic} from "src/PoolLogic.sol";
 import {Pool} from "src/Pool.sol";
 import {MockERC20} from "src/MockERC20.sol";
+import {console} from "forge-std/Test.sol";
 
 contract Handler is Test {
     Router public router;
@@ -67,7 +68,9 @@ contract Handler is Test {
         vm.startPrank(msg.sender);
         tokenIn.mint(msg.sender, amountIn);
         tokenIn.approve(address(router), amountIn);
+        
         router.swap(address(tokenIn), address(tokenOut), amountIn, executionPrice);
+
         vm.stopPrank();
     }
 

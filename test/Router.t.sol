@@ -326,7 +326,6 @@ contract RouterTest is Test, Utils {
 
     // test to add swap to stream queue, and execute 1 stream of it
     function test_streamingSwap_success() public {
-
         vm.startPrank(owner);
 
         uint256 initialDToMintPoolA = 50e18;
@@ -486,7 +485,7 @@ contract RouterTest is Test, Utils {
         bytes32 pairId = keccak256(abi.encodePacked(address(tokenA), address(tokenB)));
 
         (Swap[] memory swapsPending, uint256 frontP, uint256 backP) = pool.pairPendingQueue(pairId);
-    
+
         Swap memory swapPending = swapsPending[frontP];
 
         assertGe(swapsPending.length, 1);
@@ -617,7 +616,6 @@ contract RouterTest is Test, Utils {
 
     // test to enter opp direction swap and also execute it in the same stream
     function test_oppositeDirectionSwapSameAmountPerStreamSwapAConsumesSwapBExecution_success() public {
-
         vm.startPrank(owner);
 
         uint256 initialDToMintPoolA = 10e18;
@@ -723,7 +721,6 @@ contract RouterTest is Test, Utils {
     }
 
     function test_oppositeDirectionSwapDifferentAmountPerStreamSwapAConsumesSwapBExecution_success() public {
-
         vm.startPrank(owner);
 
         uint256 initialDToMintPoolA = 10e18;
@@ -785,10 +782,9 @@ contract RouterTest is Test, Utils {
 
         uint256 streamsBeforeSwapAtoB = swapsAtoB[frontAtoB].streamsRemaining;
 
-
         uint256 swapBtoAPerStreamLocal = tokenBSwapAmount / streamsBeforeSwapBtoA;
 
-        uint256 swapAmountOutBtoABeforeSwap = (tokenBSwapAmount * reserveAB) / reserveAA;
+        uint256 swapAmountOutBtoABeforeSwap = poolLogic.getAmountOut(tokenBSwapAmount, reserveAB, reserveAA);
 
         vm.startPrank(user2);
         router.swap(address(tokenB), address(tokenA), tokenBSwapAmount, 1);
@@ -891,7 +887,6 @@ contract RouterTest is Test, Utils {
 
         uint256 swapAmountOutAtoBBeforeSwap = (swapsAtoBTemp[frontAtoBTemp].swapAmountRemaining * reserveAa) / reserveBb;
         uint256 swapAmountOutBtoABeforeSwap = (tokenBSwapAmount * reserveBb) / reserveAa;
-
 
         vm.startPrank(user2);
         router.swap(address(tokenB), address(tokenA), tokenBSwapAmount, 1);
