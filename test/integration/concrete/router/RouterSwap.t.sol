@@ -284,7 +284,18 @@ contract RouterTest_Swap is RouterTest {
         // tokenAAmount needed to consume the opposite swaps;
         uint256 executionPrice = poolLogic.getExecutionPrice(reserveA_tokenA, reserveA_tokenB);
 
+        (reserveD_tokenA,, reserveA_tokenA,,,,,) = pool.poolInfo(address(tokenA));
+        (reserveD_tokenB,, reserveA_tokenB,,,,,) = pool.poolInfo(address(tokenB));
+
         uint256 swapTokenAAmountIn = tokenInAmountOut - 42 ether;
+        minPoolDepth = reserveD_tokenA <= reserveD_tokenB
+            ? reserveD_tokenA
+            : reserveD_tokenB;
+
+        streamCount = poolLogic.calculateStreamCount(swapTokenAAmountIn, pool.pairSlippage(poolId), minPoolDepth);
+        uint256 swapPerStream = swapTokenAAmountIn / streamCount;
+        if (swapTokenAAmountIn % streamCount != 0) swapTokenAAmountIn = streamCount * swapPerStream;
+
         uint256 swapTokenBAmountOut = poolLogic.getAmountOut(swapTokenAAmountIn, reserveA_tokenA, reserveA_tokenB);
         uint256 swaperTokenABalance_beforeSwap = tokenA.balanceOf(owner);
         uint256 swaperTokenBBalance_beforeSwap = tokenB.balanceOf(owner);

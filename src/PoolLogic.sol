@@ -7,7 +7,6 @@ import {IPoolActions} from "./interfaces/pool/IPoolActions.sol";
 import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 import {Swap} from "src/lib/SwapQueue.sol";
 import {DSMath} from "src/lib/DSMath.sol";
-import {console} from "forge-std/console.sol";
 
 contract PoolLogic is Ownable, IPoolLogic {
     using DSMath for uint256;
@@ -99,15 +98,15 @@ contract PoolLogic is Ownable, IPoolLogic {
         poolId = getPoolId(tokenIn, tokenOut); // for pair slippage only. Not an ID for pair direction queue
         streamCount = calculateStreamCount(amountIn, pool.pairSlippage(poolId), minPoolDepth);
         swapPerStream = amountIn / streamCount;
-        console.log("Stream Count: ", streamCount);
-        console.log("Swap Per Stream: ", swapPerStream);
-        console.log("total: ", streamCount * swapPerStream);
-        console.log("MODULO: ", amountIn % streamCount);
 
         // initiate swapqueue per direction
         bytes32 pairId = keccak256(abi.encodePacked(tokenIn, tokenOut)); // for one direction
 
         uint256 currentPrice = getExecutionPrice(reserveA_In, reserveA_Out);
+
+        // here we assume that the new amountIn is without the dust tokens
+        // TODO: check the amount of dust tokens lost in the process to execute accordingly
+        if (amountIn % streamCount != 0) amountIn = streamCount * swapPerStream;
 
         _maintainQueue(
             pairId,
@@ -314,6 +313,7 @@ contract PoolLogic is Ownable, IPoolLogic {
                 bytes32 poolId = getPoolId(tokenIn, tokenOut); // for pair slippage only. Not an ID for pair direction queue
                 uint256 streamCount = calculateStreamCount(newTokenInAmountIn, pool.pairSlippage(poolId), minPoolDepth);
                 uint256 swapPerStream = newTokenInAmountIn / streamCount;
+                if (newTokenInAmountIn % streamCount != 0) newTokenInAmountIn = streamCount * swapPerStream;
 
                 // updating memory frontSwap
                 frontSwap.streamsCount = streamCount;
@@ -361,6 +361,7 @@ contract PoolLogic is Ownable, IPoolLogic {
                     uint256 streamCount =
                         calculateStreamCount(newTokenOutAmountIn, pool.pairSlippage(poolId), minPoolDepth);
                     uint256 swapPerStream = newTokenOutAmountIn / streamCount;
+                    if (newTokenOutAmountIn % streamCount != 0) newTokenOutAmountIn = streamCount * swapPerStream;
 
                     // updating oppositeSwap
                     bytes memory updatedSwapData_opposite = abi.encode(
@@ -527,9 +528,6 @@ contract PoolLogic is Ownable, IPoolLogic {
     }
 
     function getAmountOut(uint256 amountIn, uint256 reserveIn, uint256 reserveOut) public pure returns (uint256) {
-        console.log("Modulo calculation !!!!!!!!!!!!!!!!", (amountIn.wmul(reserveIn)) % reserveOut);
-        console.log("Left Part !!!!!!!!!!!!!!!!!!!!: ", amountIn.wmul(reserveIn));
-        console.log("Result !!!!!!!!!!!!!!!!!!!!: ", amountIn.wmul(reserveIn).wdiv(reserveOut));
         return amountIn.wmul(reserveIn).wdiv(reserveOut);
     }
 
