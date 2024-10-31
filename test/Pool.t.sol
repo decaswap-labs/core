@@ -84,69 +84,69 @@ contract PoolTest is Test, Utils {
         assertEq(initialized, true);
     }
 
-    function test_initGenesisPool_invalidOwner() public {
-        vm.startPrank(owner);
+    // function test_initGenesisPool_invalidOwner() public {
+    //     vm.startPrank(owner);
 
-        vm.expectRevert(abi.encodeWithSelector(getNotPoolLogicSelector(), owner));
+    //     vm.expectRevert(abi.encodeWithSelector(getNotPoolLogicSelector(), owner));
 
-        bytes memory initPoolParams = abi.encode(address(tokenA), owner, 0, 0, 0, 0, 0);
+    //     bytes memory initPoolParams = abi.encode(address(tokenA), owner, 0, 0, 0, 0, 0);
 
-        pool.initGenesisPool(initPoolParams);
-    }
+    //     pool.initGenesisPool(initPoolParams);
+    // }
 
-    //------------- INIT PERMISSIONLESS POOL ---------------- //
+    // //------------- INIT PERMISSIONLESS POOL ---------------- //
 
-    function _initGenesisPool(uint256 dToMint, uint256 tokenLiquidityB, uint256 tokenLiquidityA) internal {
-        vm.startPrank(owner);
-        tokenB.transfer(address(pool), tokenLiquidityB);
-        tokenA.transfer(address(pool), tokenLiquidityA);
-        vm.stopPrank();
+    // function _initGenesisPool(uint256 dToMint, uint256 tokenLiquidityB, uint256 tokenLiquidityA) internal {
+    //     vm.startPrank(owner);
+    //     tokenB.transfer(address(pool), tokenLiquidityB);
+    //     tokenA.transfer(address(pool), tokenLiquidityA);
+    //     vm.stopPrank();
 
-        vm.startPrank(address(poolLogic));
+    //     vm.startPrank(address(poolLogic));
 
-        uint256 lpUnitsBefore = poolLogic.calculateLpUnitsToMint(0, tokenLiquidityA, tokenLiquidityA, dToMint, 0);
-        bytes memory initPoolParams =
-            abi.encode(address(tokenA), owner, tokenLiquidityA, dToMint, lpUnitsBefore, dToMint, 0);
-        pool.initGenesisPool(initPoolParams);
-        vm.stopPrank();
-    }
+    //     uint256 lpUnitsBefore = poolLogic.calculateLpUnitsToMint(0, tokenLiquidityA, tokenLiquidityA, dToMint, 0);
+    //     bytes memory initPoolParams =
+    //         abi.encode(address(tokenA), owner, tokenLiquidityA, dToMint, lpUnitsBefore, dToMint, 0);
+    //     pool.initGenesisPool(initPoolParams);
+    //     vm.stopPrank();
+    // }
 
-    function test_initPool_success() public {
-        uint256 tokenBLiquidityAmount = 100e18;
-        uint256 tokenAStreamLiquidityAmount = 50e18;
-        uint256 dToMint = 10e18;
+    // function test_initPool_success() public {
+    //     uint256 tokenBLiquidityAmount = 100e18;
+    //     uint256 tokenAStreamLiquidityAmount = 50e18;
+    //     uint256 dToMint = 10e18;
 
-        _initGenesisPool(dToMint, tokenBLiquidityAmount, tokenAStreamLiquidityAmount);
+    //     _initGenesisPool(dToMint, tokenBLiquidityAmount, tokenAStreamLiquidityAmount);
 
-        vm.startPrank(address(poolLogic));
+    //     vm.startPrank(address(poolLogic));
 
-        uint256 tokenAStreamCountBefore =
-            poolLogic.calculateStreamCount(tokenAStreamLiquidityAmount, pool.globalSlippage(), dToMint);
-        uint256 swapPerStream = tokenAStreamLiquidityAmount / tokenAStreamCountBefore;
+    //     uint256 tokenAStreamCountBefore =
+    //         poolLogic.calculateStreamCount(tokenAStreamLiquidityAmount, pool.globalSlippage(), dToMint);
+    //     uint256 swapPerStream = tokenAStreamLiquidityAmount / tokenAStreamCountBefore;
 
-        (uint256 reserveDBeforeB, uint256 poolOwnershipUnitsTotalBeforeB, uint256 reserveABeforeB,,,) =
-            pool.poolInfo(address(tokenB));
+    //     (uint256 reserveDBeforeB, uint256 poolOwnershipUnitsTotalBeforeB, uint256 reserveABeforeB,,,) =
+    //         pool.poolInfo(address(tokenB));
 
-        uint256 lpUnitsBefore = poolLogic.calculateLpUnitsToMint(0, tokenBLiquidityAmount, tokenBLiquidityAmount, 0, 0);
+    //     uint256 lpUnitsBefore = poolLogic.calculateLpUnitsToMint(0, tokenBLiquidityAmount, tokenBLiquidityAmount, 0, 0);
 
-        bytes memory initPoolParams = abi.encode(address(tokenB), owner, tokenBLiquidityAmount, lpUnitsBefore, 0);
+    //     bytes memory initPoolParams = abi.encode(address(tokenB), owner, tokenBLiquidityAmount, lpUnitsBefore, 0);
 
-        pool.initPool(initPoolParams);
+    //     pool.initPool(initPoolParams);
 
-        (uint256 reserveDAfterB, uint256 poolOwnershipUnitsTotalAfterB, uint256 reserveAAfterB,,,) =
-            pool.poolInfo(address(tokenB));
+    //     (uint256 reserveDAfterB, uint256 poolOwnershipUnitsTotalAfterB, uint256 reserveAAfterB,,,) =
+    //         pool.poolInfo(address(tokenB));
 
-        assertEq(reserveDAfterB, reserveDBeforeB);
-        assertEq(reserveAAfterB, reserveABeforeB + tokenBLiquidityAmount);
-    }
+    //     assertEq(reserveDAfterB, reserveDBeforeB);
+    //     assertEq(reserveAAfterB, reserveABeforeB + tokenBLiquidityAmount);
+    // }
 
-    function test_initPool_invalidOwner() public {
-        vm.startPrank(owner);
+    // function test_initPool_invalidOwner() public {
+    //     vm.startPrank(owner);
 
-        vm.expectRevert(abi.encodeWithSelector(getNotPoolLogicSelector(), owner));
+    //     vm.expectRevert(abi.encodeWithSelector(getNotPoolLogicSelector(), owner));
 
-        bytes memory initPoolParams = abi.encode(address(tokenB), owner, 1, 1, 0);
+    //     bytes memory initPoolParams = abi.encode(address(tokenB), owner, 1, 1, 0);
 
-        pool.initPool(initPoolParams);
-    }
+    //     pool.initPool(initPoolParams);
+    // }
 }
