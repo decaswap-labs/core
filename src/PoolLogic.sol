@@ -658,8 +658,10 @@ contract PoolLogic is Ownable, IPoolLogic {
         uint256 dUnitsDepth // D => depth of dUnits
     ) public pure returns (uint256) {
         // p = P * (dA + Da + 2da)/(dA + Da + 2DA)
-        if (lpUnitsDepth == 0) {
+        if (lpUnitsDepth == 0 && dIncoming == 0) {
             return amount;
+        }else if(lpUnitsDepth == 0 && amount ==0) {
+            return dIncoming;
         }
 
         uint256 num = (dIncoming * reserveA) + (dUnitsDepth * amount) + (2 * dIncoming * amount);
