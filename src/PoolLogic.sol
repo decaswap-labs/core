@@ -71,49 +71,20 @@ contract PoolLogic is Ownable, IPoolLogic {
         uint256 tokenAmount,
         uint256 liquidityTokenAmount
     ) external onlyRouter {
-        (
-            uint256 reserveD_lt,
-            uint256 poolOwnershipUnitsTotal_lt,
-            uint256 reserveA_lt,
-            uint256 initialDToMint_lt,
-            uint256 poolFeeCollected_lt,
-            bool initialized_lt
-        ) = pool.poolInfo(liquidityToken);
-        uint256 streamCount = calculateStreamCount(liquidityTokenAmount, pool.globalSlippage(), reserveD_lt);
-        uint256 swapPerStream = liquidityTokenAmount / streamCount;
-
         bytes32 pairId = keccak256(abi.encodePacked(token, liquidityToken));
         // enqueue
-        // since pool is being initialized and reserves are added directly in poolA, poolA stream will be empty
         IPoolActions(POOL_ADDRESS).enqueueLiquidityStream(
             pairId,
             LiquidityStream({
                 user: user,
-                poolAStream: StreamDetails({
-                    token: token,
-                    amount: tokenAmount,
-                    streamCount: 0,
-                    streamsRemaining: 0,
-                    swapPerStream: 0,
-                    swapAmountRemaining: 0
-                }), // poolA stream
-                poolBStream: StreamDetails({
-                    token: liquidityToken,
-                    amount: liquidityTokenAmount,
-                    streamCount: streamCount,
-                    streamsRemaining: streamCount,
-                    swapPerStream: swapPerStream,
-                    swapAmountRemaining: liquidityTokenAmount
-                }), // poolB stream
-                dAmountOut: 0,
-                typeofLp: TYPE_OF_LP.DUAL_TOKEN
+                poolAStream: _createTokenStreamObj(token, tokenAmount), // poolA stream
+                poolBStream: _createTokenStreamObj(liquidityToken, liquidityTokenAmount), // poolB stream
+                typeofLp: TYPE_OF_LP.DUAL_TOKEN,
+                dAmountOut: 0
             })
         );
 
-        bytes memory initPoolParams =
-            abi.encode(token, user, tokenAmount, calculateLpUnitsToMint(0, tokenAmount, tokenAmount, 0, 0), 0);
-
-        IPoolActions(POOL_ADDRESS).initPool(initPoolParams);
+        IPoolActions(POOL_ADDRESS).initPool(token);
 
         // stream D against token B
         _streamLiquidity(token, liquidityToken);
@@ -123,91 +94,34 @@ contract PoolLogic is Ownable, IPoolLogic {
         external
         onlyRouter
     {
-        (
-            uint256 reserveD_A,
-            uint256 poolOwnershipUnitsTotal_A,
-            uint256 reserveA_A,
-            uint256 initialDToMint_A,
-            uint256 poolFeeCollected_A,
-            bool initialized_A
-        ) = pool.poolInfo(tokenA);
-
-        (
-            uint256 reserveD_B,
-            uint256 poolOwnershipUnitsTotal_B,
-            uint256 reserveA_B,
-            uint256 initialDToMint_B,
-            uint256 poolFeeCollected_B,
-            bool initialized_B
-        ) = pool.poolInfo(tokenB);
-
-        bytes32 poolId = getPoolId(tokenA, tokenB); // for pair slippage only. Not an ID for pair direction queue
-
-        uint256 streamCountA = calculateStreamCount(amountA, pool.pairSlippage(poolId), reserveD_A);
-        uint256 swapPerStreamA = amountA / streamCountA;
-
-        uint256 streamCountB = calculateStreamCount(amountB, pool.pairSlippage(poolId), reserveD_B);
-        uint256 swapPerStreamB = amountB / streamCountB;
-
         bytes32 pairId = keccak256(abi.encodePacked(tokenA, tokenB));
         // enqueue
-        _enqueueLiqStream(
+        IPoolActions(POOL_ADDRESS).enqueueLiquidityStream(
             pairId,
-            user,
-            TYPE_OF_LP.DUAL_TOKEN,
-            StreamDetails({
-                token: tokenA,
-                amount: amountA,
-                streamCount: streamCountA,
-                streamsRemaining: streamCountA,
-                swapPerStream: swapPerStreamA,
-                swapAmountRemaining: amountA
-            }), // poolA stream
-            StreamDetails({
-                token: tokenB,
-                amount: amountB,
-                streamCount: streamCountB,
-                streamsRemaining: streamCountB,
-                swapPerStream: swapPerStreamB,
-                swapAmountRemaining: amountB
-            }) // poolB stream
+            LiquidityStream({
+                user: user,
+                poolAStream: _createTokenStreamObj(tokenA, amountA), // poolA stream
+                poolBStream: _createTokenStreamObj(tokenB, amountB), // poolB stream
+                typeofLp: TYPE_OF_LP.DUAL_TOKEN,
+                dAmountOut: 0
+            })
         );
 
         _streamLiquidity(tokenA, tokenB);
     }
 
     function streamDToPool(address tokenA, address tokenB, address user, uint256 amountB) external onlyRouter {
-        (
-            uint256 reserveD_B,
-            uint256 poolOwnershipUnitsTotal_B,
-            uint256 reserveA_B,
-            uint256 initialDToMint_B,
-            uint256 poolFeeCollected_B,
-            bool initialized_B
-        ) = pool.poolInfo(tokenB);
-
-        bytes32 poolId = getPoolId(tokenA, tokenB); // for pair slippage only. Not an ID for pair direction queue
-
-        uint256 streamCountB = calculateStreamCount(amountB, pool.pairSlippage(poolId), reserveD_B);
-        uint256 swapPerStreamB = amountB / streamCountB;
-
         bytes32 pairId = keccak256(abi.encodePacked(tokenA, tokenB));
         // poolAStream will be empty as tokens are added to poolB and D is streamed from B -> A
         StreamDetails memory poolAStream;
+        poolAStream.token = tokenA;
         // enqueue
         _enqueueLiqStream(
             pairId,
             user,
             TYPE_OF_LP.SINGLE_TOKEN,
             poolAStream, // poolA stream
-            StreamDetails({
-                token: tokenB,
-                amount: amountB,
-                streamCount: streamCountB,
-                streamsRemaining: streamCountB,
-                swapPerStream: swapPerStreamB,
-                swapAmountRemaining: amountB
-            }) // poolB stream
+            _createTokenStreamObj(tokenB, amountB) // poolB stream
         );
 
         _streamLiquidity(tokenA, tokenB);
@@ -229,23 +143,72 @@ contract PoolLogic is Ownable, IPoolLogic {
         // encoding address with itself so pairId is same here and in _streamLiquidity() and _streamLiquidity() don't break
         bytes32 pairId = keccak256(abi.encodePacked(token, token));
         StreamDetails memory poolBStream;
+        poolBStream.token = token;
         // enqueue
         _enqueueLiqStream(
             pairId,
             user,
             TYPE_OF_LP.SINGLE_TOKEN,
-            StreamDetails({
-                token: token,
-                amount: amount,
-                streamCount: streamCountA,
-                streamsRemaining: streamCountA,
-                swapPerStream: swapPerStreamA,
-                swapAmountRemaining: amount
-            }), // poolA stream
+            _createTokenStreamObj(token, amount), // poolA stream
             poolBStream // poolB stream
         );
 
-        _streamLiquidity(token, token);
+        _streamLiquidity(token, token); //WHY USING STREAMLIQUIDITY HERE?
+    }
+
+    function _streamA(LiquidityStream memory liqStream)
+        internal
+        returns (uint256 poolANewStreamsRemaining, uint256 poolAReservesToAdd, uint256 lpUnitsAToMint)
+    {
+        // both poolStreamA and poolStreamB tokens should be same in case of single sided liquidity
+        bytes32 pairId = keccak256(abi.encodePacked(liqStream.poolAStream.token, liqStream.poolBStream.token));
+        (
+            uint256 reserveD_A,
+            uint256 poolOwnershipUnitsTotal_A,
+            uint256 reserveA_A,
+            uint256 initialDToMint_A,
+            uint256 poolFeeCollected_A,
+            bool initialized_A
+        ) = pool.poolInfo(liqStream.poolAStream.token);
+        poolANewStreamsRemaining = liqStream.poolAStream.streamsRemaining;
+
+        if (liqStream.poolAStream.swapAmountRemaining != 0) {
+            poolANewStreamsRemaining--;
+            poolAReservesToAdd = liqStream.poolAStream.swapPerStream;
+            lpUnitsAToMint = calculateLpUnitsToMint(
+                poolOwnershipUnitsTotal_A, poolAReservesToAdd, poolAReservesToAdd + reserveA_A, 0, reserveD_A
+            );
+        }
+        // means the stream is completed
+        if (poolANewStreamsRemaining == 0 && liqStream.poolBStream.streamsRemaining == 0) {
+            IPoolActions(POOL_ADDRESS).dequeueSwap_poolStreamQueue(pairId);
+        }
+    }
+
+    function _streamD(LiquidityStream memory liqStream)
+        internal
+        returns (uint256 poolBNewStreamsRemaining, uint256 poolBReservesToAdd, uint256 changeInD)
+    {
+        // both poolStreamA and poolStreamB tokens should be same in case of single sided liquidity
+        bytes32 pairId = keccak256(abi.encodePacked(liqStream.poolAStream.token, liqStream.poolBStream.token));
+        (
+            uint256 reserveD_B,
+            uint256 poolOwnershipUnitsTotal_B,
+            uint256 reserveA_B,
+            uint256 initialDToMint_B,
+            uint256 poolFeeCollected_B,
+            bool initialized_B
+        ) = pool.poolInfo(liqStream.poolAStream.token);
+        poolBNewStreamsRemaining = liqStream.poolAStream.streamsRemaining;
+        if (liqStream.poolBStream.swapAmountRemaining != 0) {
+            poolBNewStreamsRemaining--;
+            poolBReservesToAdd = liqStream.poolBStream.swapPerStream;
+            (changeInD,) = getSwapAmountOut(liqStream.poolBStream.swapPerStream, reserveA_B, 0, reserveD_B, 0);
+        }
+        // means the stream is completed
+        if (liqStream.poolAStream.streamsRemaining == 0 && poolBNewStreamsRemaining == 0) {
+            IPoolActions(POOL_ADDRESS).dequeueSwap_poolStreamQueue(pairId);
+        }
     }
 
     function _enqueueLiqStream(
@@ -284,51 +247,33 @@ contract PoolLogic is Ownable, IPoolLogic {
                 uint256 poolFeeCollected_A,
                 bool initialized_A
             ) = pool.poolInfo(poolA);
-            (
-                uint256 reserveD_B,
-                uint256 poolOwnershipUnitsTotal_B,
-                uint256 reserveA_B,
-                uint256 initialDToMint_B,
-                uint256 poolFeeCollected_B,
-                bool initialized_B
-            ) = pool.poolInfo(poolB);
+
             // get the front stream
             LiquidityStream memory liquidityStream = liquidityStreams[front];
-            uint256 changeInD;
 
-            uint256 poolANewStreamsRemaining = liquidityStream.poolAStream.streamsRemaining;
-            uint256 poolAReservesToAdd;
-            uint256 lpUnitsAToMint;
+            (uint256 poolANewStreamsRemaining, uint256 poolAReservesToAdd, uint256 lpUnitsAToMint) =
+                _streamA(liquidityStream);
+            (uint256 poolBNewStreamsRemaining, uint256 poolBReservesToAdd, uint256 changeInD) =
+                _streamD(liquidityStream);
 
-            uint256 poolBNewStreamsRemaining = liquidityStream.poolBStream.streamsRemaining;
-            uint256 poolBReservesToAdd;
-            uint256 lpUnitsBToMint;
-
-            if (liquidityStream.poolAStream.swapAmountRemaining != 0) {
-                poolANewStreamsRemaining--;
-                poolAReservesToAdd = liquidityStream.poolAStream.swapPerStream;
-                lpUnitsAToMint = calculateLpUnitsToMint(
-                    poolOwnershipUnitsTotal_A, poolAReservesToAdd, poolAReservesToAdd + reserveA_A, 0, reserveD_A
+            uint256 lpUnitsFromStreamD;
+            if (changeInD > 0) {
+                // calc lpUnits user will receive adding D to poolA
+                lpUnitsFromStreamD = calculateLpUnitsToMint(
+                    poolOwnershipUnitsTotal_A + lpUnitsAToMint,
+                    0,
+                    poolAReservesToAdd + reserveA_A,
+                    changeInD,
+                    reserveD_A
                 );
             }
-
-            if (liquidityStream.poolBStream.swapAmountRemaining != 0) {
-                poolBNewStreamsRemaining--;
-                poolBReservesToAdd = liquidityStream.poolBStream.swapPerStream;
-                (changeInD,) = getSwapAmountOut(liquidityStream.poolBStream.swapPerStream, reserveA_B, 0, reserveD_B, 0);
-                // @todo confirm this, should I account for D?? as we do for reserves.
-                lpUnitsBToMint = calculateLpUnitsToMint(
-                    poolOwnershipUnitsTotal_B, poolBReservesToAdd, poolBReservesToAdd + reserveA_B, 0, reserveD_B
-                );
-            }
-
             // update reserves
             bytes memory updatedReserves = abi.encode(poolA, poolB, poolAReservesToAdd, poolBReservesToAdd, changeInD);
             IPoolActions(POOL_ADDRESS).updateReservesWhenStreamingLiq(updatedReserves);
 
             // updating lpUnits
             bytes memory updatedLpUnitsInfo =
-                abi.encode(poolA, poolB, liquidityStream.user, lpUnitsAToMint, lpUnitsBToMint);
+                abi.encode(poolA, liquidityStream.user, lpUnitsAToMint + lpUnitsFromStreamD);
             IPoolActions(POOL_ADDRESS).updateUserLpUnits(updatedLpUnitsInfo);
 
             // update stream struct
@@ -341,14 +286,6 @@ contract PoolLogic is Ownable, IPoolLogic {
                 changeInD
             );
             IPoolActions(POOL_ADDRESS).updateStreamQueueLiqStream(updatedStreamData);
-
-            // means the stream is completed
-            if (
-                liquidityStream.poolAStream.swapAmountRemaining == 0
-                    && liquidityStream.poolBStream.swapAmountRemaining == 0
-            ) {
-                IPoolActions(POOL_ADDRESS).dequeueSwap_poolStreamQueue(pairId);
-            }
         }
     }
 
@@ -701,6 +638,31 @@ contract PoolLogic is Ownable, IPoolLogic {
                 }
             }
         }
+    }
+
+    function _createTokenStreamObj(address token, uint256 amount)
+        internal
+        view
+        returns (StreamDetails memory streamDetails)
+    {
+        (
+            uint256 reserveD,
+            uint256 poolOwnershipUnitsTotal,
+            uint256 reserveA,
+            uint256 initialDToMint,
+            uint256 poolFeeCollected,
+            bool initialized
+        ) = pool.poolInfo(token);
+        uint256 streamCount = calculateStreamCount(amount, pool.globalSlippage(), reserveD);
+        uint256 swapPerStream = amount / streamCount;
+        streamDetails = StreamDetails({
+            token: token,
+            amount: amount,
+            streamCount: streamCount,
+            streamsRemaining: streamCount,
+            swapPerStream: swapPerStream,
+            swapAmountRemaining: amount
+        });
     }
 
     function getPoolId(address tokenA, address tokenB) public pure returns (bytes32) {

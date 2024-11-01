@@ -132,13 +132,8 @@ contract Pool is IPool, Ownable {
         _addLiquidity(addLiqParam);
     }
 
-    // initPool encoding format => (address token, address user, uint256 amount, uint newLpUnits, uint256 poolFeeCollected)
-    function initPool(bytes calldata initPoolParams) external onlyPoolLogic {
-        (address token, address user, uint256 amount, uint256 newLpUnits, uint256 poolFeeCollected) =
-            abi.decode(initPoolParams, (address, address, uint256, uint256, uint256));
-        _initPool(token, 0);
-        bytes memory addLiqParam = abi.encode(token, user, amount, newLpUnits, 0, poolFeeCollected);
-        _addLiquidity(addLiqParam);
+    function initPool(address tokenAddress) external onlyPoolLogic {
+        _initPool(tokenAddress, 0);
     }
 
     function dequeueSwap_poolStreamQueue(bytes32 pairId) external onlyPoolLogic {
@@ -259,13 +254,11 @@ contract Pool is IPool, Ownable {
         liquidityStream.dAmountOut += dAmountOut;
     }
 
-    // updatedLpUnits encoding format => (address tokenA, address tokenB, address user, uint lpUnitsA, uint lpUnitsB)
+    // updatedLpUnits encoding format => (address token, address user, uint lpUnits)
     function updateUserLpUnits(bytes memory updatedLpUnits) external onlyPoolLogic {
-        (address tokenA, address tokenB, address user, uint256 lpUnitsA, uint256 lpUnitsB) =
-            abi.decode(updatedLpUnits, (address, address, address, uint256, uint256));
+        (address token, address user, uint256 lpUnits) = abi.decode(updatedLpUnits, (address, address, uint256));
 
-        userLpUnitInfo[user][tokenA] += lpUnitsA;
-        userLpUnitInfo[user][tokenB] += lpUnitsB;
+        userLpUnitInfo[user][token] += lpUnits;
     }
 
     // @todo ask if we should sort it here, or pass sorted array from logic and just save
