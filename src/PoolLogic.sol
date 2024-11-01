@@ -285,7 +285,7 @@ contract PoolLogic is Ownable, IPoolLogic {
                 poolBNewStreamsRemaining,
                 changeInD
             );
-            IPoolActions(POOL_ADDRESS).updateStreamQueueLiqStream(updatedStreamData);
+            IPoolActions(POOL_ADDRESS).updateStreamQueueLiqStream(updatedStreamData); // CHECK AGAIN
         }
     }
 
