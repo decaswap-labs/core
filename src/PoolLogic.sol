@@ -77,7 +77,7 @@ contract PoolLogic is Ownable, IPoolLogic {
         external
         onlyRouter
     {
-        (uint256 reserveD_In,, uint256 reserveA_In, uint256 minLaunchReserveA_In,,,,) = pool.poolInfo(address(tokenIn));
+        (,, uint256 reserveA_In, uint256 minLaunchReserveA_In,,,,) = pool.poolInfo(address(tokenIn));
 
         (uint256 reserveD_Out,, uint256 reserveA_Out,, uint256 minLaunchReserveD_Out,,,) =
             pool.poolInfo(address(tokenOut));
@@ -87,26 +87,14 @@ contract PoolLogic is Ownable, IPoolLogic {
             revert MinLaunchReservesNotReached();
         }
 
-        uint256 streamCount;
-        uint256 swapPerStream;
-        uint256 minPoolDepth;
-
-        bytes32 poolId;
-
         // break into streams
-        minPoolDepth = reserveD_In <= reserveD_Out ? reserveD_In : reserveD_Out;
-        poolId = getPoolId(tokenIn, tokenOut); // for pair slippage only. Not an ID for pair direction queue
-        streamCount = calculateStreamCount(amountIn, pool.pairSlippage(poolId), minPoolDepth);
-        swapPerStream = amountIn / streamCount;
+        uint256 streamCount = getStreamCount(tokenIn, tokenOut, amountIn);
+        uint256 swapPerStream = amountIn / streamCount;
 
         // initiate swapqueue per direction
         bytes32 pairId = keccak256(abi.encodePacked(tokenIn, tokenOut)); // for one direction
 
         uint256 currentPrice = getExecutionPrice(reserveA_In, reserveA_Out);
-
-        // here we assume that the new amountIn is without the dust tokens
-        // TODO: check the amount of dust tokens lost in the process to execute accordingly
-        if (amountIn % streamCount != 0) amountIn = streamCount * swapPerStream;
 
         _maintainQueue(
             pairId,
@@ -269,8 +257,8 @@ contract PoolLogic is Ownable, IPoolLogic {
             return frontSwap;
         }
 
-        (uint256 reserveD_In,, uint256 reserveA_In,,,,,) = pool.poolInfo(address(tokenIn));
-        (uint256 reserveD_Out,, uint256 reserveA_Out,,,,,) = pool.poolInfo(address(tokenOut));
+        (,, uint256 reserveA_In,,,,,) = pool.poolInfo(address(tokenIn));
+        (,, uint256 reserveA_Out,,,,,) = pool.poolInfo(address(tokenOut));
 
         // the number of opposite swaps
         uint256 oppositeSwapsCount = oppositeBack - oppositeFront;
@@ -309,9 +297,7 @@ contract PoolLogic is Ownable, IPoolLogic {
                 // 3. we recalculate the main swap conditions
                 uint256 newTokenInAmountIn = tokenInAmountIn - tokenInAmountOut;
 
-                uint256 minPoolDepth = reserveD_In <= reserveD_Out ? reserveD_In : reserveD_Out;
-                bytes32 poolId = getPoolId(tokenIn, tokenOut); // for pair slippage only. Not an ID for pair direction queue
-                uint256 streamCount = calculateStreamCount(newTokenInAmountIn, pool.pairSlippage(poolId), minPoolDepth);
+                uint256 streamCount = getStreamCount(tokenIn, tokenOut, newTokenInAmountIn);
                 uint256 swapPerStream = newTokenInAmountIn / streamCount;
                 if (newTokenInAmountIn % streamCount != 0) newTokenInAmountIn = streamCount * swapPerStream;
 
@@ -323,7 +309,7 @@ contract PoolLogic is Ownable, IPoolLogic {
                 frontSwap.amountOut += tokenOutAmountIn;
 
                 // 4. we continue to the next oppositeSwap
-                tokenInAmountIn -= tokenInAmountOut; // always positive from the condition above
+                tokenInAmountIn = newTokenInAmountIn; // always positive from the condition above
             } else {
                 // 1. frontSwap is completed and is taken out of the stream queue
 
@@ -355,13 +341,9 @@ contract PoolLogic is Ownable, IPoolLogic {
                     });
                 } else {
                     uint256 newTokenOutAmountIn = tokenOutAmountIn - tokenOutAmountOut;
-
-                    uint256 minPoolDepth = reserveD_In <= reserveD_Out ? reserveD_In : reserveD_Out;
-                    bytes32 poolId = getPoolId(tokenOut, tokenIn); // for pair slippage only. Not an ID for pair direction queue
-                    uint256 streamCount =
-                        calculateStreamCount(newTokenOutAmountIn, pool.pairSlippage(poolId), minPoolDepth);
+                    uint256 streamCount = getStreamCount(tokenOut, tokenIn, newTokenOutAmountIn);
                     uint256 swapPerStream = newTokenOutAmountIn / streamCount;
-                    if (newTokenOutAmountIn % streamCount != 0) newTokenOutAmountIn = streamCount * swapPerStream;
+                    if (newTokenOutAmountIn % streamCount != 0) newTokenOutAmountIn = streamCount * swapPerStream; // reAssigning newTokenOutAmountIn without dust tokens
 
                     // updating oppositeSwap
                     bytes memory updatedSwapData_opposite = abi.encode(
@@ -422,6 +404,15 @@ contract PoolLogic is Ownable, IPoolLogic {
                 }
             }
         }
+    }
+
+    function getStreamCount(address tokenIn, address tokenOut, uint256 amountIn) public view returns (uint256) {
+        (uint256 reserveD_In,,,,,,,) = pool.poolInfo(address(tokenIn));
+        (uint256 reserveD_Out,,,,,,,) = pool.poolInfo(address(tokenOut));
+
+        uint256 minPoolDepth = reserveD_In <= reserveD_Out ? reserveD_In : reserveD_Out;
+        bytes32 poolId = getPoolId(tokenIn, tokenOut); // for pair slippage only. Not an ID for pair direction queue
+        return calculateStreamCount(amountIn, pool.pairSlippage(poolId), minPoolDepth);
     }
 
     function getPoolId(address tokenA, address tokenB) public pure returns (bytes32) {

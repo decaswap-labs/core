@@ -287,16 +287,37 @@ contract RouterTest_Swap is RouterTest {
         (reserveD_tokenA,, reserveA_tokenA,,,,,) = pool.poolInfo(address(tokenA));
         (reserveD_tokenB,, reserveA_tokenB,,,,,) = pool.poolInfo(address(tokenB));
 
-        uint256 swapTokenAAmountIn = tokenInAmountOut - 42 ether;
-        minPoolDepth = reserveD_tokenA <= reserveD_tokenB
-            ? reserveD_tokenA
-            : reserveD_tokenB;
+        uint256 swapTokenAAmountIn = tokenInAmountOut - 1 ether;
 
-        streamCount = poolLogic.calculateStreamCount(swapTokenAAmountIn, pool.pairSlippage(poolId), minPoolDepth);
+        streamCount = poolLogic.getStreamCount(address(tokenA), address(tokenB), swapTokenAAmountIn);
         uint256 swapPerStream = swapTokenAAmountIn / streamCount;
         if (swapTokenAAmountIn % streamCount != 0) swapTokenAAmountIn = streamCount * swapPerStream;
 
-        uint256 swapTokenBAmountOut = poolLogic.getAmountOut(swapTokenAAmountIn, reserveA_tokenA, reserveA_tokenB);
+        uint256 swapTokenBAmountOut;
+        // we loop through the opposite swaps to get the expected amount of tokenB we will receive, after fully execute our frontSwap swap
+        uint256 swapTokenAAmountInForCalculation = swapTokenAAmountIn;
+        for (uint256 i = oppositeFront; i < oppositeBack; i++) {
+            Swap memory oppositeSwap = oppositeSwaps[i];
+            uint256 oppTokenInAmountOut =
+                poolLogic.getAmountOut(oppositeSwap.swapAmountRemaining, reserveA_tokenB, reserveA_tokenA);
+
+            if (swapTokenAAmountInForCalculation > oppTokenInAmountOut) {
+                swapTokenBAmountOut += oppositeSwap.swapAmountRemaining;
+                swapTokenAAmountInForCalculation -= oppTokenInAmountOut;
+
+                uint256 _streamCount =
+                    poolLogic.getStreamCount(address(tokenA), address(tokenB), swapTokenAAmountInForCalculation);
+                uint256 _swapPerStream = swapTokenAAmountInForCalculation / _streamCount;
+                if (swapTokenAAmountInForCalculation % streamCount != 0) {
+                    swapTokenAAmountInForCalculation = _streamCount * _swapPerStream;
+                }
+            } else {
+                swapTokenBAmountOut +=
+                    poolLogic.getAmountOut(swapTokenAAmountInForCalculation, reserveA_tokenA, reserveA_tokenB);
+                break;
+            }
+        }
+
         uint256 swaperTokenABalance_beforeSwap = tokenA.balanceOf(owner);
         uint256 swaperTokenBBalance_beforeSwap = tokenB.balanceOf(owner);
         vm.startPrank(owner);
@@ -378,7 +399,30 @@ contract RouterTest_Swap is RouterTest {
         // tokenAAmount needed to consume the opposite swaps;
         uint256 executionPrice = poolLogic.getExecutionPrice(reserveA_tokenA, reserveA_tokenB);
 
-        uint256 swapTokenAAmountIn = tokenInAmountOut + 3 ether;
+        uint256 swapTokenAAmountIn = tokenInAmountOut + 2 ether;
+        streamCount = poolLogic.getStreamCount(address(tokenA), address(tokenB), swapTokenAAmountIn);
+        uint256 swapPerStream = swapTokenAAmountIn / streamCount;
+        if (swapTokenAAmountIn % streamCount != 0) swapTokenAAmountIn = streamCount * swapPerStream;
+        
+        uint256 swapTokenAAmountInForCalculation = swapTokenAAmountIn;
+
+        for (uint256 i = oppositeFront; i < oppositeBack; i++) {
+            Swap memory oppositeSwap = oppositeSwaps[i];
+            uint256 oppTokenInAmountOut =
+                poolLogic.getAmountOut(oppositeSwap.swapAmountRemaining, reserveA_tokenB, reserveA_tokenA);
+            swapTokenAAmountInForCalculation -= oppTokenInAmountOut;
+            // recalculate the stream count
+            uint256 _streamCount =
+                poolLogic.getStreamCount(address(tokenA), address(tokenB), swapTokenAAmountInForCalculation);
+            uint256 swapPerStream = swapTokenAAmountInForCalculation / _streamCount;
+            if (swapTokenAAmountInForCalculation % _streamCount != 0) {
+                swapTokenAAmountInForCalculation = _streamCount * swapPerStream;
+            }
+        }
+
+        // dust tokens not included in the swap
+        uint256 dustTokens = (swapTokenAAmountIn - tokenInAmountOut) - swapTokenAAmountInForCalculation;
+
         uint256 swapTokenBAmountOutFromOppSwaps = tokenOutAmountIn;
         (, uint256 swapTokenBAmoutOutFromReserve) = poolLogic.getSwapAmountOut(
             swapTokenAAmountIn - tokenInAmountOut, reserveA_tokenA, reserveA_tokenB, reserveD_tokenA, reserveD_tokenB
@@ -399,10 +443,7 @@ contract RouterTest_Swap is RouterTest {
         (, uint256 front, uint256 back) = pool.pairStreamQueue(pairId);
         (, uint256 oppFront, uint256 oppBack) = pool.pairStreamQueue(oppositePairId);
 
-        console.log("diffReserveA", reserveA_tokenA_afterSwap - reserveA_tokenA);
-        console.log("diffReserveB", reserveA_tokenB - reserveA_tokenB_afterSwap);
-        console.log("swapTokenBAmoutOutFromReserve", swapTokenBAmoutOutFromReserve);
-        console.log("totalBOut", swapTokenBAmountOutFromOppSwaps + swapTokenBAmoutOutFromReserve);
+        console.log("dustTokens", dustTokens);
         assertEq(back, front);
         assertEq(oppBack, oppFront);
         assertEq(swaperTokenABalance_afterSwap, swaperTokenABalance_beforeSwap - swapTokenAAmountIn);
@@ -410,7 +451,7 @@ contract RouterTest_Swap is RouterTest {
             swaperTokenBBalance_afterSwap,
             swaperTokenBBalance_beforeSwap + swapTokenBAmountOutFromOppSwaps + swapTokenBAmoutOutFromReserve
         );
-        assertEq(reserveA_tokenA_afterSwap, reserveA_tokenA + swapTokenAAmountIn - tokenInAmountOut);
+        assertEq(reserveA_tokenA_afterSwap, reserveA_tokenA + swapTokenAAmountIn - tokenInAmountOut - dustTokens);
         assertEq(reserveA_tokenB_afterSwap, reserveA_tokenB - swapTokenBAmoutOutFromReserve);
     }
 }
