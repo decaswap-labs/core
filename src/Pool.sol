@@ -58,11 +58,6 @@ contract Pool is IPool, Ownable {
     mapping(bytes32 pairId => uint256 front) public mapPairId_streamQueue_front;
     mapping(bytes32 pairId => uint256 back) public mapPairId_streamQueue_back;
 
-    // poolStreamQueue struct
-    mapping(bytes32 pairId => Swap[] data) public mapPairId_poolStreamQueue_Swaps;
-    mapping(bytes32 pairId => uint256 front) public mapPairId_poolStreamQueue_front;
-    mapping(bytes32 pairId => uint256 back) public mapPairId_poolStreamQueue_back;
-
     // pairStreamQueue struct
     mapping(bytes32 pairId => Swap[] data) public mapPairId_pairStreamQueue_Swaps;
     mapping(bytes32 pairId => uint256 front) public mapPairId_pairStreamQueue_front;
@@ -136,10 +131,6 @@ contract Pool is IPool, Ownable {
         _initPool(tokenAddress, 0);
     }
 
-    function dequeueSwap_poolStreamQueue(bytes32 pairId) external onlyPoolLogic {
-        mapPairId_poolStreamQueue_front[pairId]++;
-    }
-
     function dequeueSwap_pairStreamQueue(bytes32 pairId) external onlyPoolLogic {
         mapPairId_pairStreamQueue_front[pairId]++;
     }
@@ -148,9 +139,8 @@ contract Pool is IPool, Ownable {
         mapPairId_pairPendingQueue_front[pairId]++;
     }
 
-    function enqueueSwap_poolStreamQueue(bytes32 pairId, Swap memory swap) external onlyPoolLogic {
-        mapPairId_poolStreamQueue_Swaps[pairId].push(swap);
-        mapPairId_poolStreamQueue_back[pairId]++;
+    function dequeueLiquidityStream_streamQueue(bytes32 pairId) external onlyPoolLogic {
+        mapPairId_streamQueue_front[pairId]++;
     }
 
     function enqueueSwap_pairStreamQueue(bytes32 pairId, Swap memory swap) external onlyPoolLogic {
@@ -380,14 +370,6 @@ contract Pool is IPool, Ownable {
             mapToken_initialDToMint[tokenAddress],
             mapToken_poolFeeCollected[tokenAddress],
             mapToken_initialized[tokenAddress]
-        );
-    }
-
-    function poolStreamQueue(bytes32 pairId) external view returns (Swap[] memory swaps, uint256 front, uint256 back) {
-        return (
-            mapPairId_poolStreamQueue_Swaps[pairId],
-            mapPairId_poolStreamQueue_front[pairId],
-            mapPairId_poolStreamQueue_back[pairId]
         );
     }
 

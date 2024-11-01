@@ -22,7 +22,6 @@ interface IPoolStates {
     function pairSlippage(bytes32) external view returns (uint256);
     function globalSlippage() external view returns (uint256);
     // function pairSwapHistory(bytes32) external view returns(uint256,uint256);
-    function poolStreamQueue(bytes32) external view returns (Swap[] memory swaps, uint256 front, uint256 back);
     function pairStreamQueue(bytes32) external view returns (Swap[] memory swaps, uint256 front, uint256 back);
     function pairPendingQueue(bytes32) external view returns (Swap[] memory swaps, uint256 front, uint256 back);
     function liquidityStreamQueue(bytes32)

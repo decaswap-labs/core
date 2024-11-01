@@ -15,13 +15,12 @@ interface IPoolActions {
     function addLiquidity(bytes memory addLiqParams) external;
     // removeLiqParams encoding format => (address token, address user, uint lpUnits, uint256 assetToTransfer, uint256 dAmountToDeduct, uint256 poolFeeCollected)
     function removeLiquidity(bytes memory removeLiqParams) external;
-    function enqueueSwap_poolStreamQueue(bytes32 pairId, Swap memory swap) external;
     function enqueueSwap_pairStreamQueue(bytes32 pairId, Swap memory swap) external;
     function enqueueSwap_pairPendingQueue(bytes32 pairId, Swap memory swap) external;
     function enqueueLiquidityStream(bytes32 pairId, LiquidityStream memory liquidityStream) external;
-    function dequeueSwap_poolStreamQueue(bytes32 pairId) external;
     function dequeueSwap_pairStreamQueue(bytes32 pairId) external;
     function dequeueSwap_pairPendingQueue(bytes32 pairId) external;
+    function dequeueLiquidityStream_streamQueue(bytes32 pairId) external;
     // updateReservesParams encoding format => (bool aToB, address tokenA, address tokenB, uint256 reserveA_A, uint256 reserveD_A,uint256 reserveA_B, uint256 reserveD_B)
     function updateReserves(bytes memory updateReservesParams) external;
     // updateReservesParams encoding format => (address tokenA, address tokenB, uint256 reserveA_A, uint256 reserveA_B, uint256 changeInD)
