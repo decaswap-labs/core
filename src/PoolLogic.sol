@@ -294,22 +294,27 @@ contract PoolLogic is Ownable, IPoolLogic {
 
                 IPoolActions(POOL_ADDRESS).dequeueSwap_pairStreamQueue(oppositePairId);
 
-                // 3. we recalculate the main swap conditions
                 uint256 newTokenInAmountIn = tokenInAmountIn - tokenInAmountOut;
 
-                uint256 streamCount = getStreamCount(tokenIn, tokenOut, newTokenInAmountIn);
-                uint256 swapPerStream = newTokenInAmountIn / streamCount;
-                if (newTokenInAmountIn % streamCount != 0) newTokenInAmountIn = streamCount * swapPerStream;
+                // 3. we recalculate the main swap if it's needed
 
-                // updating memory frontSwap
-                frontSwap.streamsCount = streamCount;
-                frontSwap.streamsRemaining = streamCount;
-                frontSwap.swapPerStream = swapPerStream;
+                // get new stream count only if it's consuming the last opp swap
+
+                if (i == oppositeBack - 1) {
+                    uint256 streamCount = getStreamCount(tokenIn, tokenOut, newTokenInAmountIn);
+                    uint256 swapPerStream = newTokenInAmountIn / streamCount;
+                    if (newTokenInAmountIn % streamCount != 0) newTokenInAmountIn = streamCount * swapPerStream;
+
+                    // updating memory frontSwap
+                    frontSwap.streamsCount = streamCount;
+                    frontSwap.streamsRemaining = streamCount;
+                    frontSwap.swapPerStream = swapPerStream;
+                }
+
                 frontSwap.swapAmountRemaining = newTokenInAmountIn;
                 frontSwap.amountOut += tokenOutAmountIn;
-
+                tokenInAmountIn = newTokenInAmountIn;
                 // 4. we continue to the next oppositeSwap
-                tokenInAmountIn = newTokenInAmountIn; // always positive from the condition above
             } else {
                 // 1. frontSwap is completed and is taken out of the stream queue
 
