@@ -57,7 +57,7 @@ contract PoolLogic is Ownable, IPoolLogic {
             user,
             tokenAmount,
             initialDToMint,
-            calculateLpUnitsToMint(0, tokenAmount, tokenAmount, initialDToMint, initialDToMint),
+            tokenAmount, //no need to call formula
             initialDToMint,
             0
         );
