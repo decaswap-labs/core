@@ -249,6 +249,7 @@ contract Pool is IPool, Ownable {
         (address token, address user, uint256 lpUnits) = abi.decode(updatedLpUnits, (address, address, uint256));
 
         userLpUnitInfo[user][token] += lpUnits;
+        mapToken_poolOwnershipUnitsTotal[token] += lpUnits;
     }
 
     // @todo ask if we should sort it here, or pass sorted array from logic and just save
