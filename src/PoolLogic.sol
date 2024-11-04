@@ -77,8 +77,8 @@ contract PoolLogic is Ownable, IPoolLogic {
             pairId,
             user,
             TYPE_OF_LP.DUAL_TOKEN,
-            _createTokenStreamObj(token, tokenAmount), // poolA stream
-            _createTokenStreamObj(liquidityToken, liquidityTokenAmount) // poolB stream
+            _createTokenStreamObj(token, tokenAmount, liquidityToken), // poolA stream
+            _createTokenStreamObj(liquidityToken, liquidityTokenAmount, token) // poolB stream
         );
 
         IPoolActions(POOL_ADDRESS).initPool(token);
@@ -97,8 +97,8 @@ contract PoolLogic is Ownable, IPoolLogic {
             pairId,
             user,
             TYPE_OF_LP.DUAL_TOKEN,
-            _createTokenStreamObj(tokenA, amountA), // poolA stream
-            _createTokenStreamObj(tokenB, amountB) // poolB stream
+            _createTokenStreamObj(tokenA, amountA, tokenB), // poolA stream
+            _createTokenStreamObj(tokenB, amountB, tokenA) // poolB stream
         );
 
         _streamLiquidity(tokenA, tokenB);
@@ -115,7 +115,7 @@ contract PoolLogic is Ownable, IPoolLogic {
             user,
             TYPE_OF_LP.SINGLE_TOKEN,
             poolAStream, // poolA stream
-            _createTokenStreamObj(tokenB, amountB) // poolB stream
+            _createTokenStreamObj(tokenB, amountB, tokenA) // poolB stream
         );
 
         _streamLiquidity(tokenA, tokenB);
@@ -131,7 +131,7 @@ contract PoolLogic is Ownable, IPoolLogic {
             pairId,
             user,
             TYPE_OF_LP.SINGLE_TOKEN,
-            _createTokenStreamObj(token, amount), // poolA stream
+            _createTokenStreamObj(token, amount, token), // poolA stream
             poolBStream // poolB stream
         );
 
@@ -620,7 +620,8 @@ contract PoolLogic is Ownable, IPoolLogic {
         }
     }
 
-    function _createTokenStreamObj(address token, uint256 amount)
+    /// @notice pairToken 's reserveD will be used for streamCount calc if `token`'s reserveD are 0
+    function _createTokenStreamObj(address token, uint256 amount, address pairToken)
         internal
         view
         returns (StreamDetails memory streamDetails)
@@ -633,6 +634,19 @@ contract PoolLogic is Ownable, IPoolLogic {
             uint256 poolFeeCollected,
             bool initialized
         ) = pool.poolInfo(token);
+
+        // if `token's` reserves D are 0 then use pairToken's reserve D for stream count calculation
+        if (reserveD == 0) {
+            (
+                uint256 reserveD_pairToken,
+                uint256 poolOwnershipUnitsTotal_pairToken,
+                uint256 reserveA_pairToken,
+                uint256 initialDToMint_pairToken,
+                uint256 poolFeeCollected_pairToken,
+                bool initialized_pairToken
+            ) = pool.poolInfo(pairToken);
+            reserveD = reserveD_pairToken;
+        }
         uint256 streamCount = calculateStreamCount(amount, pool.globalSlippage(), reserveD);
         uint256 swapPerStream = amount / streamCount;
         streamDetails = StreamDetails({
@@ -660,7 +674,7 @@ contract PoolLogic is Ownable, IPoolLogic {
         // p = P * (dA + Da + 2da)/(dA + Da + 2DA)
         if (lpUnitsDepth == 0 && dIncoming == 0) {
             return amount;
-        }else if(lpUnitsDepth == 0 && amount ==0) {
+        } else if (lpUnitsDepth == 0 && amount == 0) {
             return dIncoming;
         }
 
