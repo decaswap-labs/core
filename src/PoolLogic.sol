@@ -4,12 +4,21 @@ pragma solidity ^0.8.20;
 import {IPoolStates} from "./interfaces/pool/IPoolStates.sol";
 import {IPoolLogic} from "./interfaces/IPoolLogic.sol";
 import {IPoolActions} from "./interfaces/pool/IPoolActions.sol";
-import "@openzeppelin/contracts/access/Ownable.sol";
-import {Swap} from "./lib/SwapQueue.sol";
+import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
+import {Swap} from "src/lib/SwapQueue.sol";
+import {DSMath} from "src/lib/DSMath.sol";
 
 contract PoolLogic is Ownable, IPoolLogic {
+    using DSMath for uint256;
+
     address public override POOL_ADDRESS;
     IPoolStates public pool;
+
+    struct Payout {
+        address swapUser;
+        address token;
+        uint256 amount;
+    }
 
     modifier onlyRouter() {
         if (msg.sender != pool.ROUTER_ADDRESS()) revert NotRouter(msg.sender);
@@ -47,16 +56,8 @@ contract PoolLogic is Ownable, IPoolLogic {
     }
 
     function addLiquidity(address token, address user, uint256 amount) external onlyRouter {
-        (
-            uint256 reserveD,
-            uint256 poolOwnershipUnitsTotal,
-            uint256 reserveA,
-            uint256 minLaunchReserveA,
-            uint256 minLaunchReserveD,
-            uint256 initialDToMint,
-            uint256 poolFeeCollected,
-            bool initialized
-        ) = pool.poolInfo(address(token));
+        (uint256 reserveD, uint256 poolOwnershipUnitsTotal, uint256 reserveA,,, uint256 initialDToMint,,) =
+            pool.poolInfo(address(token));
         uint256 newLpUnits = calculateLpUnitsToMint(amount, reserveA, poolOwnershipUnitsTotal);
         reserveA += amount;
         uint256 newDUnits = calculateDUnitsToMint(amount, reserveA, reserveD, initialDToMint);
@@ -65,16 +66,7 @@ contract PoolLogic is Ownable, IPoolLogic {
     }
 
     function removeLiquidity(address token, address user, uint256 lpUnits) external onlyRouter {
-        (
-            uint256 reserveD,
-            uint256 poolOwnershipUnitsTotal,
-            uint256 reserveA,
-            uint256 minLaunchReserveA,
-            uint256 minLaunchReserveD,
-            uint256 initialDToMint,
-            uint256 poolFeeCollected,
-            bool initialized
-        ) = pool.poolInfo(address(token));
+        (uint256 reserveD, uint256 poolOwnershipUnitsTotal, uint256 reserveA,,,,,) = pool.poolInfo(address(token));
         uint256 assetToTransfer = calculateAssetTransfer(lpUnits, reserveA, poolOwnershipUnitsTotal);
         uint256 dAmountToDeduct = calculateDToDeduct(lpUnits, reserveD, poolOwnershipUnitsTotal);
         bytes memory removeLiqParams = abi.encode(token, user, lpUnits, assetToTransfer, dAmountToDeduct, 0); // poolFeeCollected = 0 until logic is finalized
@@ -85,44 +77,19 @@ contract PoolLogic is Ownable, IPoolLogic {
         external
         onlyRouter
     {
-        (
-            uint256 reserveD_In,
-            uint256 poolOwnershipUnitsTotal_In,
-            uint256 reserveA_In,
-            uint256 minLaunchReserveA_In,
-            uint256 minLaunchReserveD_In,
-            uint256 initialDToMint_In,
-            uint256 poolFeeCollected_In,
-            bool initialized_In
-        ) = pool.poolInfo(address(tokenIn));
+        (,, uint256 reserveA_In, uint256 minLaunchReserveA_In,,,,) = pool.poolInfo(address(tokenIn));
 
-        (
-            uint256 reserveD_Out,
-            uint256 poolOwnershipUnitsTotal_Out,
-            uint256 reserveA_Out,
-            uint256 minLaunchReserveA_Out,
-            uint256 minLaunchReserveD_Out,
-            uint256 initialDToMint_Out,
-            uint256 poolFeeCollected_Out,
-            bool initialized_Out
-        ) = pool.poolInfo(address(tokenOut));
+        (uint256 reserveD_Out,, uint256 reserveA_Out,, uint256 minLaunchReserveD_Out,,,) =
+            pool.poolInfo(address(tokenOut));
 
         //check if the reserves are greater than min launch
         if (minLaunchReserveA_In > reserveA_In || minLaunchReserveD_Out > reserveD_Out) {
             revert MinLaunchReservesNotReached();
         }
 
-        uint256 streamCount;
-        uint256 swapPerStream;
-        uint256 minPoolDepth;
-
-        bytes32 poolId;
-
         // break into streams
-        minPoolDepth = reserveD_In <= reserveD_Out ? reserveD_In : reserveD_Out;
-        poolId = getPoolId(tokenIn, tokenOut); // for pair slippage only. Not an ID for pair direction queue
-        streamCount = calculateStreamCount(amountIn, pool.pairSlippage(poolId), minPoolDepth);
-        swapPerStream = amountIn / streamCount;
+        uint256 streamCount = getStreamCount(tokenIn, tokenOut, amountIn);
+        uint256 swapPerStream = amountIn / streamCount;
 
         // initiate swapqueue per direction
         bytes32 pairId = keccak256(abi.encodePacked(tokenIn, tokenOut)); // for one direction
@@ -155,181 +122,56 @@ contract PoolLogic is Ownable, IPoolLogic {
         _executeStream(tokenIn, tokenOut);
     }
 
+    /**
+     * @notice here we are executing the stream for the given pair
+     * we are processing the front swap from the stream queue
+     * @param tokenIn the token that is being swapped
+     * @param tokenOut the token that is being received
+     * //TODO: Deduct fees from amount out = 5BPS.
+     */
     function _executeStream(address tokenIn, address tokenOut) internal {
-        (
-            uint256 reserveD_In,
-            uint256 poolOwnershipUnitsTotal_In,
-            uint256 reserveA_In,
-            uint256 minLaunchReserveA_In,
-            uint256 minLaunchReserveD_In,
-            uint256 initialDToMint_In,
-            uint256 poolFeeCollected_In,
-            bool initialized_In
-        ) = pool.poolInfo(address(tokenIn));
+        bytes32 pairId = keccak256(abi.encodePacked(tokenIn, tokenOut));
+        // loading the front swap from the stream queue
+        (Swap[] memory swaps, uint256 front, uint256 back) = pool.pairStreamQueue(pairId);
+        // TODO Don't we need to return if the queue is empty?
+        if (front == back) {
+            return;
+        }
 
-        (
-            uint256 reserveD_Out,
-            uint256 poolOwnershipUnitsTotal_Out,
-            uint256 reserveA_Out,
-            uint256 minLaunchReserveA_Out,
-            uint256 minLaunchReserveD_Out,
-            uint256 initialDToMint_Out,
-            uint256 poolFeeCollected_Out,
-            bool initialized_Out
-        ) = pool.poolInfo(address(tokenOut));
+        Swap memory frontSwap = swaps[front]; // Here we are grabbing the first swap from the queue
+
+        (uint256 reserveD_In,, uint256 reserveA_In,,,,,) = pool.poolInfo(address(tokenIn));
+
+        (uint256 reserveD_Out,, uint256 reserveA_Out,,,,,) = pool.poolInfo(address(tokenOut));
 
         address completedSwapToken;
         address swapUser;
         uint256 amountOutSwap;
-        bytes32 pairId = keccak256(abi.encodePacked(tokenIn, tokenOut));
 
-        // loading the front swap from the stream queue
-        (Swap[] memory swaps, uint256 front, uint256 back) = pool.pairStreamQueue(pairId);
-        Swap memory frontSwap = swaps[front];
+        frontSwap = _processOppositeSwaps(frontSwap);
+        bytes memory updatedSwapData_front;
 
-        // ------------------------ CHECK OPP DIR SWAP --------------------------- //
+        // the frontSwap has been totally consumed by the opposite swaps
+        if (frontSwap.completed) {
+            // we can update the swap stream queue
+            updatedSwapData_front = abi.encode(
+                pairId,
+                frontSwap.amountOut,
+                frontSwap.swapAmountRemaining,
+                frontSwap.completed,
+                frontSwap.streamsRemaining,
+                frontSwap.streamsCount,
+                frontSwap.swapPerStream
+            );
+            IPoolActions(POOL_ADDRESS).updatePairStreamQueueSwap(updatedSwapData_front);
 
-        //TODO: Deduct fees from amount out = 5BPS.
-        bytes32 otherPairId = keccak256(abi.encodePacked(tokenOut, tokenIn));
-        (Swap[] memory oppositeSwaps, uint256 oppositeFront, uint256 oppositeBack) = pool.pairStreamQueue(otherPairId);
+            // we can dequeue the swap stream queue
+            IPoolActions(POOL_ADDRESS).dequeueSwap_pairStreamQueue(pairId);
 
-        if (oppositeBack - oppositeFront != 0) {
-            Swap memory oppositeSwap = oppositeSwaps[oppositeFront];
-
-            // A->B, amountOutA is B
-            uint256 amountOutA = (frontSwap.swapAmountRemaining * reserveA_In) / reserveA_Out;
-            uint256 amountOutB = (oppositeSwap.swapAmountRemaining * reserveA_Out) / reserveA_In;
-            /* 
-            I have taken out amountOut of both swap directions
-            Now one swap should consume the other one
-            How to define that?
-
-            I am selling 50 TKN for (10)-> Calculated USDC
-            Alice is buying 50 USDC for (250)-> Calculated TKN
-
-            I should be able to fill alice's order completely. By giving her 50 TKN, and take 10 USDC. 
-
-            AmountIn1 = AmountIn1 - AmountIn1 // 50-50 (Order fulfilled as I have given all the TKN to alice)
-            AmountOut1 = AmountOut1 // 10 (As Alice has given me 10 USDC, which equals to amount I have calculated)
-
-            AmountIn2 = AmountIn2 - AmountOut2 // 50-10, as alice has given me 10. So she has 40 left
-            AmountOut2 = AmountOut2 + AmountIn1 // 0+50, Alice wanted 250 tokens, but now she has only those 
-            tokens which I was selling. Which is 50
-        */
-            // when both swaps consumes each other fully
-            // if(frontSwap.swapAmountRemaining == amountOutB) {
-            //     // consuming frontSwap fully
-            //     bytes memory updatedSwapData_front = abi.encode(pairId, oppositeSwap.swapAmountRemaining, 0, true, 0, frontSwap.streamsCount, frontSwap.swapPerStream);
-            //     IPoolActions(POOL_ADDRESS).updatePairStreamQueueSwap(updatedSwapData_front);
-
-            //     // consuming oppositeSwap fully
-            //     bytes memory updatedSwapData_opposite = abi.encode(otherPairId, frontSwap.swapAmountRemaining, 0, true, 0, oppositeSwap.streamsCount, oppositeSwap.swapPerStream);
-            //     IPoolActions(POOL_ADDRESS).updatePairStreamQueueSwap(updatedSwapData_opposite);
-            // require(back > front, "Queue is empty");
-            // IPoolActions(POOL_ADDRESS).dequeueSwap_pairStreamQueue(pairId);
-
-            // require(oppositeBack > oppositeFront, "Queue is empty");
-            // IPoolActions(POOL_ADDRESS).dequeueSwap_pairStreamQueue(otherPairId);
-            // // transferring tokens to frontSwapUser
-            // IPoolActions(POOL_ADDRESS).transferTokens(frontSwap.tokenOut, frontSwap.user, oppositeSwap.swapAmountRemaining);
-            // // transferring tokens to oppositeSwapUser
-            // IPoolActions(POOL_ADDRESS).transferTokens(oppositeSwap.tokenOut, oppositeSwap.user, frontSwap.swapAmountRemaining);
-
-            // }
-            // else
-            // consume front swap fully when true and vice versa
-            if (frontSwap.swapAmountRemaining < amountOutB) {
-                bytes memory updateReservesParams =
-                    abi.encode(true, tokenIn, tokenOut, frontSwap.swapAmountRemaining, 0, amountOutA, 0);
-                IPoolActions(POOL_ADDRESS).updateReserves(updateReservesParams);
-                // updating frontSwap
-                bytes memory updatedSwapData_front =
-                    abi.encode(pairId, amountOutA, 0, true, 0, frontSwap.streamsCount, frontSwap.swapPerStream);
-                IPoolActions(POOL_ADDRESS).updatePairStreamQueueSwap(updatedSwapData_front);
-                bytes memory updatedSwapData_opposite;
-
-                if (amountOutA != oppositeSwap.swapPerStream) {
-                    // recalc stream count and swap per stream
-                    bytes32 poolId = getPoolId(tokenOut, tokenIn); // for pair slippage only. Not an ID for pair direction queue
-                    uint256 minPoolDepth = reserveD_In <= reserveD_Out ? reserveD_In : reserveD_Out;
-                    uint256 newStreamCount = calculateStreamCount(
-                        oppositeSwap.swapAmountRemaining - amountOutA, pool.pairSlippage(poolId), minPoolDepth
-                    );
-
-                    uint256 newSwapPerStream = (oppositeSwap.swapAmountRemaining - amountOutA) / newStreamCount;
-                    // updating oppositeSwap
-                    updatedSwapData_opposite = abi.encode(
-                        otherPairId,
-                        frontSwap.swapAmountRemaining,
-                        oppositeSwap.swapAmountRemaining - amountOutA,
-                        oppositeSwap.completed,
-                        newStreamCount,
-                        newStreamCount,
-                        newSwapPerStream
-                    );
-                } else {
-                    // updating oppositeSwap
-                    updatedSwapData_opposite = abi.encode(
-                        otherPairId,
-                        frontSwap.swapAmountRemaining,
-                        oppositeSwap.swapAmountRemaining - amountOutA,
-                        oppositeSwap.completed,
-                        oppositeSwap.streamsRemaining - 1,
-                        oppositeSwap.streamsCount,
-                        oppositeSwap.swapPerStream
-                    );
-                }
-
-                IPoolActions(POOL_ADDRESS).updatePairStreamQueueSwap(updatedSwapData_opposite);
-
-                completedSwapToken = frontSwap.tokenOut;
-                swapUser = frontSwap.user;
-                amountOutSwap = frontSwap.amountOut + amountOutA;
-
-                require(back > front, "Queue is empty");
-                IPoolActions(POOL_ADDRESS).dequeueSwap_pairStreamQueue(pairId);
-            } else {
-                bytes memory updateReservesParams =
-                    abi.encode(false, tokenIn, tokenOut, amountOutB, 0, oppositeSwap.swapAmountRemaining, 0); // no change in D
-
-                IPoolActions(POOL_ADDRESS).updateReserves(updateReservesParams);
-
-                // consuming oppositeSwap fully
-                bytes memory updatedSwapData_opposite = abi.encode(
-                    otherPairId, amountOutB, 0, true, 0, oppositeSwap.streamsCount, oppositeSwap.swapPerStream
-                );
-                IPoolActions(POOL_ADDRESS).updatePairStreamQueueSwap(updatedSwapData_opposite);
-
-                bytes memory updatedSwapData_Front;
-
-                if (amountOutB != frontSwap.swapPerStream) {
-                    // recalc stream count and swap per stream
-                    bytes32 poolId = getPoolId(tokenIn, tokenOut); // for pair slippage only. Not an ID for pair direction queue
-                    uint256 minPoolDepth = reserveD_In <= reserveD_Out ? reserveD_In : reserveD_Out;
-                    uint256 newStreamCount = calculateStreamCount(
-                        frontSwap.swapAmountRemaining - amountOutB, pool.pairSlippage(poolId), minPoolDepth
-                    );
-                } else {
-                    updatedSwapData_Front = abi.encode(
-                        pairId,
-                        oppositeSwap.swapAmountRemaining,
-                        frontSwap.swapAmountRemaining - amountOutB,
-                        frontSwap.completed,
-                        frontSwap.streamsRemaining - 1,
-                        frontSwap.streamsCount,
-                        frontSwap.swapPerStream
-                    );
-                }
-                // updating frontSwap
-                IPoolActions(POOL_ADDRESS).updatePairStreamQueueSwap(updatedSwapData_Front);
-
-                completedSwapToken = oppositeSwap.tokenOut;
-                swapUser = oppositeSwap.user;
-                amountOutSwap = oppositeSwap.amountOut + amountOutB;
-
-                require(oppositeBack > oppositeFront, "Queue is empty");
-                IPoolActions(POOL_ADDRESS).dequeueSwap_pairStreamQueue(otherPairId);
-            }
+            // we prepare the tokens to be transferred
+            completedSwapToken = frontSwap.tokenOut;
+            swapUser = frontSwap.user;
+            amountOutSwap = frontSwap.amountOut;
         } else {
             (uint256 dToUpdate, uint256 amountOut) =
                 getSwapAmountOut(frontSwap.swapPerStream, reserveA_In, reserveA_Out, reserveD_In, reserveD_Out);
@@ -346,7 +188,7 @@ contract PoolLogic is Ownable, IPoolLogic {
                 amountOutSwap = frontSwap.amountOut + amountOut;
             }
             // updating frontSwap
-            bytes memory updatedSwapData_Front = abi.encode(
+            updatedSwapData_front = abi.encode(
                 pairId,
                 amountOut,
                 frontSwap.swapAmountRemaining - frontSwap.swapPerStream,
@@ -355,7 +197,7 @@ contract PoolLogic is Ownable, IPoolLogic {
                 frontSwap.streamsCount,
                 frontSwap.swapPerStream
             );
-            IPoolActions(POOL_ADDRESS).updatePairStreamQueueSwap(updatedSwapData_Front);
+            IPoolActions(POOL_ADDRESS).updatePairStreamQueueSwap(updatedSwapData_front);
 
             if (frontSwap.streamsRemaining == 0) {
                 // @todo make a function of this error
@@ -390,6 +232,161 @@ contract PoolLogic is Ownable, IPoolLogic {
         }
     }
 
+    /**
+     * @notice here we are processing a swap, we are emptying the selected swap either with opposite swap either with the pool directly
+     * this function does not update the frontSwap storage, it only processes the opposite swaps and returns the memory updated frontSwap
+     * it also transfers the tokens to the users of the opposite swaps completed
+     * @dev we need to be careful of the out of gas issue, we need to make sure that we are not processing a swap that is too big
+     * @param frontSwap Swap struct
+     * @return Swap memory the updated frontSwap or the given one if no opposite swaps found
+     */
+    function _processOppositeSwaps(Swap memory frontSwap) internal returns (Swap memory) {
+        uint256 initialTokenInAmountIn = frontSwap.swapAmountRemaining;
+
+        // tokenInAmountIn is the amount of tokenIn that is remaining to be processed from the selected swap
+        uint256 tokenInAmountIn = initialTokenInAmountIn;
+        address tokenIn = frontSwap.tokenIn;
+        address tokenOut = frontSwap.tokenOut;
+
+        // we need to look for the opposite swaps
+        bytes32 oppositePairId = keccak256(abi.encodePacked(tokenOut, tokenIn));
+        (Swap[] memory oppositeSwaps, uint256 oppositeFront, uint256 oppositeBack) =
+            pool.pairStreamQueue(oppositePairId);
+
+        if (oppositeBack - oppositeFront == 0) {
+            return frontSwap;
+        }
+
+        (,, uint256 reserveA_In,,,,,) = pool.poolInfo(address(tokenIn));
+        (,, uint256 reserveA_Out,,,,,) = pool.poolInfo(address(tokenOut));
+
+        // the number of opposite swaps
+        uint256 oppositeSwapsCount = oppositeBack - oppositeFront;
+        Payout[] memory oppositePayouts = new Payout[](oppositeSwapsCount);
+
+        // now we need to loop through the opposite swaps and to process them
+        for (uint256 i = oppositeFront; i < oppositeBack; i++) {
+            Swap memory oppositeSwap = oppositeSwaps[i];
+
+            // tokenOutAmountIn is the amount of tokenOut that is remaining to be processed from the opposite swap
+            uint256 tokenOutAmountIn = oppositeSwap.swapAmountRemaining;
+
+            // we need to calculate the amount of tokenOut for the given tokenInAmountIn
+            uint256 tokenOutAmountOut = getAmountOut(tokenInAmountIn, reserveA_In, reserveA_Out);
+
+            // we need to calculate the amount of tokenIn for the given tokenOutAmountIn
+            uint256 tokenInAmountOut = getAmountOut(tokenOutAmountIn, reserveA_Out, reserveA_In);
+
+            // we need to check if the amount of tokenIn that we need to send to the user is less than the amount of tokenIn that is remaining to be processed
+            if (tokenInAmountIn > tokenInAmountOut) {
+                // 1. oppositeSwap is completed and is taken out of the stream queue
+                bytes memory updatedSwapData_opposite = abi.encode(
+                    oppositePairId, tokenInAmountOut, 0, true, 0, oppositeSwap.streamsCount, oppositeSwap.swapPerStream
+                );
+                IPoolActions(POOL_ADDRESS).updatePairStreamQueueSwap(updatedSwapData_opposite);
+
+                // 2. we keep in memory the swapUser, tokenOut address and the amountOutSwap in memory to transfer the tokens
+                oppositePayouts[i - oppositeFront] = Payout({
+                    swapUser: oppositeSwap.user,
+                    token: oppositeSwap.tokenOut, // is equal to frontSwap.tokenIn
+                    amount: oppositeSwap.amountOut + tokenInAmountOut
+                });
+
+                IPoolActions(POOL_ADDRESS).dequeueSwap_pairStreamQueue(oppositePairId);
+
+                uint256 newTokenInAmountIn = tokenInAmountIn - tokenInAmountOut;
+
+                // 3. we recalculate the main swap if it's needed
+
+                // get new stream count only if it's consuming the last opp swap
+
+                if (i == oppositeBack - 1) {
+                    uint256 streamCount = getStreamCount(tokenIn, tokenOut, newTokenInAmountIn);
+                    uint256 swapPerStream = newTokenInAmountIn / streamCount;
+                    if (newTokenInAmountIn % streamCount != 0) newTokenInAmountIn = streamCount * swapPerStream;
+
+                    // updating memory frontSwap
+                    frontSwap.streamsCount = streamCount;
+                    frontSwap.streamsRemaining = streamCount;
+                    frontSwap.swapPerStream = swapPerStream;
+                }
+
+                frontSwap.swapAmountRemaining = newTokenInAmountIn;
+                frontSwap.amountOut += tokenOutAmountIn;
+                tokenInAmountIn = newTokenInAmountIn;
+                // 4. we continue to the next oppositeSwap
+            } else {
+                // 1. frontSwap is completed and is taken out of the stream queue
+
+                frontSwap.swapAmountRemaining = 0;
+                frontSwap.streamsRemaining = 0;
+                frontSwap.amountOut += tokenOutAmountOut;
+                frontSwap.completed = true;
+
+                // 2. we recalculate the oppositeSwap conditions and update it (if tokenInAmountIn == tokenInAmountOut we complete the oppositeSwap)
+
+                // very unlikely to happen if both swaps consume eachother we complete the oppositeSwap
+                if (tokenInAmountIn == tokenInAmountOut) {
+                    bytes memory updatedSwapData_opposite = abi.encode(
+                        oppositePairId,
+                        tokenInAmountOut,
+                        0,
+                        true,
+                        0,
+                        oppositeSwap.streamsCount,
+                        oppositeSwap.swapPerStream
+                    );
+                    IPoolActions(POOL_ADDRESS).updatePairStreamQueueSwap(updatedSwapData_opposite);
+                    IPoolActions(POOL_ADDRESS).dequeueSwap_pairStreamQueue(oppositePairId);
+
+                    oppositePayouts[i] = Payout({
+                        swapUser: oppositeSwap.user,
+                        token: oppositeSwap.tokenOut, // is equal to frontSwap.tokenIn
+                        amount: oppositeSwap.amountOut + tokenInAmountOut
+                    });
+                } else {
+                    uint256 newTokenOutAmountIn = tokenOutAmountIn - tokenOutAmountOut;
+                    uint256 streamCount = getStreamCount(tokenOut, tokenIn, newTokenOutAmountIn);
+                    uint256 swapPerStream = newTokenOutAmountIn / streamCount;
+                    if (newTokenOutAmountIn % streamCount != 0) newTokenOutAmountIn = streamCount * swapPerStream; // reAssigning newTokenOutAmountIn without dust tokens
+
+                    // updating oppositeSwap
+                    bytes memory updatedSwapData_opposite = abi.encode(
+                        oppositePairId,
+                        tokenInAmountOut,
+                        newTokenOutAmountIn,
+                        oppositeSwap.completed,
+                        streamCount,
+                        streamCount,
+                        swapPerStream
+                    );
+
+                    IPoolActions(POOL_ADDRESS).updatePairStreamQueueSwap(updatedSwapData_opposite);
+                }
+                // 3. we terminate the loop as we have completed the frontSwap
+                break;
+            }
+        }
+
+        for (uint256 i = 0; i < oppositePayouts.length; i++) {
+            if (oppositePayouts[i].amount > 0) {
+                IPoolActions(POOL_ADDRESS).transferTokens(
+                    oppositePayouts[i].token, oppositePayouts[i].swapUser, oppositePayouts[i].amount
+                );
+            }
+        }
+
+        return frontSwap;
+    }
+
+    /**
+     * @notice here we are maintaining the queue for the given pairId only
+     * if the price is less than the execution price we add the swap to the stream queue
+     * if the price is greater than the execution price we add the swap to the pending queue
+     * @param pairId bytes32 the pairId for the given pair
+     * @param swapDetails Swap the swap details
+     * @param currentPrice uint256 the current price of the pair
+     */
     function _maintainQueue(bytes32 pairId, Swap memory swapDetails, uint256 currentPrice) internal {
         // if execution price 0 (stream queue) , otherwise another queue
         // add into queue
@@ -414,6 +411,15 @@ contract PoolLogic is Ownable, IPoolLogic {
         }
     }
 
+    function getStreamCount(address tokenIn, address tokenOut, uint256 amountIn) public view returns (uint256) {
+        (uint256 reserveD_In,,,,,,,) = pool.poolInfo(address(tokenIn));
+        (uint256 reserveD_Out,,,,,,,) = pool.poolInfo(address(tokenOut));
+
+        uint256 minPoolDepth = reserveD_In <= reserveD_Out ? reserveD_In : reserveD_Out;
+        bytes32 poolId = getPoolId(tokenIn, tokenOut); // for pair slippage only. Not an ID for pair direction queue
+        return calculateStreamCount(amountIn, pool.pairSlippage(poolId), minPoolDepth);
+    }
+
     function getPoolId(address tokenA, address tokenB) public pure returns (bytes32) {
         (address A, address B) = tokenA < tokenB ? (tokenA, tokenB) : (tokenB, tokenA);
         return keccak256(abi.encodePacked(A, B));
@@ -428,7 +434,7 @@ contract PoolLogic is Ownable, IPoolLogic {
             return amount;
         }
 
-        return totalLpUnits * amount / (amount + reserveA);
+        return totalLpUnits.wmul(amount).wdiv(amount + reserveA);
     }
 
     function calculateDUnitsToMint(uint256 amount, uint256 reserveA, uint256 reserveD, uint256 initialDToMint)
@@ -440,7 +446,7 @@ contract PoolLogic is Ownable, IPoolLogic {
             return initialDToMint;
         }
 
-        return reserveD * amount / (reserveA);
+        return reserveD.wmul(amount).wdiv(reserveA);
     }
 
     // 0.15% will be 15 poolSlippage. 100% is 100000 units
@@ -465,7 +471,7 @@ contract PoolLogic is Ownable, IPoolLogic {
         override
         returns (uint256)
     {
-        return (reserveA * lpUnits) / totalLpUnits;
+        return (reserveA.wmul(lpUnits)).wdiv(totalLpUnits);
     }
 
     function calculateDToDeduct(uint256 lpUnits, uint256 reserveD, uint256 totalLpUnits)
@@ -474,7 +480,7 @@ contract PoolLogic is Ownable, IPoolLogic {
         override
         returns (uint256)
     {
-        return reserveD * (lpUnits / totalLpUnits);
+        return reserveD.wmul(lpUnits).wdiv(totalLpUnits);
     }
 
     function getSwapAmountOut(
@@ -491,7 +497,7 @@ contract PoolLogic is Ownable, IPoolLogic {
         //         10 * 1e18
         //         100000000000000000000
         //         1000000000000000000
-        uint256 d1 = (amountIn * reserveD1) / (amountIn + reserveA);
+        uint256 d1 = (amountIn.wmul(reserveD1)).wdiv(amountIn + reserveA);
         return (d1, ((d1 * reserveB) / (d1 + reserveD2)));
     }
 
@@ -501,7 +507,7 @@ contract PoolLogic is Ownable, IPoolLogic {
         override
         returns (uint256)
     {
-        return (dAmount * reserveA) / (dAmount + reserveD);
+        return (dAmount.wmul(reserveA)).wdiv(dAmount + reserveD);
     }
 
     function getDOut(uint256 tokenAmount, uint256 reserveA, uint256 reserveD)
@@ -510,11 +516,15 @@ contract PoolLogic is Ownable, IPoolLogic {
         override
         returns (uint256)
     {
-        return (tokenAmount * reserveD) / (tokenAmount + reserveA);
+        return (tokenAmount.wmul(reserveD)).wdiv(tokenAmount + reserveA);
     }
 
     function getExecutionPrice(uint256 reserveA1, uint256 reserveA2) public pure override returns (uint256) {
-        return (reserveA1 * 1e18 / reserveA2);
+        return reserveA1.wdiv(reserveA2);
+    }
+
+    function getAmountOut(uint256 amountIn, uint256 reserveIn, uint256 reserveOut) public pure returns (uint256) {
+        return amountIn.wmul(reserveIn).wdiv(reserveOut);
     }
 
     function updatePoolAddress(address poolAddress) external override onlyOwner {
@@ -525,8 +535,7 @@ contract PoolLogic is Ownable, IPoolLogic {
 
     function poolExist(address tokenAddress) private view returns (bool) {
         // TODO : Resolve this tuple unbundling issue
-        (uint256 a, uint256 b, uint256 c, uint256 d, uint256 f, uint256 g, uint256 h, bool initialized) =
-            pool.poolInfo(tokenAddress);
+        (,,,,,,, bool initialized) = pool.poolInfo(tokenAddress);
         return initialized;
     }
 }

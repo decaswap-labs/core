@@ -14,9 +14,10 @@ import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol
 
 contract Router is Ownable, ReentrancyGuard, IRouter {
     using SafeERC20 for IERC20;
+
     address public override POOL_ADDRESS;
-    IPoolActions pool;
-    IPoolStates poolStates;
+    IPoolActions public pool;
+    IPoolStates public poolStates;
 
     constructor(address ownerAddress, address poolAddress) Ownable(ownerAddress) {
         POOL_ADDRESS = poolAddress;
@@ -68,6 +69,12 @@ contract Router is Ownable, ReentrancyGuard, IRouter {
         if (executionPrice == 0) revert InvalidExecutionPrice();
         if (!poolExist(tokenIn) || !poolExist(tokenOut)) revert InvalidPool();
 
+        uint256 streamCount = IPoolLogic(poolStates.POOL_LOGIC()).getStreamCount(tokenIn, tokenOut, amountIn);
+        if (amountIn % streamCount != 0) {
+            uint256 swapPerStream = amountIn / streamCount;
+            amountIn = streamCount * swapPerStream;
+        }
+
         IERC20(tokenIn).safeTransferFrom(msg.sender, POOL_ADDRESS, amountIn);
         IPoolLogic(poolStates.POOL_LOGIC()).swap(msg.sender, tokenIn, tokenOut, amountIn, executionPrice);
     }
@@ -86,8 +93,7 @@ contract Router is Ownable, ReentrancyGuard, IRouter {
 
     function poolExist(address tokenAddress) internal view returns (bool) {
         // TODO : Resolve this tuple unbundling issue
-        (uint256 a, uint256 b, uint256 c, uint256 d, uint256 f, uint256 g, uint256 h, bool initialized) =
-            poolStates.poolInfo(tokenAddress);
+        (,,,,,,, bool initialized) = poolStates.poolInfo(tokenAddress);
         return initialized;
     }
 }

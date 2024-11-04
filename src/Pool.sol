@@ -203,7 +203,7 @@ contract Pool is IPool, Ownable {
     }
 
     // @todo ask if we should sort it here, or pass sorted array from logic and just save
-    function sortPairPendingQueue(bytes32 pairId) external onlyPoolLogic {
+    function sortPairPendingQueue(bytes32 pairId) external view onlyPoolLogic {
         // Sort the array w.r.t price
         SwapSorter.quickSort(mapPairId_pairPendingQueue_Swaps[pairId]);
     }
@@ -310,15 +310,16 @@ contract Pool is IPool, Ownable {
             bool initialized
         )
     {
+        address token = tokenAddress;
         return (
             mapToken_reserveD[tokenAddress],
             mapToken_poolOwnershipUnitsTotal[tokenAddress],
             mapToken_reserveA[tokenAddress],
             mapToken_minLaunchReserveA[tokenAddress],
             mapToken_minLaunchReserveD[tokenAddress],
-            mapToken_initialDToMint[tokenAddress],
-            mapToken_poolFeeCollected[tokenAddress],
-            mapToken_initialized[tokenAddress]
+            mapToken_initialDToMint[token],
+            mapToken_poolFeeCollected[token],
+            mapToken_initialized[token]
         );
     }
 
