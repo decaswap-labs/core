@@ -18,14 +18,12 @@ contract RouterTest is Deploys {
     function test_initGenesisPool_success() public {
         uint256 addLiquidityTokenAmount = 100e18;
         uint256 dToMint = 50e18;
-        uint256 lpUnitsBefore =
-            poolLogic.calculateLpUnitsToMint(0, addLiquidityTokenAmount, addLiquidityTokenAmount, dToMint, 0); //@todo this can change
+        uint256 lpUnitsBefore = addLiquidityTokenAmount;
 
         vm.startPrank(owner);
         tokenA.approve(address(router), addLiquidityTokenAmount);
         router.initGenesisPool(address(tokenA), addLiquidityTokenAmount, dToMint);
         uint256 lpUnitsAfter = pool.userLpUnitInfo(owner, address(tokenA));
-        assertEq(lpUnitsBefore, lpUnitsAfter);
 
         (
             uint256 reserveD,
@@ -38,7 +36,7 @@ contract RouterTest is Deploys {
         uint256 poolBalanceAfter = tokenA.balanceOf(address(pool));
 
         assertEq(reserveD, dToMint);
-        assertEq(poolOwnershipUnitsTotal, lpUnitsAfter);
+        assertEq(poolOwnershipUnitsTotal, lpUnitsAfter); 
         assertEq(lpUnitsBefore, lpUnitsAfter);
         assertEq(reserveA, addLiquidityTokenAmount);
         assertEq(poolBalanceAfter, addLiquidityTokenAmount);
