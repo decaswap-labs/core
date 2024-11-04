@@ -104,7 +104,7 @@ contract RouterTest is Deploys {
         (uint256 dToTransfer,) = poolLogic.getSwapAmountOut(swapPerStreamToDToken, reserveABeforeA, 0, reserveDBeforeA, 0);
 
         uint256 lpUnitsBeforeFromToken = poolLogic.calculateLpUnitsToMint(0, swapPerStreamInputToken, swapPerStreamInputToken, 0, 0);
-        uint256 lpUnitsBeforeFromD = poolLogic.calculateLpUnitsToMint(0, 0, 0, dToTransfer, dToTransfer);
+        uint256 lpUnitsBeforeFromD = poolLogic.calculateLpUnitsToMint(lpUnitsBeforeFromToken, 0, swapPerStreamInputToken, dToTransfer, 0);
 
         uint256 tokenBBalanceBefore = tokenB.balanceOf(owner);
 
