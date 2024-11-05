@@ -72,13 +72,24 @@ contract PoolLogic is Ownable, IPoolLogic {
         uint256 liquidityTokenAmount
     ) external onlyRouter {
         bytes32 pairId = keccak256(abi.encodePacked(token, liquidityToken));
+
+        StreamDetails memory poolBStream = _createTokenStreamObj(liquidityToken, liquidityTokenAmount);
+        // streamCount of `token` == streamCount of `liquidityToken`, because reservesD of `token` are 0 at this point
+        StreamDetails memory poolAStream = StreamDetails({
+            token: token,
+            amount: tokenAmount,
+            streamCount: poolBStream.streamCount,
+            streamsRemaining: poolBStream.streamsRemaining,
+            swapPerStream: tokenAmount / poolBStream.streamCount,
+            swapAmountRemaining: tokenAmount
+        });
         // enqueue
         _enqueueLiqStream(
             pairId,
             user,
             TYPE_OF_LP.DUAL_TOKEN,
-            _createTokenStreamObj(token, tokenAmount, liquidityToken), // poolA stream
-            _createTokenStreamObj(liquidityToken, liquidityTokenAmount, token) // poolB stream
+            poolAStream, // poolA stream
+            poolBStream // poolB stream
         );
 
         IPoolActions(POOL_ADDRESS).initPool(token);
@@ -97,8 +108,8 @@ contract PoolLogic is Ownable, IPoolLogic {
             pairId,
             user,
             TYPE_OF_LP.DUAL_TOKEN,
-            _createTokenStreamObj(tokenA, amountA, tokenB), // poolA stream
-            _createTokenStreamObj(tokenB, amountB, tokenA) // poolB stream
+            _createTokenStreamObj(tokenA, amountA), // poolA stream
+            _createTokenStreamObj(tokenB, amountB) // poolB stream
         );
 
         _streamLiquidity(tokenA, tokenB);
@@ -115,7 +126,7 @@ contract PoolLogic is Ownable, IPoolLogic {
             user,
             TYPE_OF_LP.SINGLE_TOKEN,
             poolAStream, // poolA stream
-            _createTokenStreamObj(tokenB, amountB, tokenA) // poolB stream
+            _createTokenStreamObj(tokenB, amountB) // poolB stream
         );
 
         _streamLiquidity(tokenA, tokenB);
@@ -131,7 +142,7 @@ contract PoolLogic is Ownable, IPoolLogic {
             pairId,
             user,
             TYPE_OF_LP.SINGLE_TOKEN,
-            _createTokenStreamObj(token, amount, token), // poolA stream
+            _createTokenStreamObj(token, amount), // poolA stream
             poolBStream // poolB stream
         );
 
@@ -620,8 +631,7 @@ contract PoolLogic is Ownable, IPoolLogic {
         }
     }
 
-    /// @notice pairToken 's reserveD will be used for streamCount calc if `token`'s reserveD are 0
-    function _createTokenStreamObj(address token, uint256 amount, address pairToken)
+    function _createTokenStreamObj(address token, uint256 amount)
         internal
         view
         returns (StreamDetails memory streamDetails)
@@ -635,18 +645,6 @@ contract PoolLogic is Ownable, IPoolLogic {
             bool initialized
         ) = pool.poolInfo(token);
 
-        // if `token's` reserves D are 0 then use pairToken's reserve D for stream count calculation
-        if (reserveD == 0) {
-            (
-                uint256 reserveD_pairToken,
-                uint256 poolOwnershipUnitsTotal_pairToken,
-                uint256 reserveA_pairToken,
-                uint256 initialDToMint_pairToken,
-                uint256 poolFeeCollected_pairToken,
-                bool initialized_pairToken
-            ) = pool.poolInfo(pairToken);
-            reserveD = reserveD_pairToken;
-        }
         uint256 streamCount = calculateStreamCount(amount, pool.globalSlippage(), reserveD);
         uint256 swapPerStream = amount / streamCount;
         streamDetails = StreamDetails({
