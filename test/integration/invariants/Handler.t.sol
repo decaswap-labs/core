@@ -28,17 +28,17 @@ contract Handler is Test {
 
         vm.startPrank(owner);
 
-        uint256 initialDToMintPoolA = 10 ether;
-        uint256 initialDToMintPoolB = 10 ether;
-        uint256 SLIPPAGE = 10;
+        // uint256 initialDToMintPoolA = 10 ether;
+        // uint256 initialDToMintPoolB = 10 ether;
+        // uint256 SLIPPAGE = 10;
 
-        uint256 tokenAAmount = 500000 ether;
-        uint256 minLaunchReserveAPoolA = 1 ether;
-        uint256 minLaunchReserveDPoolA = 1 ether;
+        // uint256 tokenAAmount = 500000 ether;
+        // uint256 minLaunchReserveAPoolA = 1 ether;
+        // uint256 minLaunchReserveDPoolA = 1 ether;
 
-        uint256 tokenBAmount = 1000000 ether;
-        uint256 minLaunchReserveAPoolB = 1 ether;
-        uint256 minLaunchReserveDPoolB = 1 ether;
+        // uint256 tokenBAmount = 1000000 ether;
+        // uint256 minLaunchReserveAPoolB = 1 ether;
+        // uint256 minLaunchReserveDPoolB = 1 ether;
 
         // router.createPool(
         //     address(tokenA), tokenAAmount, minLaunchReserveAPoolA, minLaunchReserveDPoolA, initialDToMintPoolA
@@ -47,6 +47,16 @@ contract Handler is Test {
         // router.createPool(
         //     address(tokenB), tokenBAmount, minLaunchReserveAPoolB, minLaunchReserveDPoolB, initialDToMintPoolB
         // );
+
+        uint256 initialDToMintPoolA = 10 ether;
+        uint256 SLIPPAGE = 10;
+
+        uint256 tokenAAmount = 500000 ether;
+        uint256 tokenBAmount = 1000000 ether;
+
+        router.initGenesisPool(address(tokenA), tokenAAmount, initialDToMintPoolA);
+
+        router.initPool(address(tokenB), address(tokenA), tokenBAmount, tokenAAmount);
 
         // update pair slippage
         pool.updatePairSlippage(address(tokenA), address(tokenB), SLIPPAGE);
@@ -68,7 +78,7 @@ contract Handler is Test {
         vm.startPrank(msg.sender);
         tokenIn.mint(msg.sender, amountIn);
         tokenIn.approve(address(router), amountIn);
-        
+
         router.swap(address(tokenIn), address(tokenOut), amountIn, executionPrice);
 
         vm.stopPrank();
