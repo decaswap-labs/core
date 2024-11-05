@@ -122,6 +122,8 @@ contract RouterTest is Deploys {
         bytes32 pairId = keccak256(abi.encodePacked(address(tokenB), address(tokenA)));
 
         (LiquidityStream[] memory streams, uint256 front, uint256 back) = pool.liquidityStreamQueue(pairId);
+        console.log(streams[front].poolBStream.streamsRemaining);
+        console.log(streams[front].poolAStream.streamsRemaining);
 
         assertEq(streams[front].poolBStream.streamsRemaining, streamToDTokenStreamCount - 1);
         assertEq(streams[front].poolBStream.swapPerStream, swapPerStreamToDToken);
