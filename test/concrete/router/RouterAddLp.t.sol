@@ -72,6 +72,17 @@ contract RouterTest is Deploys {
         console.log(streams[front].poolBStream.streamsRemaining);
         console.log(streams[front].poolAStream.streamsRemaining);
 
+        for(uint8 i = 0; i<streams[front].poolBStream.streamsRemaining; i++){
+            router.processLiqStream(address(tokenB), address(tokenA));
+        }
+
+        (LiquidityStream[] memory streamsAfter, uint256 frontAfter, uint256 backAfter) = pool.liquidityStreamQueue(pairId);
+
+        console.log("After",streams[frontAfter-1].poolBStream.streamsRemaining);
+        console.log("After",streams[frontAfter-1].poolAStream.streamsRemaining);
+        console.log("After",streams[frontAfter-1].poolAStream.swapAmountRemaining);
+
+
         // assertEq(streams[front].poolBStream.streamsRemaining, streamToDTokenStreamCount - 1);
         // assertEq(streams[front].poolBStream.swapPerStream, swapPerStreamToDToken);
         // assertEq(streams[front].poolBStream.swapAmountRemaining, streamToDTokenAmount - swapPerStreamToDToken);

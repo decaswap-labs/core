@@ -88,13 +88,11 @@ contract RouterTest is Deploys {
         tokenB.approve(address(router), streamTokenAmount);
         tokenA.approve(address(router), streamToDTokenAmount);
 
-        uint256 streamTokenStreamCount =
-            poolLogic.calculateStreamCount(streamTokenAmount, pool.globalSlippage(), dToMint);
-        uint256 swapPerStreamInputToken = streamTokenAmount / streamTokenStreamCount;
-
         uint256 streamToDTokenStreamCount =
             poolLogic.calculateStreamCount(streamToDTokenAmount, pool.globalSlippage(), dToMint);
         uint256 swapPerStreamToDToken = streamToDTokenAmount / streamToDTokenStreamCount;
+
+        uint256 swapPerStreamInputToken = streamTokenAmount / streamToDTokenStreamCount;
 
         (uint256 reserveDBeforeA,, uint256 reserveABeforeA,,,) = pool.poolInfo(address(tokenA));
 
@@ -125,20 +123,20 @@ contract RouterTest is Deploys {
 
         assertEq(streams[front].poolBStream.streamsRemaining, streams[front].poolAStream.streamsRemaining);
 
-        // assertEq(streams[front].poolBStream.streamsRemaining, streamToDTokenStreamCount - 1);
-        // assertEq(streams[front].poolBStream.swapPerStream, swapPerStreamToDToken);
-        // assertEq(streams[front].poolBStream.swapAmountRemaining, streamToDTokenAmount - swapPerStreamToDToken);
+        assertEq(streams[front].poolBStream.streamsRemaining, streamToDTokenStreamCount - 1);
+        assertEq(streams[front].poolBStream.swapPerStream, swapPerStreamToDToken);
+        assertEq(streams[front].poolBStream.swapAmountRemaining, streamToDTokenAmount - swapPerStreamToDToken);
 
-        // assertEq(streams[front].poolAStream.streamsRemaining, streamTokenStreamCount - 1);
-        // assertEq(streams[front].poolAStream.swapPerStream, swapPerStreamInputToken);
-        // assertEq(streams[front].poolAStream.swapAmountRemaining, streamTokenAmount - swapPerStreamInputToken);
+        assertEq(streams[front].poolAStream.streamsRemaining, streamToDTokenStreamCount - 1);
+        assertEq(streams[front].poolAStream.swapPerStream, swapPerStreamInputToken);
+        assertEq(streams[front].poolAStream.swapAmountRemaining, streamTokenAmount - swapPerStreamInputToken);
 
-        // assertEq(reserveDAfterA, reserveDBeforeA - dToTransfer);
-        // assertEq(reserveAAfterA, reserveABeforeA + swapPerStreamToDToken);
+        assertEq(reserveDAfterA, reserveDBeforeA - dToTransfer);
+        assertEq(reserveAAfterA, reserveABeforeA + swapPerStreamToDToken);
 
-        // assertEq(poolOwnershipUnitsTotalAfterB, poolOwnershipUnitsTotalBeforeB + lpUnitsBeforeFromToken + lpUnitsBeforeFromD);
-        // assertEq(reserveDAfterB, reserveDBeforeB + dToTransfer);
-        // assertEq(reserveAAfterB, reserveABeforeB + swapPerStreamInputToken);
+        assertEq(poolOwnershipUnitsTotalAfterB, poolOwnershipUnitsTotalBeforeB + lpUnitsBeforeFromToken + lpUnitsBeforeFromD);
+        assertEq(reserveDAfterB, reserveDBeforeB + dToTransfer);
+        assertEq(reserveAAfterB, reserveABeforeB + swapPerStreamInputToken);
     }
 
     function _initGenesisPoolsForBadCases() internal {
