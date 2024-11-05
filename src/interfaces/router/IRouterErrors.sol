@@ -9,4 +9,5 @@ interface IRouterErrors {
     error InvalidToken();
     error DuplicatePool();
     error InvalidLiquidityTokenAmount();
+    error SamePool();
 }

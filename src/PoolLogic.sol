@@ -665,7 +665,7 @@ contract PoolLogic is Ownable, IPoolLogic {
     function calculateLpUnitsToMint(
         uint256 lpUnitsDepth, // P => depth of lpUnits
         uint256 amount, // a => assets incoming
-        uint256 reserveA, // A => assets depth
+        uint256 reserveA, // A => assets depth 
         uint256 dIncoming, // d
         uint256 dUnitsDepth // D => depth of dUnits
     ) public pure returns (uint256) {

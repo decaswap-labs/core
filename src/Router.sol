@@ -71,7 +71,7 @@ contract Router is Ownable, ReentrancyGuard, IRouter {
     }
 
     function addLiqDualToken(address tokenA, address tokenB, uint256 amountA, uint256 amountB) external {
-        require(tokenA != tokenB, "Same pools");
+        if(tokenA == tokenB) revert SamePool();
         if (!poolExist(tokenA)) revert InvalidPool();
         if (!poolExist(tokenB)) revert InvalidPool();
         if (amountA == 0) revert InvalidAmount();
@@ -84,7 +84,7 @@ contract Router is Ownable, ReentrancyGuard, IRouter {
     }
 
     function streamDToPool(address tokenA, address tokenB, uint256 amountB) external {
-        require(tokenA != tokenB, "Same pools");
+        if(tokenA == tokenB) revert SamePool();
         if (!poolExist(tokenA)) revert InvalidPool();
         if (!poolExist(tokenB)) revert InvalidPool();
         if (amountB == 0) revert InvalidAmount();
@@ -104,7 +104,7 @@ contract Router is Ownable, ReentrancyGuard, IRouter {
     }
 
     function processLiqStream(address poolA, address poolB) external {
-        require(poolA != poolB, "Same pools");
+        if(poolA == poolB) revert SamePool();
         if (!poolExist(poolA) || !poolExist(poolB)) revert InvalidPool();
         IPoolLogic(poolStates.POOL_LOGIC()).processLiqStream(poolA, poolB);
     }
@@ -139,7 +139,7 @@ contract Router is Ownable, ReentrancyGuard, IRouter {
     }
 
     function processPair(address tokenIn, address tokenOut) external nonReentrant {
-        require(tokenIn != tokenOut, "Same tokens");
+        if(tokenIn == tokenOut) revert SamePool();
         if (!poolExist(tokenIn) || !poolExist(tokenOut)) revert InvalidPool();
         IPoolLogic(poolStates.POOL_LOGIC()).processPair(tokenIn, tokenOut);
     }
