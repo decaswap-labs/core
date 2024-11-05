@@ -16,8 +16,8 @@ contract Router is Ownable, ReentrancyGuard, IRouter {
     using SafeERC20 for IERC20;
 
     address public override POOL_ADDRESS;
-    IPoolActions pool;
-    IPoolStates poolStates;
+    IPoolActions public pool;
+    IPoolStates public poolStates;
 
     constructor(address ownerAddress, address poolAddress) Ownable(ownerAddress) {
         POOL_ADDRESS = poolAddress;
@@ -71,7 +71,7 @@ contract Router is Ownable, ReentrancyGuard, IRouter {
     }
 
     function addLiqDualToken(address tokenA, address tokenB, uint256 amountA, uint256 amountB) external {
-        if(tokenA == tokenB) revert SamePool();
+        if (tokenA == tokenB) revert SamePool();
         if (!poolExist(tokenA)) revert InvalidPool();
         if (!poolExist(tokenB)) revert InvalidPool();
         if (amountA == 0) revert InvalidAmount();
@@ -84,7 +84,7 @@ contract Router is Ownable, ReentrancyGuard, IRouter {
     }
 
     function streamDToPool(address tokenA, address tokenB, uint256 amountB) external {
-        if(tokenA == tokenB) revert SamePool();
+        if (tokenA == tokenB) revert SamePool();
         if (!poolExist(tokenA)) revert InvalidPool();
         if (!poolExist(tokenB)) revert InvalidPool();
         if (amountB == 0) revert InvalidAmount();
@@ -104,7 +104,7 @@ contract Router is Ownable, ReentrancyGuard, IRouter {
     }
 
     function processLiqStream(address poolA, address poolB) external {
-        if(poolA == poolB) revert SamePool();
+        if (poolA == poolB) revert SamePool();
         if (!poolExist(poolA) || !poolExist(poolB)) revert InvalidPool();
         IPoolLogic(poolStates.POOL_LOGIC()).processLiqStream(poolA, poolB);
     }
@@ -134,12 +134,18 @@ contract Router is Ownable, ReentrancyGuard, IRouter {
         if (executionPrice == 0) revert InvalidExecutionPrice();
         if (!poolExist(tokenIn) || !poolExist(tokenOut)) revert InvalidPool();
 
+        uint256 streamCount = IPoolLogic(poolStates.POOL_LOGIC()).getStreamCount(tokenIn, tokenOut, amountIn);
+        if (amountIn % streamCount != 0) {
+            uint256 swapPerStream = amountIn / streamCount;
+            amountIn = streamCount * swapPerStream;
+        }
+
         IERC20(tokenIn).safeTransferFrom(msg.sender, POOL_ADDRESS, amountIn);
         IPoolLogic(poolStates.POOL_LOGIC()).swap(msg.sender, tokenIn, tokenOut, amountIn, executionPrice);
     }
 
     function processPair(address tokenIn, address tokenOut) external nonReentrant {
-        if(tokenIn == tokenOut) revert SamePool();
+        if (tokenIn == tokenOut) revert SamePool();
         if (!poolExist(tokenIn) || !poolExist(tokenOut)) revert InvalidPool();
         IPoolLogic(poolStates.POOL_LOGIC()).processPair(tokenIn, tokenOut);
     }
@@ -154,7 +160,7 @@ contract Router is Ownable, ReentrancyGuard, IRouter {
     function poolExist(address tokenAddress) internal view returns (bool) {
         if (tokenAddress == address(0)) revert InvalidToken();
         // TODO : Resolve this tuple unbundling issue
-        (uint256 a, uint256 b, uint256 c, uint256 d, uint256 e, bool initialized) = poolStates.poolInfo(tokenAddress);
+        (,,,,, bool initialized) = poolStates.poolInfo(tokenAddress);
         return initialized;
     }
 }

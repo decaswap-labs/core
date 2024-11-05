@@ -29,6 +29,7 @@ interface IPoolLogicActions {
     function processPair(address tokenIn, address tokenOut) external;
     function calculateLpUnitsToMint(uint256, uint256, uint256, uint256, uint256) external pure returns (uint256);
 
+    function getStreamCount(address tokenIn, address tokenOut, uint256 amountIn) external view returns (uint256);
     function calculateDUnitsToMint(uint256, uint256, uint256, uint256) external view returns (uint256);
     function updatePoolAddress(address) external;
 
