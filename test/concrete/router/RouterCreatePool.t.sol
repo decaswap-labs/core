@@ -134,7 +134,7 @@ contract RouterTest is Deploys {
         assertEq(reserveDAfterA, reserveDBeforeA - dToTransfer);
         assertEq(reserveAAfterA, reserveABeforeA + swapPerStreamToDToken);
 
-        // assertEq(poolOwnershipUnitsTotalAfterB, poolOwnershipUnitsTotalBeforeB + lpUnitsBeforeFromToken); //@todo: poolOwnershipUnits not updating.
+        assertEq(poolOwnershipUnitsTotalAfterB, poolOwnershipUnitsTotalBeforeB + lpUnitsBeforeFromToken + lpUnitsBeforeFromD);
         assertEq(reserveDAfterB, reserveDBeforeB + dToTransfer);
         assertEq(reserveAAfterB, reserveABeforeB + swapPerStreamInputToken);
     }
