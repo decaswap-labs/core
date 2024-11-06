@@ -73,8 +73,8 @@ contract Pool is IPool, Ownable {
     mapping(bytes32 pairId => GlobalPoolStream[] data) public mapPairId_globalPoolQueue_streams;
     mapping(bytes32 pairId => uint256 front) public mapPairId_globalPoolQueue_front;
     mapping(bytes32 pairId => uint256 back) public mapPairId_globalPoolQueue_back;
-    mapping(address => mapping(address => uint256)) public  userGlobalPoolInfo;
-    mapping(address=>uint256) public globalPoolDBalance;
+    mapping(address => mapping(address => uint256)) public  override userGlobalPoolInfo;
+    mapping(address=>uint256) public  globalPoolDBalance;
 
 
     modifier onlyRouter() {

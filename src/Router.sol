@@ -151,6 +151,13 @@ contract Router is Ownable, ReentrancyGuard, IRouter {
         IPoolLogic(poolStates.POOL_LOGIC()).depositToGlobalPool(msg.sender, token, amount);
     }
 
+    function withdrawFromGlobalPool(address pool, uint256 dAmount) external override nonReentrant {
+        if(!poolExist(pool)) revert InvalidPool();
+        if(poolStates.userGlobalPoolInfo(msg.sender, pool) < dAmount) revert InvalidAmount();
+        // IERC20(token).safeTransferFrom(msg.sender, POOL_ADDRESS, amount);
+        // IPoolLogic(poolStates.POOL_LOGIC()).withdrawFromGlobalPool(msg.sender, pool, dAmount);
+    }
+
     function processPair(address tokenIn, address tokenOut) external nonReentrant {
         if (tokenIn == tokenOut) revert SamePool();
         if (!poolExist(tokenIn) || !poolExist(tokenOut)) revert InvalidPool();
@@ -166,7 +173,6 @@ contract Router is Ownable, ReentrancyGuard, IRouter {
 
     function poolExist(address tokenAddress) internal view returns (bool) {
         if (tokenAddress == address(0)) revert InvalidToken();
-        // TODO : Resolve this tuple unbundling issue
         (,,,,, bool initialized) = poolStates.poolInfo(tokenAddress);
         return initialized;
     }
