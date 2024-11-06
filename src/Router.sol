@@ -129,6 +129,11 @@ contract Router is Ownable, ReentrancyGuard, IRouter {
         emit LiquidityRemoved(msg.sender, token, lpUnits);
     }
 
+    function processRemoveLiquidity(address token) external {
+        if (!poolExist(token)) revert InvalidPool();
+        IPoolLogic(poolStates.POOL_LOGIC()).processRemoveLiquidity(token);
+    }
+
     function swap(address tokenIn, address tokenOut, uint256 amountIn, uint256 executionPrice) external nonReentrant {
         if (amountIn == 0) revert InvalidAmount();
         if (executionPrice == 0) revert InvalidExecutionPrice();

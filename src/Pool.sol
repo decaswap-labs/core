@@ -6,7 +6,7 @@ import "@openzeppelin/contracts/access/Ownable.sol";
 import {IPoolLogicActions} from "./interfaces/pool-logic/IPoolLogicActions.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import {Queue} from "./lib/SwapQueue.sol";
-import {Swap, LiquidityStream} from "./lib/SwapQueue.sol"; // @todo keep structs in a different place
+import {Swap, LiquidityStream, RemoveLiquidityStream} from "./lib/SwapQueue.sol"; // @todo keep structs in a different place
 import {PoolSwapData} from "./lib/SwapQueue.sol";
 import {SwapSorter} from "./lib/QuickSort.sol";
 
@@ -57,6 +57,11 @@ contract Pool is IPool, Ownable {
     mapping(bytes32 pairId => LiquidityStream[] liquidityStream) public mapPairId_streamQueue_liquidityStream;
     mapping(bytes32 pairId => uint256 front) public mapPairId_streamQueue_front;
     mapping(bytes32 pairId => uint256 back) public mapPairId_streamQueue_back;
+
+    // RemoveLiquidityStream struct
+    mapping(address tokenAddress => RemoveLiquidityStream[] removeLiquidityStreams) public mapToken_removeLiqStreamQueue;
+    mapping(address tokenAddress => uint256 front) public mapToken_removeLiqQueue_front;
+    mapping(address tokenAddress => uint256 back) public mapToken_removeLiqQueue_back;
 
     // pairStreamQueue struct
     mapping(bytes32 pairId => Swap[] data) public mapPairId_pairStreamQueue_Swaps;
@@ -143,6 +148,10 @@ contract Pool is IPool, Ownable {
         mapPairId_streamQueue_front[pairId]++;
     }
 
+    function dequeueRemoveLiquidity_streamQueue(address token) external onlyPoolLogic {
+        mapToken_removeLiqQueue_front[token]++;
+    }
+
     function enqueueSwap_pairStreamQueue(bytes32 pairId, Swap memory swap) external onlyPoolLogic {
         mapPairId_pairStreamQueue_Swaps[pairId].push(swap);
         mapPairId_pairStreamQueue_back[pairId]++;
@@ -156,6 +165,11 @@ contract Pool is IPool, Ownable {
     function enqueueLiquidityStream(bytes32 pairId, LiquidityStream memory liquidityStream) external onlyPoolLogic {
         mapPairId_streamQueue_liquidityStream[pairId].push(liquidityStream);
         mapPairId_streamQueue_back[pairId]++;
+    }
+
+    function enqueueRemoveLiquidityStream(address token, RemoveLiquidityStream memory removeLiquidityStream) external onlyPoolLogic {
+        mapToken_removeLiqStreamQueue[token].push(removeLiquidityStream);
+        mapToken_removeLiqQueue_back[token]++;
     }
 
     // addLiqParams encoding format => (address token, address user, uint amount, uint256 newLpUnits, uint256 newDUnits, uint256 poolFeeCollected)
@@ -250,6 +264,18 @@ contract Pool is IPool, Ownable {
 
         userLpUnitInfo[user][token] += lpUnits;
         mapToken_poolOwnershipUnitsTotal[token] += lpUnits;
+    }
+
+    function updateReservesAndRemoveLiqStream(bytes memory updatedReservesAndRemoveLiqData) external onlyPoolLogic {
+        (address token, uint256 reservesToRemove, uint conversionRemaining, uint streamCountRemaining) = abi.decode(updatedReservesAndRemoveLiqData, (address, uint256, uint256, uint256));
+        RemoveLiquidityStream storage removeLiqStream = mapToken_removeLiqStreamQueue[token][mapToken_removeLiqQueue_front[token]];
+        removeLiqStream.conversionRemaining = conversionRemaining;
+        removeLiqStream.streamCountRemaining = streamCountRemaining;
+        removeLiqStream.tokenAmountOut += reservesToRemove;
+        mapToken_reserveA[token] -= reservesToRemove;
+        uint lpUnitsToRemove = removeLiqStream.conversionPerStream;
+        userLpUnitInfo[removeLiqStream.user][token] -= lpUnitsToRemove;
+        mapToken_poolOwnershipUnitsTotal[token] -= lpUnitsToRemove;
     }
 
     // @todo ask if we should sort it here, or pass sorted array from logic and just save
@@ -404,6 +430,18 @@ contract Pool is IPool, Ownable {
             mapPairId_streamQueue_liquidityStream[pairId],
             mapPairId_streamQueue_front[pairId],
             mapPairId_streamQueue_back[pairId]
+        );
+    }
+
+    function removeLiquidityStreamQueue(address pool)
+        external
+        view
+        returns (RemoveLiquidityStream[] memory removeLiquidityStream, uint256 front, uint256 back)
+    {
+        return (
+            mapToken_removeLiqStreamQueue[pool],
+            mapToken_removeLiqQueue_front[pool],
+            mapToken_removeLiqQueue_back[pool]
         );
     }
 

@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.13;
 
-import {Swap, LiquidityStream} from "../../lib/SwapQueue.sol";
+import {Swap, LiquidityStream, RemoveLiquidityStream} from "../../lib/SwapQueue.sol";
 
 interface IPoolStates {
     function poolInfo(address)
@@ -28,4 +28,9 @@ interface IPoolStates {
         external
         view
         returns (LiquidityStream[] memory liquidityStream, uint256 front, uint256 back);
+    function removeLiquidityStreamQueue(address)
+        external
+        view
+        returns (RemoveLiquidityStream[] memory removeLiquidityStream, uint256 front, uint256 back);
+
 }

@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.13;
 
-import {Swap, LiquidityStream} from "../../lib/SwapQueue.sol";
+import {Swap, LiquidityStream, RemoveLiquidityStream} from "../../lib/SwapQueue.sol";
 
 interface IPoolActions {
     // creatPoolParams encoding format => (address token, address user, uint256 amount, uint256 minLaunchReserveA, uint256 minLaunchReserveD, uint256 initialDToMint, uint newLpUnits, uint newDUnits, uint256 poolFeeCollected)
@@ -15,12 +15,16 @@ interface IPoolActions {
     function addLiquidity(bytes memory addLiqParams) external;
     // removeLiqParams encoding format => (address token, address user, uint lpUnits, uint256 assetToTransfer, uint256 dAmountToDeduct, uint256 poolFeeCollected)
     function removeLiquidity(bytes memory removeLiqParams) external;
+    // updatedReservesAndRemoveLiqData encoding format => (address token, uint256 reservesToRemove, uint conversionRemaining, uint streamCountRemaining)
+    function updateReservesAndRemoveLiqStream(bytes memory updatedReservesAndRemoveLiqData) external;
     function enqueueSwap_pairStreamQueue(bytes32 pairId, Swap memory swap) external;
     function enqueueSwap_pairPendingQueue(bytes32 pairId, Swap memory swap) external;
     function enqueueLiquidityStream(bytes32 pairId, LiquidityStream memory liquidityStream) external;
+    function enqueueRemoveLiquidityStream(address token, RemoveLiquidityStream memory removeLiquidityStream) external;
     function dequeueSwap_pairStreamQueue(bytes32 pairId) external;
     function dequeueSwap_pairPendingQueue(bytes32 pairId) external;
     function dequeueLiquidityStream_streamQueue(bytes32 pairId) external;
+    function dequeueRemoveLiquidity_streamQueue(address token) external;
     // updateReservesParams encoding format => (bool aToB, address tokenA, address tokenB, uint256 reserveA_A, uint256 reserveD_A,uint256 reserveA_B, uint256 reserveD_B)
     function updateReserves(bytes memory updateReservesParams) external;
     // updateReservesParams encoding format => (address tokenA, address tokenB, uint256 reserveA_A, uint256 reserveA_B, uint256 changeInD)
