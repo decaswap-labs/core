@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.13;
 
-import {Swap, LiquidityStream} from "../../lib/SwapQueue.sol";
+import {Swap, LiquidityStream, GlobalPoolStream  } from "../../lib/SwapQueue.sol";
 
 interface IPoolActions {
     // creatPoolParams encoding format => (address token, address user, uint256 amount, uint256 minLaunchReserveA, uint256 minLaunchReserveD, uint256 initialDToMint, uint newLpUnits, uint newDUnits, uint256 poolFeeCollected)
@@ -18,9 +18,11 @@ interface IPoolActions {
     function enqueueSwap_pairStreamQueue(bytes32 pairId, Swap memory swap) external;
     function enqueueSwap_pairPendingQueue(bytes32 pairId, Swap memory swap) external;
     function enqueueLiquidityStream(bytes32 pairId, LiquidityStream memory liquidityStream) external;
+    function enqueueGlobalPoolStream(bytes32 pairId, GlobalPoolStream memory globaPoolStream) external;
     function dequeueSwap_pairStreamQueue(bytes32 pairId) external;
     function dequeueSwap_pairPendingQueue(bytes32 pairId) external;
     function dequeueLiquidityStream_streamQueue(bytes32 pairId) external;
+    function dequeueGlobalStream_streamQueue(bytes32 pairId) external;
     // updateReservesParams encoding format => (bool aToB, address tokenA, address tokenB, uint256 reserveA_A, uint256 reserveD_A,uint256 reserveA_B, uint256 reserveD_B)
     function updateReserves(bytes memory updateReservesParams) external;
     // updateReservesParams encoding format => (address tokenA, address tokenB, uint256 reserveA_A, uint256 reserveA_B, uint256 changeInD)
@@ -28,9 +30,16 @@ interface IPoolActions {
     // updatedStreamData encoding format => (bytes32 pairId, uint256 amountAToDeduct, uint256 amountBToDeduct, uint256 poolAStreamsRemaining,uint256 poolBStreamsRemaining, uint dAmountOut)
     function updateStreamQueueLiqStream(bytes memory updatedStreamData) external;
     // updatedSwapData encoding format => (bytes32 pairId, uint256 amountOut, uint256 swapAmountRemaining, bool completed, uint256 streamsRemaining, uint256 streamCount, uint256 swapPerStream)
+    function updateReservesGlobalStream(bytes memory updatedReservesParams) external;
+    function updateGlobalPoolBalance(bytes memory updatedBalance) external;
+    function updateGlobalPoolUserBalance(bytes memory userBalance) external;
+    function updateGlobalStreamQueueStream(bytes memory updatedStream) external;
     function updatePairStreamQueueSwap(bytes memory updatedSwapData) external;
     function transferTokens(address tokenAddress, address to, uint256 amount) external;
     function sortPairPendingQueue(bytes32 pairId) external;
+    function globalStreamQueue(bytes32 pairId)
+        external
+        returns (GlobalPoolStream[] memory globalPoolStream, uint256 front, uint256 back);
 
     function updatePoolLogicAddress(address) external;
     function updateVaultAddress(address) external;

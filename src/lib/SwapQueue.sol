@@ -43,6 +43,17 @@ struct PoolSwapData {
     uint256 totalSwapsPool;
 }
 
+struct GlobalPoolStream{
+    address user;
+    address tokenIn;
+    uint256 tokenAmount;
+    uint256 streamCount;
+    uint256 streamsRemaining;
+    uint256 swapPerStream;
+    uint256 swapAmountRemaining;
+    uint256 dOut;
+}
+
 library Queue {
     struct QueueStruct {
         Swap[] data;

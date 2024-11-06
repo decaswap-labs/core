@@ -6,7 +6,7 @@ import "@openzeppelin/contracts/access/Ownable.sol";
 import {IPoolLogicActions} from "./interfaces/pool-logic/IPoolLogicActions.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import {Queue} from "./lib/SwapQueue.sol";
-import {Swap, LiquidityStream} from "./lib/SwapQueue.sol"; // @todo keep structs in a different place
+import {Swap, LiquidityStream, GlobalPoolStream} from "./lib/SwapQueue.sol"; // @todo keep structs in a different place
 import {PoolSwapData} from "./lib/SwapQueue.sol";
 import {SwapSorter} from "./lib/QuickSort.sol";
 
@@ -17,7 +17,8 @@ contract Pool is IPool, Ownable {
 
     address public override VAULT_ADDRESS = address(0);
     address public override ROUTER_ADDRESS = address(0);
-    address internal D_TOKEN = address(0xD);
+    // address internal D_TOKEN = address(0xD);
+    address internal GLOBAL_POOL = address(0xD);
     address public override POOL_LOGIC = address(0);
     uint256 public override globalSlippage = 10;
 
@@ -67,6 +68,14 @@ contract Pool is IPool, Ownable {
     mapping(bytes32 pairId => Swap[] data) public mapPairId_pairPendingQueue_Swaps;
     mapping(bytes32 pairId => uint256 front) public mapPairId_pairPendingQueue_front;
     mapping(bytes32 pairId => uint256 back) public mapPairId_pairPendingQueue_back;
+
+    // GlobalPoolQueue struct 
+    mapping(bytes32 pairId => GlobalPoolStream[] data) public mapPairId_globalPoolQueue_streams;
+    mapping(bytes32 pairId => uint256 front) public mapPairId_globalPoolQueue_front;
+    mapping(bytes32 pairId => uint256 back) public mapPairId_globalPoolQueue_back;
+    mapping(address => mapping(address => uint256)) public  userGlobalPoolInfo;
+    mapping(address=>uint256) public globalPoolDBalance;
+
 
     modifier onlyRouter() {
         if (msg.sender != ROUTER_ADDRESS) revert NotRouter(msg.sender);
@@ -143,6 +152,10 @@ contract Pool is IPool, Ownable {
         mapPairId_streamQueue_front[pairId]++;
     }
 
+    function dequeueGlobalStream_streamQueue(bytes32 pairId) external onlyPoolLogic {
+        mapPairId_globalPoolQueue_front[pairId]++;
+    }
+
     function enqueueSwap_pairStreamQueue(bytes32 pairId, Swap memory swap) external onlyPoolLogic {
         mapPairId_pairStreamQueue_Swaps[pairId].push(swap);
         mapPairId_pairStreamQueue_back[pairId]++;
@@ -156,6 +169,11 @@ contract Pool is IPool, Ownable {
     function enqueueLiquidityStream(bytes32 pairId, LiquidityStream memory liquidityStream) external onlyPoolLogic {
         mapPairId_streamQueue_liquidityStream[pairId].push(liquidityStream);
         mapPairId_streamQueue_back[pairId]++;
+    }
+
+    function enqueueGlobalPoolStream(bytes32 pairId, GlobalPoolStream memory globaPoolStream) external override onlyPoolLogic {
+        mapPairId_globalPoolQueue_streams[pairId].push(globaPoolStream);
+        mapPairId_globalPoolQueue_back[pairId]++;
     }
 
     // addLiqParams encoding format => (address token, address user, uint amount, uint256 newLpUnits, uint256 newDUnits, uint256 poolFeeCollected)
@@ -205,6 +223,13 @@ contract Pool is IPool, Ownable {
         mapToken_reserveD[tokenB] -= changeInD;
     }
 
+    function updateReservesGlobalStream(bytes memory updatedReservesParams) external override onlyPoolLogic {
+        (address tokenB,uint256 reserveA, uint256 changeInD) =
+            abi.decode(updatedReservesParams, (address, uint256, uint256));
+        mapToken_reserveA[tokenB] += reserveA;
+        mapToken_reserveD[tokenB] -= changeInD;
+    }
+
     // updatedSwapData encoding format => (bytes32 pairId, uint256 amountOut, uint256 swapAmountRemaining, bool completed, uint256 streamsRemaining, uint256 streamCount, uint256 swapPerStream)
     function updatePairStreamQueueSwap(bytes memory updatedSwapData) external onlyPoolLogic {
         (
@@ -247,10 +272,27 @@ contract Pool is IPool, Ownable {
     // updatedLpUnits encoding format => (address token, address user, uint lpUnits)
     function updateUserLpUnits(bytes memory updatedLpUnits) external onlyPoolLogic {
         (address token, address user, uint256 lpUnits) = abi.decode(updatedLpUnits, (address, address, uint256));
-
         userLpUnitInfo[user][token] += lpUnits;
         mapToken_poolOwnershipUnitsTotal[token] += lpUnits;
     }
+
+    function updateGlobalPoolBalance(bytes memory updatedBalance) external override onlyPoolLogic {
+        (uint256 changeInD) = abi.decode(updatedBalance, (uint256));
+        globalPoolDBalance[GLOBAL_POOL] += changeInD;
+    }
+
+    function updateGlobalPoolUserBalance(bytes memory userBalance) external override onlyPoolLogic {
+        (address user, address token, uint256 changeInD) = abi.decode(userBalance, (address, address, uint256));
+        userGlobalPoolInfo[user][token] += changeInD;
+    }
+
+    function updateGlobalStreamQueueStream(bytes memory updatedStream) external override onlyPoolLogic {
+        (bytes32 pairId, uint256 streamsRemaining, uint256 swapRemaining, uint256 dOut) = abi.decode(updatedStream, (bytes32, uint256, uint256, uint256));
+        GlobalPoolStream storage globalStream = mapPairId_globalPoolQueue_streams[pairId][mapPairId_globalPoolQueue_front[pairId]];
+        globalStream.streamsRemaining = streamsRemaining;
+        globalStream.swapAmountRemaining -= swapRemaining;
+        globalStream.dOut += dOut;
+    }   
 
     // @todo ask if we should sort it here, or pass sorted array from logic and just save
     function sortPairPendingQueue(bytes32 pairId) external view onlyPoolLogic {
@@ -404,6 +446,19 @@ contract Pool is IPool, Ownable {
             mapPairId_streamQueue_liquidityStream[pairId],
             mapPairId_streamQueue_front[pairId],
             mapPairId_streamQueue_back[pairId]
+        );
+    }
+
+    function globalStreamQueue(bytes32 pairId)
+        external
+        override
+        view
+        returns (GlobalPoolStream[] memory globalPoolStream, uint256 front, uint256 back)
+    {
+        return (
+            mapPairId_globalPoolQueue_streams[pairId],
+            mapPairId_globalPoolQueue_front[pairId],
+            mapPairId_globalPoolQueue_back[pairId]
         );
     }
 
