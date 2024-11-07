@@ -170,6 +170,9 @@ contract Pool is IPool, Ownable {
     function enqueueRemoveLiquidityStream(address token, RemoveLiquidityStream memory removeLiquidityStream) external onlyPoolLogic {
         mapToken_removeLiqStreamQueue[token].push(removeLiquidityStream);
         mapToken_removeLiqQueue_back[token]++;
+        // @note keep this in mind WHEN implementing cancelRemoveLiquidityStreamRequest()
+        // subtracting lp balance straight away to restrict users creating invalid removeLiq requests.
+        userLpUnitInfo[removeLiquidityStream.user][token] -= removeLiquidityStream.lpAmount;
     }
 
     // addLiqParams encoding format => (address token, address user, uint amount, uint256 newLpUnits, uint256 newDUnits, uint256 poolFeeCollected)
@@ -274,8 +277,9 @@ contract Pool is IPool, Ownable {
         removeLiqStream.tokenAmountOut += reservesToRemove;
         mapToken_reserveA[token] -= reservesToRemove;
         uint lpUnitsToRemove = removeLiqStream.conversionPerStream;
-        userLpUnitInfo[removeLiqStream.user][token] -= lpUnitsToRemove;
         mapToken_poolOwnershipUnitsTotal[token] -= lpUnitsToRemove;
+        // @note not doing this here because lpUnits are subtracted when enqueuing user's removeLiq request
+        // userLpUnitInfo[removeLiqStream.user][token] -= lpUnitsToRemove;
     }
 
     // @todo ask if we should sort it here, or pass sorted array from logic and just save

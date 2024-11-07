@@ -3,6 +3,7 @@ pragma solidity ^0.8.13;
 
 import "@openzeppelin/contracts/access/Ownable.sol";
 import {IPoolActions} from "./interfaces/pool/IPoolActions.sol";
+import {IPoolLogicActions} from "./interfaces/pool-logic/IPoolLogicActions.sol";
 import {IPoolStates} from "./interfaces/pool/IPoolStates.sol";
 import {IPoolLogic} from "./interfaces/IPoolLogic.sol";
 import {IRouter} from "./interfaces/IRouter.sol";
@@ -123,7 +124,12 @@ contract Router is Ownable, ReentrancyGuard, IRouter {
     function removeLiquidity(address token, uint256 lpUnits) external override nonReentrant {
         if (!poolExist(token)) revert InvalidPool();
         if (lpUnits == 0 || lpUnits > poolStates.userLpUnitInfo(msg.sender, token)) revert InvalidAmount();
-
+        (uint256 reserveD,,,,,) = poolStates.poolInfo(address(token));
+        uint256 streamCount = IPoolLogicActions(poolStates.POOL_LOGIC()).calculateStreamCount(lpUnits, poolStates.globalSlippage() , reserveD);
+        if (lpUnits % streamCount != 0) {
+            uint256 swapPerStream = lpUnits / streamCount;
+            lpUnits = streamCount * swapPerStream;
+        }
         IPoolLogic(poolStates.POOL_LOGIC()).removeLiquidity(token, msg.sender, lpUnits);
 
         emit LiquidityRemoved(msg.sender, token, lpUnits);
