@@ -7,4 +7,5 @@ interface IRouterActions {
     function updatePoolAddress(address) external;
     function depositToGlobalPool(address, uint256) external;
     function withdrawFromGlobalPool(address pool, uint256 dAmount) external;
+    function processGlobalStreamPair(address token) external;
 }

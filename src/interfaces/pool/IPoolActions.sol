@@ -46,4 +46,5 @@ interface IPoolActions {
     function updateRouterAddress(address) external;
     function updatePairSlippage(address, address, uint256) external;
     function updateGlobalSlippage(uint256) external;
+
 }

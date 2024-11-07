@@ -7,6 +7,7 @@ import {IPoolActions} from "./interfaces/pool/IPoolActions.sol";
 import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 import {Swap, LiquidityStream, StreamDetails, TYPE_OF_LP, GlobalPoolStream} from "src/lib/SwapQueue.sol";
 import {DSMath} from "src/lib/DSMath.sol";
+import {console} from "forge-std/console.sol";
 
 contract PoolLogic is Ownable, IPoolLogic {
     using DSMath for uint256;
@@ -160,8 +161,18 @@ contract PoolLogic is Ownable, IPoolLogic {
 
     function depositToGlobalPool(address user, address token, uint256 amount) external override onlyRouter {
         bytes32 pairId = keccak256(abi.encodePacked(token, token));
-        _enqueueGlobalPoolStream(pairId, user, token, amount);
+        _enqueueGlobalPoolStream(pairId, user, token, amount, true);
 
+        _streamGlobalStream(token);
+    }
+
+    function withdrawFromGlobalPool(address user, address token, uint256 amount) external override onlyRouter {
+        bytes32 pairId = keccak256(abi.encodePacked(token, token));
+        _enqueueGlobalPoolStream(pairId, user, token, amount, false);
+        _streamGlobalStream(token);
+    }
+
+    function processGlobalStreamPair(address token) external override onlyRouter {
         _streamGlobalStream(token);
     }
 
@@ -169,7 +180,8 @@ contract PoolLogic is Ownable, IPoolLogic {
         bytes32 pairId,
         address user,
         address token, 
-        uint256 amount
+        uint256 amount,
+        bool isDeposit
     ) internal {
 
         (uint256 reserveD,,,,,) = pool.poolInfo(address(token));
@@ -186,7 +198,8 @@ contract PoolLogic is Ownable, IPoolLogic {
                 streamsRemaining:streamCount,
                 swapPerStream:swapPerStream,
                 swapAmountRemaining:amount,
-                dOut:0
+                amountOut:0,
+                deposit:isDeposit
             })
         );
     }
@@ -208,31 +221,61 @@ contract PoolLogic is Ownable, IPoolLogic {
             // get the front stream
             GlobalPoolStream memory globalStream = globalPoolStream[front];
 
-            (uint256 poolNewStreamsRemaining, uint256 poolReservesToAdd, uint256 changeInD) =
+            if(globalStream.deposit) {
+                (uint256 poolNewStreamsRemaining, uint256 poolReservesToAdd, uint256 changeInD) =
+                    _streamDGlobal(globalStream);
+
+                // // update reserves
+                bytes memory updatedReserves = abi.encode(poolA,poolReservesToAdd, changeInD, true);
+                IPoolActions(POOL_ADDRESS).updateReservesGlobalStream(updatedReserves);
+
+                bytes memory updatedGlobalPoolBalnace = abi.encode(changeInD, true);
+                IPoolActions(POOL_ADDRESS).updateGlobalPoolBalance(updatedGlobalPoolBalnace);
+
+                bytes memory updatedGlobalPoolUserBalanace = abi.encode(globalStream.user,poolA,changeInD,true);
+                IPoolActions(POOL_ADDRESS).updateGlobalPoolUserBalance(updatedGlobalPoolUserBalanace);
+
+                // update stream struct
+                bytes memory updatedStreamData = abi.encode(
+                    pairId,
+                    poolNewStreamsRemaining,
+                    globalStream.swapPerStream,
+                    changeInD
+                );
+                IPoolActions(POOL_ADDRESS).updateGlobalStreamQueueStream(updatedStreamData);
+
+                if (poolNewStreamsRemaining == 0) {
+                    IPoolActions(POOL_ADDRESS).dequeueGlobalStream_streamQueue(pairId);
+                }
+            }else{
+                (uint256 poolNewStreamsRemaining, uint256 poolReservesToAdd, uint256 amountOut) =
                 _streamDGlobal(globalStream);
 
-            // // update reserves
-            bytes memory updatedReserves = abi.encode(poolA,poolReservesToAdd, changeInD);
-            IPoolActions(POOL_ADDRESS).updateReservesGlobalStream(updatedReserves);
+                // // update reserves
+                bytes memory updatedReserves = abi.encode(poolA,poolReservesToAdd, amountOut, false);
+                IPoolActions(POOL_ADDRESS).updateReservesGlobalStream(updatedReserves);
 
-            bytes memory updatedGlobalPoolBalnace = abi.encode(changeInD);
-            IPoolActions(POOL_ADDRESS).updateGlobalPoolBalance(updatedGlobalPoolBalnace);
+                bytes memory updatedGlobalPoolBalnace = abi.encode(globalStream.swapPerStream, false);
+                IPoolActions(POOL_ADDRESS).updateGlobalPoolBalance(updatedGlobalPoolBalnace);
 
-            bytes memory updatedGlobalPoolUserBalanace = abi.encode(globalStream.user,poolA,changeInD);
-            IPoolActions(POOL_ADDRESS).updateGlobalPoolUserBalance(updatedGlobalPoolUserBalanace);
+                bytes memory updatedGlobalPoolUserBalanace = abi.encode(globalStream.user,poolA,globalStream.swapPerStream,false);
+                IPoolActions(POOL_ADDRESS).updateGlobalPoolUserBalance(updatedGlobalPoolUserBalanace);
 
-            // update stream struct
-            bytes memory updatedStreamData = abi.encode(
-                pairId,
-                poolNewStreamsRemaining,
-                globalStream.swapPerStream,
-                changeInD
-            );
-            IPoolActions(POOL_ADDRESS).updateGlobalStreamQueueStream(updatedStreamData);
+                // update stream struct
+                bytes memory updatedStreamData = abi.encode(
+                    pairId,
+                    poolNewStreamsRemaining,
+                    globalStream.swapPerStream,
+                    amountOut
+                );
+                IPoolActions(POOL_ADDRESS).updateGlobalStreamQueueStream(updatedStreamData);
 
-            if (poolNewStreamsRemaining == 0) {
-                IPoolActions(POOL_ADDRESS).dequeueGlobalStream_streamQueue(pairId);
+                if (poolNewStreamsRemaining == 0) {
+                    IPoolActions(POOL_ADDRESS).transferTokens(poolA, globalStream.user, globalStream.amountOut+amountOut);
+                    IPoolActions(POOL_ADDRESS).dequeueGlobalStream_streamQueue(pairId);
+                }
             }
+
         }
     }
 
@@ -288,7 +331,7 @@ contract PoolLogic is Ownable, IPoolLogic {
     function _streamDGlobal(GlobalPoolStream memory globalStream)
         internal
         view
-        returns (uint256 poolBNewStreamsRemaining, uint256 poolBReservesToAdd, uint256 changeInD)
+        returns (uint256 poolNewStreamsRemaining, uint256 poolReservesToAdd, uint256 amountOut)
     {
         // both poolStreamA and poolStreamB tokens should be same in case of single sided liquidity
         (
@@ -299,11 +342,13 @@ contract PoolLogic is Ownable, IPoolLogic {
             uint256 poolFeeCollected,
             bool initialized
         ) = pool.poolInfo(globalStream.tokenIn);
-        poolBNewStreamsRemaining = globalStream.streamsRemaining;
-        if (globalStream.swapAmountRemaining != 0) {
-            poolBNewStreamsRemaining--;
-            poolBReservesToAdd = globalStream.swapPerStream;
-            (changeInD,) = getSwapAmountOut(globalStream.swapPerStream, reserveA, 0, reserveD, 0);
+        poolNewStreamsRemaining = globalStream.streamsRemaining;
+        poolNewStreamsRemaining--;
+        poolReservesToAdd = globalStream.swapPerStream;
+        if(globalStream.deposit){
+            (amountOut,) = getSwapAmountOut(globalStream.swapPerStream, reserveA, 0, reserveD, 0);
+        } else{
+            amountOut = getSwapAmountOutFromD(globalStream.swapPerStream, reserveA, reserveD);
         }
     }
 
@@ -903,6 +948,14 @@ contract PoolLogic is Ownable, IPoolLogic {
         //         1000000000000000000
         uint256 d1 = (amountIn.wmul(reserveD1)).wdiv(amountIn + reserveA);
         return (d1, ((d1 * reserveB) / (d1 + reserveD2)));
+    }
+    
+    function getSwapAmountOutFromD(
+        uint256 dIn,
+        uint256 reserveA,
+        uint256 reserveD
+    ) public pure returns (uint256) {
+        return ((dIn * reserveA) / (dIn + reserveD));
     }
 
     function getTokenOut(uint256 dAmount, uint256 reserveA, uint256 reserveD)

@@ -9,6 +9,8 @@ import {Queue} from "./lib/SwapQueue.sol";
 import {Swap, LiquidityStream, GlobalPoolStream} from "./lib/SwapQueue.sol"; // @todo keep structs in a different place
 import {PoolSwapData} from "./lib/SwapQueue.sol";
 import {SwapSorter} from "./lib/QuickSort.sol";
+import {console} from "forge-std/console.sol";
+
 
 contract Pool is IPool, Ownable {
     using SafeERC20 for IERC20;
@@ -18,7 +20,7 @@ contract Pool is IPool, Ownable {
     address public override VAULT_ADDRESS = address(0);
     address public override ROUTER_ADDRESS = address(0);
     // address internal D_TOKEN = address(0xD);
-    address internal GLOBAL_POOL = address(0xD);
+    address public override GLOBAL_POOL = address(0xD);
     address public override POOL_LOGIC = address(0);
     uint256 public override globalSlippage = 10;
 
@@ -74,7 +76,7 @@ contract Pool is IPool, Ownable {
     mapping(bytes32 pairId => uint256 front) public mapPairId_globalPoolQueue_front;
     mapping(bytes32 pairId => uint256 back) public mapPairId_globalPoolQueue_back;
     mapping(address => mapping(address => uint256)) public  override userGlobalPoolInfo;
-    mapping(address=>uint256) public  globalPoolDBalance;
+    mapping(address=>uint256) public override globalPoolDBalance;
 
 
     modifier onlyRouter() {
@@ -224,10 +226,16 @@ contract Pool is IPool, Ownable {
     }
 
     function updateReservesGlobalStream(bytes memory updatedReservesParams) external override onlyPoolLogic {
-        (address tokenB,uint256 reserveA, uint256 changeInD) =
-            abi.decode(updatedReservesParams, (address, uint256, uint256));
-        mapToken_reserveA[tokenB] += reserveA;
-        mapToken_reserveD[tokenB] -= changeInD;
+        (address tokenB,uint256 reserveToAdd, uint256 reserveToDeduct, bool flag) =
+            abi.decode(updatedReservesParams, (address, uint256, uint256, bool));
+        if(flag){
+            mapToken_reserveA[tokenB] += reserveToAdd;
+            mapToken_reserveD[tokenB] -= reserveToDeduct;
+        }else{
+            mapToken_reserveA[tokenB] -= reserveToDeduct;
+            mapToken_reserveD[tokenB] += reserveToAdd;
+        }
+
     }
 
     // updatedSwapData encoding format => (bytes32 pairId, uint256 amountOut, uint256 swapAmountRemaining, bool completed, uint256 streamsRemaining, uint256 streamCount, uint256 swapPerStream)
@@ -277,22 +285,31 @@ contract Pool is IPool, Ownable {
     }
 
     function updateGlobalPoolBalance(bytes memory updatedBalance) external override onlyPoolLogic {
-        (uint256 changeInD) = abi.decode(updatedBalance, (uint256));
-        globalPoolDBalance[GLOBAL_POOL] += changeInD;
+        (uint256 changeInD, bool flag) = abi.decode(updatedBalance, (uint256, bool));
+        if(flag){
+            globalPoolDBalance[GLOBAL_POOL] += changeInD;
+        }else{
+            globalPoolDBalance[GLOBAL_POOL] -= changeInD;
+        }
     }
 
     function updateGlobalPoolUserBalance(bytes memory userBalance) external override onlyPoolLogic {
-        (address user, address token, uint256 changeInD) = abi.decode(userBalance, (address, address, uint256));
-        userGlobalPoolInfo[user][token] += changeInD;
+        (address user, address token, uint256 changeInD, bool flag) = abi.decode(userBalance, (address, address, uint256, bool));
+        if(flag){
+            userGlobalPoolInfo[user][token] += changeInD;
+        }else{
+            userGlobalPoolInfo[user][token] -= changeInD;
+        }
     }
 
     function updateGlobalStreamQueueStream(bytes memory updatedStream) external override onlyPoolLogic {
-        (bytes32 pairId, uint256 streamsRemaining, uint256 swapRemaining, uint256 dOut) = abi.decode(updatedStream, (bytes32, uint256, uint256, uint256));
+        (bytes32 pairId, uint256 streamsRemaining, uint256 swapRemaining, uint256 amountOut) = abi.decode(updatedStream, (bytes32, uint256, uint256, uint256));
         GlobalPoolStream storage globalStream = mapPairId_globalPoolQueue_streams[pairId][mapPairId_globalPoolQueue_front[pairId]];
         globalStream.streamsRemaining = streamsRemaining;
         globalStream.swapAmountRemaining -= swapRemaining;
-        globalStream.dOut += dOut;
+        globalStream.amountOut += amountOut;
     }   
+
 
     // @todo ask if we should sort it here, or pass sorted array from logic and just save
     function sortPairPendingQueue(bytes32 pairId) external view onlyPoolLogic {
