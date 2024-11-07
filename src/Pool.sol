@@ -167,7 +167,10 @@ contract Pool is IPool, Ownable {
         mapPairId_streamQueue_back[pairId]++;
     }
 
-    function enqueueRemoveLiquidityStream(address token, RemoveLiquidityStream memory removeLiquidityStream) external onlyPoolLogic {
+    function enqueueRemoveLiquidityStream(address token, RemoveLiquidityStream memory removeLiquidityStream)
+        external
+        onlyPoolLogic
+    {
         mapToken_removeLiqStreamQueue[token].push(removeLiquidityStream);
         mapToken_removeLiqQueue_back[token]++;
         // @note keep this in mind WHEN implementing cancelRemoveLiquidityStreamRequest()
@@ -270,13 +273,15 @@ contract Pool is IPool, Ownable {
     }
 
     function updateReservesAndRemoveLiqStream(bytes memory updatedReservesAndRemoveLiqData) external onlyPoolLogic {
-        (address token, uint256 reservesToRemove, uint conversionRemaining, uint streamCountRemaining) = abi.decode(updatedReservesAndRemoveLiqData, (address, uint256, uint256, uint256));
-        RemoveLiquidityStream storage removeLiqStream = mapToken_removeLiqStreamQueue[token][mapToken_removeLiqQueue_front[token]];
+        (address token, uint256 reservesToRemove, uint256 conversionRemaining, uint256 streamCountRemaining) =
+            abi.decode(updatedReservesAndRemoveLiqData, (address, uint256, uint256, uint256));
+        RemoveLiquidityStream storage removeLiqStream =
+            mapToken_removeLiqStreamQueue[token][mapToken_removeLiqQueue_front[token]];
         removeLiqStream.conversionRemaining = conversionRemaining;
         removeLiqStream.streamCountRemaining = streamCountRemaining;
         removeLiqStream.tokenAmountOut += reservesToRemove;
         mapToken_reserveA[token] -= reservesToRemove;
-        uint lpUnitsToRemove = removeLiqStream.conversionPerStream;
+        uint256 lpUnitsToRemove = removeLiqStream.conversionPerStream;
         mapToken_poolOwnershipUnitsTotal[token] -= lpUnitsToRemove;
         // @note not doing this here because lpUnits are subtracted when enqueuing user's removeLiq request
         // userLpUnitInfo[removeLiqStream.user][token] -= lpUnitsToRemove;
@@ -443,9 +448,7 @@ contract Pool is IPool, Ownable {
         returns (RemoveLiquidityStream[] memory removeLiquidityStream, uint256 front, uint256 back)
     {
         return (
-            mapToken_removeLiqStreamQueue[pool],
-            mapToken_removeLiqQueue_front[pool],
-            mapToken_removeLiqQueue_back[pool]
+            mapToken_removeLiqStreamQueue[pool], mapToken_removeLiqQueue_front[pool], mapToken_removeLiqQueue_back[pool]
         );
     }
 

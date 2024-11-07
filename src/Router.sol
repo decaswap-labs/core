@@ -125,7 +125,9 @@ contract Router is Ownable, ReentrancyGuard, IRouter {
         if (!poolExist(token)) revert InvalidPool();
         if (lpUnits == 0 || lpUnits > poolStates.userLpUnitInfo(msg.sender, token)) revert InvalidAmount();
         (uint256 reserveD,,,,,) = poolStates.poolInfo(address(token));
-        uint256 streamCount = IPoolLogicActions(poolStates.POOL_LOGIC()).calculateStreamCount(lpUnits, poolStates.globalSlippage() , reserveD);
+        uint256 streamCount = IPoolLogicActions(poolStates.POOL_LOGIC()).calculateStreamCount(
+            lpUnits, poolStates.globalSlippage(), reserveD
+        );
         if (lpUnits % streamCount != 0) {
             uint256 swapPerStream = lpUnits / streamCount;
             lpUnits = streamCount * swapPerStream;
