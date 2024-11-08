@@ -8,7 +8,7 @@ import {console} from "forge-std/console.sol";
 
 contract RouterTest_Swap is RouterTest {
     address private tokenC = makeAddr("tokenC");
-    uint256 private constant TOKEN_A_SWAP_AMOUNT = 30 ether;
+    uint256 private TOKEN_A_SWAP_AMOUNT = 30 ether;
     bytes32 pairId;
     bytes32 oppositePairId;
 
@@ -37,9 +37,9 @@ contract RouterTest_Swap is RouterTest {
     }
 
     function test_router_swap_addToPendingQueue() public {
-        (uint256 reserveD_tokenA_beforeSwap,, uint256 reserveA_tokenA_beforeSwap,,,,,) = pool.poolInfo(address(tokenA));
+        (uint256 reserveD_tokenA_beforeSwap,, uint256 reserveA_tokenA_beforeSwap,,,) = pool.poolInfo(address(tokenA));
 
-        (uint256 reserveD_tokenB_beforeSwap,, uint256 reserveA_tokenB_beforeSwap,,,,,) = pool.poolInfo(address(tokenB));
+        (uint256 reserveD_tokenB_beforeSwap,, uint256 reserveA_tokenB_beforeSwap,,,) = pool.poolInfo(address(tokenB));
 
         uint256 executionPriceBeforeSwap =
             poolLogic.getExecutionPrice(reserveA_tokenA_beforeSwap, reserveA_tokenB_beforeSwap);
@@ -48,16 +48,14 @@ contract RouterTest_Swap is RouterTest {
 
         uint256 swapExecutionPrice = executionPriceBeforeSwap + 1;
 
-        uint256 minPoolDepth = reserveD_tokenA_beforeSwap <= reserveD_tokenB_beforeSwap
-            ? reserveD_tokenA_beforeSwap
-            : reserveD_tokenB_beforeSwap;
-        bytes32 poolId = poolLogic.getPoolId(address(tokenA), address(tokenB)); // for pair slippage only. Not an ID for pair direction queue
-        uint256 streamCount =
-            poolLogic.calculateStreamCount(TOKEN_A_SWAP_AMOUNT, pool.pairSlippage(poolId), minPoolDepth);
-        uint256 swapPerStream = TOKEN_A_SWAP_AMOUNT / streamCount;
-
         uint256 swapperTokenABalance_beforeSwap = tokenA.balanceOf(owner);
         uint256 poolTokenABalance_beforeSwap = tokenA.balanceOf(address(pool));
+
+        uint256 streamCount = poolLogic.getStreamCount(address(tokenA), address(tokenB), TOKEN_A_SWAP_AMOUNT);
+        uint256 swapPerStream = TOKEN_A_SWAP_AMOUNT / streamCount;
+        if (TOKEN_A_SWAP_AMOUNT % streamCount != 0) {
+            TOKEN_A_SWAP_AMOUNT = streamCount * swapPerStream;
+        }
 
         vm.startPrank(owner);
         tokenA.approve(address(router), TOKEN_A_SWAP_AMOUNT);
@@ -67,8 +65,8 @@ contract RouterTest_Swap is RouterTest {
         uint256 swapperTokenABalance_afterSwap = tokenA.balanceOf(owner);
         uint256 poolTokenABalance_afterSwap = tokenA.balanceOf(address(pool));
 
-        (,, uint256 reserveA_tokenA_afterSwap,,,,,) = pool.poolInfo(address(tokenA));
-        (,, uint256 reserveA_tokenB_afterSwap,,,,,) = pool.poolInfo(address(tokenB));
+        (,, uint256 reserveA_tokenA_afterSwap,,,) = pool.poolInfo(address(tokenA));
+        (,, uint256 reserveA_tokenB_afterSwap,,,) = pool.poolInfo(address(tokenB));
 
         uint256 executionPriceAfterSwap =
             poolLogic.getExecutionPrice(reserveA_tokenA_afterSwap, reserveA_tokenB_afterSwap);
@@ -95,8 +93,8 @@ contract RouterTest_Swap is RouterTest {
     }
 
     function test_router_swap_totallyExecuteSwapFromReserves() public {
-        (uint256 reserveD_tokenA_beforeSwap,, uint256 reserveA_tokenA_beforeSwap,,,,,) = pool.poolInfo(address(tokenA));
-        (uint256 reserveD_tokenB_beforeSwap,, uint256 reserveA_tokenB_beforeSwap,,,,,) = pool.poolInfo(address(tokenB));
+        (uint256 reserveD_tokenA_beforeSwap,, uint256 reserveA_tokenA_beforeSwap,,,) = pool.poolInfo(address(tokenA));
+        (uint256 reserveD_tokenB_beforeSwap,, uint256 reserveA_tokenB_beforeSwap,,,) = pool.poolInfo(address(tokenB));
 
         uint256 executionPriceBeforeSwap =
             poolLogic.getExecutionPrice(reserveA_tokenA_beforeSwap, reserveA_tokenB_beforeSwap);
@@ -104,15 +102,12 @@ contract RouterTest_Swap is RouterTest {
         // to add the swap in the straming queue we need to have a swap price execution lower or equal to the current price
         uint256 swapExecutionPrice = executionPriceBeforeSwap;
 
-        uint256 minPoolDepth = reserveD_tokenA_beforeSwap <= reserveD_tokenB_beforeSwap
-            ? reserveD_tokenA_beforeSwap
-            : reserveD_tokenB_beforeSwap;
-        bytes32 poolId = poolLogic.getPoolId(address(tokenA), address(tokenB)); // for pair slippage only. Not an ID for pair direction queue
-
-        uint256 tokenASwapAmount = 0.1 ether;
-        uint256 streamCount = poolLogic.calculateStreamCount(tokenASwapAmount, pool.pairSlippage(poolId), minPoolDepth);
+        uint256 tokenASwapAmount = 0.125 ether;
+        uint256 streamCount = poolLogic.getStreamCount(address(tokenA), address(tokenB), tokenASwapAmount);
         uint256 swapPerStream = tokenASwapAmount / streamCount;
-
+        if (tokenASwapAmount % streamCount != 0) {
+            tokenASwapAmount = streamCount * swapPerStream;
+        }
         uint256 swapperTokenABalance_beforeSwap = tokenA.balanceOf(owner);
         uint256 poolTokenABalance_beforeSwap = tokenA.balanceOf(address(pool));
         uint256 poolTokenBBalance_beforeSwap = tokenB.balanceOf(address(pool));
@@ -133,8 +128,8 @@ contract RouterTest_Swap is RouterTest {
         uint256 poolTokenABalance_afterSwap = tokenA.balanceOf(address(pool));
         uint256 poolTokenBBalance_afterSwap = tokenB.balanceOf(address(pool));
 
-        (uint256 reserveD_tokenA_afterSwap,, uint256 reserveA_tokenA_afterSwap,,,,,) = pool.poolInfo(address(tokenA));
-        (uint256 reserveD_tokenB_afterSwap,, uint256 reserveA_tokenB_afterSwap,,,,,) = pool.poolInfo(address(tokenB));
+        (uint256 reserveD_tokenA_afterSwap,, uint256 reserveA_tokenA_afterSwap,,,) = pool.poolInfo(address(tokenA));
+        (uint256 reserveD_tokenB_afterSwap,, uint256 reserveA_tokenB_afterSwap,,,) = pool.poolInfo(address(tokenB));
 
         uint256 executionPriceAfterSwap =
             poolLogic.getExecutionPrice(reserveA_tokenA_afterSwap, reserveA_tokenB_afterSwap);
@@ -156,8 +151,8 @@ contract RouterTest_Swap is RouterTest {
      */
     function test_router_swap_addToStreamingQueueAndPartiallyExecuteSwap() public {
         uint256 tokenASwapAmount = 300 ether;
-        (uint256 reserveD_tokenA_beforeSwap,, uint256 reserveA_tokenA_beforeSwap,,,,,) = pool.poolInfo(address(tokenA));
-        (uint256 reserveD_tokenB_beforeSwap,, uint256 reserveA_tokenB_beforeSwap,,,,,) = pool.poolInfo(address(tokenB));
+        (uint256 reserveD_tokenA_beforeSwap,, uint256 reserveA_tokenA_beforeSwap,,,) = pool.poolInfo(address(tokenA));
+        (uint256 reserveD_tokenB_beforeSwap,, uint256 reserveA_tokenB_beforeSwap,,,) = pool.poolInfo(address(tokenB));
 
         uint256 executionPriceBeforeSwap =
             poolLogic.getExecutionPrice(reserveA_tokenA_beforeSwap, reserveA_tokenB_beforeSwap);
@@ -165,12 +160,11 @@ contract RouterTest_Swap is RouterTest {
         // to add the swap in the straming queue we need to have a swap price execution lower or equal to the current price
         uint256 swapExecutionPrice = executionPriceBeforeSwap;
 
-        uint256 minPoolDepth = reserveD_tokenA_beforeSwap <= reserveD_tokenB_beforeSwap
-            ? reserveD_tokenA_beforeSwap
-            : reserveD_tokenB_beforeSwap;
-        bytes32 poolId = poolLogic.getPoolId(address(tokenA), address(tokenB)); // for pair slippage only. Not an ID for pair direction queue
-        uint256 streamCount = poolLogic.calculateStreamCount(tokenASwapAmount, pool.pairSlippage(poolId), minPoolDepth);
+        uint256 streamCount = poolLogic.getStreamCount(address(tokenA), address(tokenB), tokenASwapAmount);
         uint256 swapPerStream = tokenASwapAmount / streamCount;
+        if (tokenASwapAmount % streamCount != 0) {
+            tokenASwapAmount = streamCount * swapPerStream;
+        }
 
         uint256 swapperTokenABalance_beforeSwap = tokenA.balanceOf(owner);
         uint256 poolTokenABalance_beforeSwap = tokenA.balanceOf(address(pool));
@@ -190,8 +184,8 @@ contract RouterTest_Swap is RouterTest {
         uint256 swapperTokenABalance_afterSwap = tokenA.balanceOf(owner);
         uint256 poolTokenABalance_afterSwap = tokenA.balanceOf(address(pool));
 
-        (uint256 reserveD_tokenA_afterSwap,, uint256 reserveA_tokenA_afterSwap,,,,,) = pool.poolInfo(address(tokenA));
-        (uint256 reserveD_tokenB_afterSwap,, uint256 reserveA_tokenB_afterSwap,,,,,) = pool.poolInfo(address(tokenB));
+        (uint256 reserveD_tokenA_afterSwap,, uint256 reserveA_tokenA_afterSwap,,,) = pool.poolInfo(address(tokenA));
+        (uint256 reserveD_tokenB_afterSwap,, uint256 reserveA_tokenB_afterSwap,,,) = pool.poolInfo(address(tokenB));
 
         uint256 executionPriceAfterSwap =
             poolLogic.getExecutionPrice(reserveA_tokenA_afterSwap, reserveA_tokenB_afterSwap);
@@ -236,8 +230,8 @@ contract RouterTest_Swap is RouterTest {
         // let's make sure that the opposite swaps have streamCount > 1 to have them ready to be consumed in the streameQueue
         uint256 tokenBSwapAmount = 150 ether;
 
-        (uint256 reserveD_tokenA_beforeSwap,,,,,,,) = pool.poolInfo(address(tokenA));
-        (uint256 reserveD_tokenB_beforeSwap,,,,,,,) = pool.poolInfo(address(tokenB));
+        (uint256 reserveD_tokenA_beforeSwap,,,,,) = pool.poolInfo(address(tokenA));
+        (uint256 reserveD_tokenB_beforeSwap,,,,,) = pool.poolInfo(address(tokenB));
 
         uint256 minPoolDepth = reserveD_tokenA_beforeSwap <= reserveD_tokenB_beforeSwap
             ? reserveD_tokenA_beforeSwap
@@ -254,8 +248,8 @@ contract RouterTest_Swap is RouterTest {
         uint256 reserveD_tokenB;
         uint256 reserveA_tokenB;
         for (uint256 i = 0; i < oppositeSwapsCount; i++) {
-            (reserveD_tokenA,, reserveA_tokenA,,,,,) = pool.poolInfo(address(tokenA));
-            (reserveD_tokenB,, reserveA_tokenB,,,,,) = pool.poolInfo(address(tokenB));
+            (reserveD_tokenA,, reserveA_tokenA,,,) = pool.poolInfo(address(tokenA));
+            (reserveD_tokenB,, reserveA_tokenB,,,) = pool.poolInfo(address(tokenB));
 
             uint256 executionPriceOppositeSwap = poolLogic.getExecutionPrice(reserveA_tokenB, reserveA_tokenA);
             vm.prank(oppositeSwapUsers[i]);
@@ -268,8 +262,8 @@ contract RouterTest_Swap is RouterTest {
 
         assertGt(oppositeBack, oppositeFront);
 
-        (reserveD_tokenA,, reserveA_tokenA,,,,,) = pool.poolInfo(address(tokenA));
-        (reserveD_tokenB,, reserveA_tokenB,,,,,) = pool.poolInfo(address(tokenB));
+        (reserveD_tokenA,, reserveA_tokenA,,,) = pool.poolInfo(address(tokenA));
+        (reserveD_tokenB,, reserveA_tokenB,,,) = pool.poolInfo(address(tokenB));
 
         // we want to know how many tokenAAmountOut is needed to fully execute the opposite swaps
         uint256 tokenOutAmountIn;
@@ -284,8 +278,8 @@ contract RouterTest_Swap is RouterTest {
         // tokenAAmount needed to consume the opposite swaps;
         uint256 executionPrice = poolLogic.getExecutionPrice(reserveA_tokenA, reserveA_tokenB);
 
-        (reserveD_tokenA,, reserveA_tokenA,,,,,) = pool.poolInfo(address(tokenA));
-        (reserveD_tokenB,, reserveA_tokenB,,,,,) = pool.poolInfo(address(tokenB));
+        (reserveD_tokenA,, reserveA_tokenA,,,) = pool.poolInfo(address(tokenA));
+        (reserveD_tokenB,, reserveA_tokenB,,,) = pool.poolInfo(address(tokenB));
 
         uint256 swapTokenAAmountIn = tokenInAmountOut - 1 ether;
 
@@ -355,8 +349,8 @@ contract RouterTest_Swap is RouterTest {
         // let's make sure that the opposite swaps have streamCount > 1 to have them ready to be consumed in the streameQueue
         uint256 tokenBSwapAmount = 100 ether;
 
-        (uint256 reserveD_tokenA_beforeSwap,,,,,,,) = pool.poolInfo(address(tokenA));
-        (uint256 reserveD_tokenB_beforeSwap,,,,,,,) = pool.poolInfo(address(tokenB));
+        (uint256 reserveD_tokenA_beforeSwap,,,,,) = pool.poolInfo(address(tokenA));
+        (uint256 reserveD_tokenB_beforeSwap,,,,,) = pool.poolInfo(address(tokenB));
 
         uint256 minPoolDepth = reserveD_tokenA_beforeSwap <= reserveD_tokenB_beforeSwap
             ? reserveD_tokenA_beforeSwap
@@ -373,8 +367,8 @@ contract RouterTest_Swap is RouterTest {
         uint256 reserveD_tokenB;
         uint256 reserveA_tokenB;
         for (uint256 i = 0; i < oppositeSwapsCount; i++) {
-            (reserveD_tokenA,, reserveA_tokenA,,,,,) = pool.poolInfo(address(tokenA));
-            (reserveD_tokenB,, reserveA_tokenB,,,,,) = pool.poolInfo(address(tokenB));
+            (reserveD_tokenA,, reserveA_tokenA,,,) = pool.poolInfo(address(tokenA));
+            (reserveD_tokenB,, reserveA_tokenB,,,) = pool.poolInfo(address(tokenB));
 
             uint256 executionPriceOppositeSwap = poolLogic.getExecutionPrice(reserveA_tokenB, reserveA_tokenA);
             vm.prank(oppositeSwapUsers[i]);
@@ -387,8 +381,8 @@ contract RouterTest_Swap is RouterTest {
 
         assertGt(oppositeBack, oppositeFront);
 
-        (reserveD_tokenA,, reserveA_tokenA,,,,,) = pool.poolInfo(address(tokenA));
-        (reserveD_tokenB,, reserveA_tokenB,,,,,) = pool.poolInfo(address(tokenB));
+        (reserveD_tokenA,, reserveA_tokenA,,,) = pool.poolInfo(address(tokenA));
+        (reserveD_tokenB,, reserveA_tokenB,,,) = pool.poolInfo(address(tokenB));
 
         // we want to know how many tokenAAmountOut is needed to fully execute the opposite swaps
         uint256 tokenOutAmountIn;
@@ -403,7 +397,7 @@ contract RouterTest_Swap is RouterTest {
         // tokenAAmount needed to consume the opposite swaps;
         uint256 executionPrice = poolLogic.getExecutionPrice(reserveA_tokenA, reserveA_tokenB);
 
-        uint256 swapTokenAAmountIn = tokenInAmountOut + 2 ether;
+        uint256 swapTokenAAmountIn = tokenInAmountOut + 0.1 ether;
         streamCount = poolLogic.getStreamCount(address(tokenA), address(tokenB), swapTokenAAmountIn);
         uint256 swapPerStream = swapTokenAAmountIn / streamCount;
         if (swapTokenAAmountIn % streamCount != 0) swapTokenAAmountIn = streamCount * swapPerStream;
@@ -440,8 +434,8 @@ contract RouterTest_Swap is RouterTest {
         router.swap(address(tokenA), address(tokenB), swapTokenAAmountIn, executionPrice);
         vm.stopPrank();
 
-        (,, uint256 reserveA_tokenA_afterSwap,,,,,) = pool.poolInfo(address(tokenA));
-        (,, uint256 reserveA_tokenB_afterSwap,,,,,) = pool.poolInfo(address(tokenB));
+        (,, uint256 reserveA_tokenA_afterSwap,,,) = pool.poolInfo(address(tokenA));
+        (,, uint256 reserveA_tokenB_afterSwap,,,) = pool.poolInfo(address(tokenB));
 
         uint256 swaperTokenABalance_afterSwap = tokenA.balanceOf(owner);
         uint256 swaperTokenBBalance_afterSwap = tokenB.balanceOf(owner);

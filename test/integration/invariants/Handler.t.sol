@@ -28,25 +28,35 @@ contract Handler is Test {
 
         vm.startPrank(owner);
 
+        // uint256 initialDToMintPoolA = 10 ether;
+        // uint256 initialDToMintPoolB = 10 ether;
+        // uint256 SLIPPAGE = 10;
+
+        // uint256 tokenAAmount = 500000 ether;
+        // uint256 minLaunchReserveAPoolA = 1 ether;
+        // uint256 minLaunchReserveDPoolA = 1 ether;
+
+        // uint256 tokenBAmount = 1000000 ether;
+        // uint256 minLaunchReserveAPoolB = 1 ether;
+        // uint256 minLaunchReserveDPoolB = 1 ether;
+
+        // router.createPool(
+        //     address(tokenA), tokenAAmount, minLaunchReserveAPoolA, minLaunchReserveDPoolA, initialDToMintPoolA
+        // );
+
+        // router.createPool(
+        //     address(tokenB), tokenBAmount, minLaunchReserveAPoolB, minLaunchReserveDPoolB, initialDToMintPoolB
+        // );
+
         uint256 initialDToMintPoolA = 10 ether;
-        uint256 initialDToMintPoolB = 10 ether;
         uint256 SLIPPAGE = 10;
 
         uint256 tokenAAmount = 500000 ether;
-        uint256 minLaunchReserveAPoolA = 1 ether;
-        uint256 minLaunchReserveDPoolA = 1 ether;
-
         uint256 tokenBAmount = 1000000 ether;
-        uint256 minLaunchReserveAPoolB = 1 ether;
-        uint256 minLaunchReserveDPoolB = 1 ether;
 
-        router.createPool(
-            address(tokenA), tokenAAmount, minLaunchReserveAPoolA, minLaunchReserveDPoolA, initialDToMintPoolA
-        );
+        router.initGenesisPool(address(tokenA), tokenAAmount, initialDToMintPoolA);
 
-        router.createPool(
-            address(tokenB), tokenBAmount, minLaunchReserveAPoolB, minLaunchReserveDPoolB, initialDToMintPoolB
-        );
+        router.initPool(address(tokenB), address(tokenA), tokenBAmount, tokenAAmount);
 
         // update pair slippage
         pool.updatePairSlippage(address(tokenA), address(tokenB), SLIPPAGE);
@@ -58,8 +68,8 @@ contract Handler is Test {
         MockERC20 tokenIn = _getTokenFromSeed(seed);
         MockERC20 tokenOut = tokenIn == tokenA ? tokenB : tokenA;
         amountIn = bound(amountIn, 1, MAX_DEPOSIT_SIZE);
-        (,, uint256 reserveA_tokenIn,,,,,) = pool.poolInfo(address(tokenIn));
-        (,, uint256 reserveA_tokenOut,,,,,) = pool.poolInfo(address(tokenOut));
+        (,, uint256 reserveA_tokenIn,,,) = pool.poolInfo(address(tokenIn));
+        (,, uint256 reserveA_tokenOut,,,) = pool.poolInfo(address(tokenOut));
         uint256 executionPrice = poolLogic.getExecutionPrice(reserveA_tokenIn, reserveA_tokenOut);
         uint256 executionpriceDelta = bound(seed, 0, executionPrice / 10);
         bool addDelta = _getBoolFromSeed(seed);
@@ -68,7 +78,7 @@ contract Handler is Test {
         vm.startPrank(msg.sender);
         tokenIn.mint(msg.sender, amountIn);
         tokenIn.approve(address(router), amountIn);
-        
+
         router.swap(address(tokenIn), address(tokenOut), amountIn, executionPrice);
 
         vm.stopPrank();

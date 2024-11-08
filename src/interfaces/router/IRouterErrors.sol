@@ -7,4 +7,7 @@ interface IRouterErrors {
     error InvalidExecutionPrice();
     error InvalidInitialDAmount();
     error InvalidToken();
+    error DuplicatePool();
+    error InvalidLiquidityTokenAmount();
+    error SamePool();
 }

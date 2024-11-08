@@ -17,8 +17,8 @@ contract SwapBalanceAndReservesInvariantsTest is Deploys {
     function invariant_BalanceAlwaysGEReserves() public view {
         uint256 poolBalanceTokenA = tokenA.balanceOf(address(handler.pool()));
         uint256 poolBalanceTokenB = tokenB.balanceOf(address(handler.pool()));
-        (,, uint256 poolReserveTokenA,,,,,) = handler.pool().poolInfo(address(tokenA));
-        (,, uint256 poolReserveTokenB,,,,,) = handler.pool().poolInfo(address(tokenB));
+        (,, uint256 poolReserveTokenA,,,) = handler.pool().poolInfo(address(tokenA));
+        (,, uint256 poolReserveTokenB,,,) = handler.pool().poolInfo(address(tokenB));
 
         assertGe(poolBalanceTokenA, poolReserveTokenA);
         assertGe(poolBalanceTokenB, poolReserveTokenB);

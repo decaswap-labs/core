@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.13;
 
-import {Swap} from "../../lib/SwapQueue.sol";
+import {Swap, LiquidityStream} from "../../lib/SwapQueue.sol";
 
 interface IPoolStates {
     function poolInfo(address)
@@ -11,8 +11,6 @@ interface IPoolStates {
             uint256 reserveD,
             uint256 poolOwnershipUnitsTotal,
             uint256 reserveA,
-            uint256 minLaunchReserveA,
-            uint256 minLaunchReserveD,
             uint256 initialDToMint,
             uint256 poolFeeCollected,
             bool initialized
@@ -24,7 +22,10 @@ interface IPoolStates {
     function pairSlippage(bytes32) external view returns (uint256);
     function globalSlippage() external view returns (uint256);
     // function pairSwapHistory(bytes32) external view returns(uint256,uint256);
-    function poolStreamQueue(bytes32) external view returns (Swap[] memory swaps, uint256 front, uint256 back);
     function pairStreamQueue(bytes32) external view returns (Swap[] memory swaps, uint256 front, uint256 back);
     function pairPendingQueue(bytes32) external view returns (Swap[] memory swaps, uint256 front, uint256 back);
+    function liquidityStreamQueue(bytes32)
+        external
+        view
+        returns (LiquidityStream[] memory liquidityStream, uint256 front, uint256 back);
 }

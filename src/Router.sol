@@ -27,21 +27,86 @@ contract Router is Ownable, ReentrancyGuard, IRouter {
         emit PoolAddressUpdated(address(0), POOL_ADDRESS);
     }
 
-    function createPool(
-        address token,
-        uint256 amount,
-        uint256 minLaunchReserveA,
-        uint256 minLaunchReserveD,
-        uint256 initialDToMint
-    ) external onlyOwner {
+    // function createPool(
+    //     address token,
+    //     uint256 amount,
+    //     uint256 minLaunchReserveA,
+    //     uint256 minLaunchReserveD,
+    //     uint256 initialDToMint
+    // ) external onlyOwner {
+    //     if (amount == 0) revert InvalidAmount();
+    //     if (token == address(0)) revert InvalidToken();
+    //     if (initialDToMint == 0) revert InvalidInitialDAmount();
+
+    //     IERC20(token).safeTransferFrom(msg.sender, POOL_ADDRESS, amount);
+    //     IPoolLogic(poolStates.POOL_LOGIC()).createPool(
+    //         token, msg.sender, amount, minLaunchReserveA, minLaunchReserveD, initialDToMint
+    //     );
+    // }
+
+    function initGenesisPool(address token, uint256 tokenAmount, uint256 dToMint) external onlyOwner {
+        if (poolExist(token)) revert DuplicatePool();
+        if (tokenAmount == 0) revert InvalidAmount();
+        if (dToMint == 0) revert InvalidInitialDAmount();
+
+        IERC20(token).safeTransferFrom(msg.sender, POOL_ADDRESS, tokenAmount);
+
+        IPoolLogic(poolStates.POOL_LOGIC()).initGenesisPool(token, msg.sender, tokenAmount, dToMint);
+    }
+
+    function initPool(address token, address liquidityToken, uint256 tokenAmount, uint256 liquidityTokenAmount)
+        external
+        returns (bool success)
+    {
+        if (!poolExist(liquidityToken)) revert InvalidPool();
+        if (poolExist(token)) revert DuplicatePool();
+        if (tokenAmount == 0) revert InvalidAmount();
+        if (liquidityTokenAmount == 0) revert InvalidLiquidityTokenAmount();
+
+        IERC20(token).safeTransferFrom(msg.sender, POOL_ADDRESS, tokenAmount);
+        IERC20(liquidityToken).safeTransferFrom(msg.sender, POOL_ADDRESS, liquidityTokenAmount);
+        IPoolLogic(poolStates.POOL_LOGIC()).initPool(
+            token, liquidityToken, msg.sender, tokenAmount, liquidityTokenAmount
+        );
+    }
+
+    function addLiqDualToken(address tokenA, address tokenB, uint256 amountA, uint256 amountB) external {
+        if (tokenA == tokenB) revert SamePool();
+        if (!poolExist(tokenA)) revert InvalidPool();
+        if (!poolExist(tokenB)) revert InvalidPool();
+        if (amountA == 0) revert InvalidAmount();
+        if (amountB == 0) revert InvalidAmount();
+
+        IERC20(tokenA).safeTransferFrom(msg.sender, POOL_ADDRESS, amountA);
+        IERC20(tokenB).safeTransferFrom(msg.sender, POOL_ADDRESS, amountB);
+
+        IPoolLogic(poolStates.POOL_LOGIC()).addLiqDualToken(tokenA, tokenB, msg.sender, amountA, amountB);
+    }
+
+    function streamDToPool(address tokenA, address tokenB, uint256 amountB) external {
+        if (tokenA == tokenB) revert SamePool();
+        if (!poolExist(tokenA)) revert InvalidPool();
+        if (!poolExist(tokenB)) revert InvalidPool();
+        if (amountB == 0) revert InvalidAmount();
+
+        IERC20(tokenB).safeTransferFrom(msg.sender, POOL_ADDRESS, amountB);
+
+        IPoolLogic(poolStates.POOL_LOGIC()).streamDToPool(tokenA, tokenB, msg.sender, amountB);
+    }
+
+    function addToPoolSingle(address token, uint256 amount) external {
+        if (!poolExist(token)) revert InvalidPool();
         if (amount == 0) revert InvalidAmount();
-        if (token == address(0)) revert InvalidToken();
-        if (initialDToMint == 0) revert InvalidInitialDAmount();
 
         IERC20(token).safeTransferFrom(msg.sender, POOL_ADDRESS, amount);
-        IPoolLogic(poolStates.POOL_LOGIC()).createPool(
-            token, msg.sender, amount, minLaunchReserveA, minLaunchReserveD, initialDToMint
-        );
+
+        IPoolLogic(poolStates.POOL_LOGIC()).addToPoolSingle(token, msg.sender, amount);
+    }
+
+    function processLiqStream(address poolA, address poolB) external {
+        if (poolA == poolB) revert SamePool();
+        if (!poolExist(poolA) || !poolExist(poolB)) revert InvalidPool();
+        IPoolLogic(poolStates.POOL_LOGIC()).processLiqStream(poolA, poolB);
     }
 
     function addLiquidity(address token, uint256 amount) external override nonReentrant {
@@ -80,6 +145,7 @@ contract Router is Ownable, ReentrancyGuard, IRouter {
     }
 
     function processPair(address tokenIn, address tokenOut) external nonReentrant {
+        if (tokenIn == tokenOut) revert SamePool();
         if (!poolExist(tokenIn) || !poolExist(tokenOut)) revert InvalidPool();
         IPoolLogic(poolStates.POOL_LOGIC()).processPair(tokenIn, tokenOut);
     }
@@ -92,8 +158,9 @@ contract Router is Ownable, ReentrancyGuard, IRouter {
     }
 
     function poolExist(address tokenAddress) internal view returns (bool) {
+        if (tokenAddress == address(0)) revert InvalidToken();
         // TODO : Resolve this tuple unbundling issue
-        (,,,,,,, bool initialized) = poolStates.poolInfo(tokenAddress);
+        (,,,,, bool initialized) = poolStates.poolInfo(tokenAddress);
         return initialized;
     }
 }

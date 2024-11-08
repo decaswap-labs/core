@@ -6,7 +6,7 @@ import "@openzeppelin/contracts/access/Ownable.sol";
 import {IPoolLogicActions} from "./interfaces/pool-logic/IPoolLogicActions.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import {Queue} from "./lib/SwapQueue.sol";
-import {Swap} from "./lib/SwapQueue.sol";
+import {Swap, LiquidityStream} from "./lib/SwapQueue.sol"; // @todo keep structs in a different place
 import {PoolSwapData} from "./lib/SwapQueue.sol";
 import {SwapSorter} from "./lib/QuickSort.sol";
 
@@ -27,8 +27,6 @@ contract Pool is IPool, Ownable {
         uint256 reserveD;
         uint256 poolOwnershipUnitsTotal;
         uint256 reserveA;
-        uint256 minLaunchReserveA;
-        uint256 minLaunchReserveD;
         uint256 initialDToMint;
         uint256 poolFeeCollected;
         bool initialized;
@@ -43,8 +41,6 @@ contract Pool is IPool, Ownable {
     mapping(address token => uint256 reserveD) private mapToken_reserveD;
     mapping(address token => uint256 poolOwnershipUnitsTotal) private mapToken_poolOwnershipUnitsTotal;
     mapping(address token => uint256 reserveA) private mapToken_reserveA;
-    mapping(address token => uint256 minLaunchReserveA) private mapToken_minLaunchReserveA;
-    mapping(address token => uint256 minLaunchReserveD) private mapToken_minLaunchReserveD;
     mapping(address token => uint256 initialDToMint) private mapToken_initialDToMint;
     mapping(address token => uint256 poolFeeCollected) private mapToken_poolFeeCollected;
     mapping(address token => bool initialized) private mapToken_initialized;
@@ -57,10 +53,10 @@ contract Pool is IPool, Ownable {
     // mapping(bytes32 => Queue.QueueStruct) public pairPendingQueue;
     // mapping(bytes32 => Queue.QueueStruct) public poolStreamQueue;
 
-    // poolStreamQueue struct
-    mapping(bytes32 pairId => Swap[] data) public mapPairId_poolStreamQueue_Swaps;
-    mapping(bytes32 pairId => uint256 front) public mapPairId_poolStreamQueue_front;
-    mapping(bytes32 pairId => uint256 back) public mapPairId_poolStreamQueue_back;
+    // DStreamQueue struct
+    mapping(bytes32 pairId => LiquidityStream[] liquidityStream) public mapPairId_streamQueue_liquidityStream;
+    mapping(bytes32 pairId => uint256 front) public mapPairId_streamQueue_front;
+    mapping(bytes32 pairId => uint256 back) public mapPairId_streamQueue_back;
 
     // pairStreamQueue struct
     mapping(bytes32 pairId => Swap[] data) public mapPairId_pairStreamQueue_Swaps;
@@ -94,33 +90,45 @@ contract Pool is IPool, Ownable {
         emit PoolLogicAddressUpdated(address(0), POOL_LOGIC);
     }
 
-    //////////////////////////////////////////////////////////////////////////////
-    // NOTE ignore code below for as all will be refactored after storage variable are set
-    // commented logic so that code compiles with current tests
-    ///////////////////////////////////////////////////////////////////////////////
-
     // creatPoolParams encoding format => (address token, address user, uint256 amount, uint256 minLaunchReserveA, uint256 minLaunchReserveD, uint256 initialDToMint, uint newLpUnits, uint newDUnits, uint256 poolFeeCollected)
-    function createPool(bytes calldata creatPoolParams) external onlyPoolLogic {
+    // function createPool(bytes calldata creatPoolParams) external onlyPoolLogic {
+    //     (
+    //         address token,
+    //         address user,
+    //         uint256 amount,
+    //         uint256 minLaunchReserveA,
+    //         uint256 minLaunchReserveD,
+    //         uint256 initialDToMint,
+    //         uint256 newLpUnits,
+    //         uint256 newDUnits,
+    //         uint256 poolFeeCollected
+    //     ) = abi.decode(
+    //         creatPoolParams, (address, address, uint256, uint256, uint256, uint256, uint256, uint256, uint256)
+    //     );
+    //     _createPool(token, minLaunchReserveA, minLaunchReserveD, initialDToMint);
+    //     bytes memory addLiqParam = abi.encode(token, user, amount, newLpUnits, newDUnits, poolFeeCollected);
+    //     _addLiquidity(addLiqParam);
+    // }
+
+    // initGenesisPool encoding format => (address token, address user, uint256 amount, uint256 initialDToMint, uint newLpUnits, uint newDUnits, uint256 poolFeeCollected)
+    function initGenesisPool(bytes calldata initPoolParams) external onlyPoolLogic {
         (
             address token,
             address user,
             uint256 amount,
-            uint256 minLaunchReserveA,
-            uint256 minLaunchReserveD,
             uint256 initialDToMint,
             uint256 newLpUnits,
             uint256 newDUnits,
             uint256 poolFeeCollected
-        ) = abi.decode(
-            creatPoolParams, (address, address, uint256, uint256, uint256, uint256, uint256, uint256, uint256)
-        );
-        _createPool(token, minLaunchReserveA, minLaunchReserveD, initialDToMint);
+        ) = abi.decode(initPoolParams, (address, address, uint256, uint256, uint256, uint256, uint256));
+        _initPool(token, initialDToMint);
         bytes memory addLiqParam = abi.encode(token, user, amount, newLpUnits, newDUnits, poolFeeCollected);
+        mapToken_reserveD[token] += newDUnits;
         _addLiquidity(addLiqParam);
     }
 
-    function dequeueSwap_poolStreamQueue(bytes32 pairId) external onlyPoolLogic {
-        mapPairId_poolStreamQueue_front[pairId]++;
+    function initPool(address tokenAddress) external onlyPoolLogic {
+        _initPool(tokenAddress, 0);
     }
 
     function dequeueSwap_pairStreamQueue(bytes32 pairId) external onlyPoolLogic {
@@ -131,9 +139,8 @@ contract Pool is IPool, Ownable {
         mapPairId_pairPendingQueue_front[pairId]++;
     }
 
-    function enqueueSwap_poolStreamQueue(bytes32 pairId, Swap memory swap) external onlyPoolLogic {
-        mapPairId_poolStreamQueue_Swaps[pairId].push(swap);
-        mapPairId_poolStreamQueue_back[pairId]++;
+    function dequeueLiquidityStream_streamQueue(bytes32 pairId) external onlyPoolLogic {
+        mapPairId_streamQueue_front[pairId]++;
     }
 
     function enqueueSwap_pairStreamQueue(bytes32 pairId, Swap memory swap) external onlyPoolLogic {
@@ -144,6 +151,11 @@ contract Pool is IPool, Ownable {
     function enqueueSwap_pairPendingQueue(bytes32 pairId, Swap memory swap) external onlyPoolLogic {
         mapPairId_pairPendingQueue_Swaps[pairId].push(swap);
         mapPairId_pairPendingQueue_back[pairId]++;
+    }
+
+    function enqueueLiquidityStream(bytes32 pairId, LiquidityStream memory liquidityStream) external onlyPoolLogic {
+        mapPairId_streamQueue_liquidityStream[pairId].push(liquidityStream);
+        mapPairId_streamQueue_back[pairId]++;
     }
 
     // addLiqParams encoding format => (address token, address user, uint amount, uint256 newLpUnits, uint256 newDUnits, uint256 poolFeeCollected)
@@ -182,6 +194,17 @@ contract Pool is IPool, Ownable {
         }
     }
 
+    // updateReservesParams encoding format => (address tokenA, address tokenB, uint256 reserveA_A, uint256 reserveA_B, uint256 changeInD)
+    function updateReservesWhenStreamingLiq(bytes memory updatedReservesParams) external onlyPoolLogic {
+        (address tokenA, address tokenB, uint256 reserveA_A, uint256 reserveA_B, uint256 changeInD) =
+            abi.decode(updatedReservesParams, (address, address, uint256, uint256, uint256));
+        mapToken_reserveA[tokenA] += reserveA_A;
+        mapToken_reserveD[tokenA] += changeInD;
+
+        mapToken_reserveA[tokenB] += reserveA_B;
+        mapToken_reserveD[tokenB] -= changeInD;
+    }
+
     // updatedSwapData encoding format => (bytes32 pairId, uint256 amountOut, uint256 swapAmountRemaining, bool completed, uint256 streamsRemaining, uint256 streamCount, uint256 swapPerStream)
     function updatePairStreamQueueSwap(bytes memory updatedSwapData) external onlyPoolLogic {
         (
@@ -200,6 +223,33 @@ contract Pool is IPool, Ownable {
         swap.streamsRemaining = streamsRemaining;
         swap.streamsCount = streamCount;
         swap.swapPerStream = swapPerStream;
+    }
+
+    // updatedStreamData encoding format => (bytes32 pairId, uint256 amountAToDeduct, uint256 amountBToDeduct, uint256 poolAStreamsRemaining,uint256 poolBStreamsRemaining, uint dAmountOut)
+    function updateStreamQueueLiqStream(bytes memory updatedStreamData) external onlyPoolLogic {
+        (
+            bytes32 pairId,
+            uint256 amountAToDeduct,
+            uint256 amountBToDeduct,
+            uint256 poolAStreamsRemaining,
+            uint256 poolBStreamsRemaining,
+            uint256 dAmountOut
+        ) = abi.decode(updatedStreamData, (bytes32, uint256, uint256, uint256, uint256, uint256));
+        LiquidityStream storage liquidityStream =
+            mapPairId_streamQueue_liquidityStream[pairId][mapPairId_streamQueue_front[pairId]];
+        liquidityStream.poolAStream.swapAmountRemaining -= amountAToDeduct;
+        liquidityStream.poolBStream.swapAmountRemaining -= amountBToDeduct;
+        liquidityStream.poolAStream.streamsRemaining = poolAStreamsRemaining;
+        liquidityStream.poolBStream.streamsRemaining = poolBStreamsRemaining;
+        liquidityStream.dAmountOut += dAmountOut;
+    }
+
+    // updatedLpUnits encoding format => (address token, address user, uint lpUnits)
+    function updateUserLpUnits(bytes memory updatedLpUnits) external onlyPoolLogic {
+        (address token, address user, uint256 lpUnits) = abi.decode(updatedLpUnits, (address, address, uint256));
+
+        userLpUnitInfo[user][token] += lpUnits;
+        mapToken_poolOwnershipUnitsTotal[token] += lpUnits;
     }
 
     // @todo ask if we should sort it here, or pass sorted array from logic and just save
@@ -239,18 +289,28 @@ contract Pool is IPool, Ownable {
         globalSlippage = newGlobalSlippage;
     }
 
-    function _createPool(address token, uint256 minLaunchReserveA, uint256 minLaunchReserveD, uint256 initialDToMint)
-        internal
-    {
+    // function _createPool(address token, uint256 minLaunchReserveA, uint256 minLaunchReserveD, uint256 initialDToMint)
+    //     internal
+    // {
+    //     if (mapToken_initialized[token]) revert DuplicatePool();
+
+    //     mapToken_initialized[token] = true;
+    //     mapToken_minLaunchReserveA[token] = minLaunchReserveA;
+    //     mapToken_minLaunchReserveD[token] = minLaunchReserveD;
+    //     // @todo need confirmation on that. hardcoded?
+    //     mapToken_initialDToMint[token] = initialDToMint;
+
+    //     emit PoolCreated(token, minLaunchReserveA, minLaunchReserveD);
+    // }
+
+    function _initPool(address token, uint256 initialDToMint) internal {
         if (mapToken_initialized[token]) revert DuplicatePool();
 
         mapToken_initialized[token] = true;
-        mapToken_minLaunchReserveA[token] = minLaunchReserveA;
-        mapToken_minLaunchReserveD[token] = minLaunchReserveD;
         // @todo need confirmation on that. hardcoded?
         mapToken_initialDToMint[token] = initialDToMint;
 
-        emit PoolCreated(token, minLaunchReserveA, minLaunchReserveD);
+        emit PoolCreated(token, initialDToMint);
     }
 
     // addLiqParams encoding format => (address token, address user, uint amount, uint256 newLpUnits, uint256 newDUnits, uint256 poolFeeCollected)
@@ -260,7 +320,6 @@ contract Pool is IPool, Ownable {
 
         mapToken_reserveA[token] += amount;
         mapToken_poolOwnershipUnitsTotal[token] += newLpUnits;
-        mapToken_reserveD[token] += newDUnits;
         // @note may or may not be needed here.
         mapToken_poolFeeCollected[token] += poolFeeCollected;
 
@@ -286,11 +345,8 @@ contract Pool is IPool, Ownable {
         mapToken_reserveA[token] -= assetToTransfer;
         mapToken_reserveD[token] -= dAmountToDeduct;
         mapToken_poolOwnershipUnitsTotal[token] -= lpUnits;
-        // @note may or may not be needed here.
         mapToken_poolFeeCollected[token] += poolFeeCollected;
 
-        // @todo use OZ or custom safeERC20 implementation to transfer tokens
-        // transferring tokens to user
         IERC20(token).safeTransfer(user, assetToTransfer);
 
         emit LiquidityRemoved(user, token, lpUnits, assetToTransfer, dAmountToDeduct);
@@ -303,8 +359,6 @@ contract Pool is IPool, Ownable {
             uint256 reserveD,
             uint256 poolOwnershipUnitsTotal,
             uint256 reserveA,
-            uint256 minLaunchReserveA,
-            uint256 minLaunchReserveD,
             uint256 initialDToMint,
             uint256 poolFeeCollected,
             bool initialized
@@ -315,19 +369,9 @@ contract Pool is IPool, Ownable {
             mapToken_reserveD[tokenAddress],
             mapToken_poolOwnershipUnitsTotal[tokenAddress],
             mapToken_reserveA[tokenAddress],
-            mapToken_minLaunchReserveA[tokenAddress],
-            mapToken_minLaunchReserveD[tokenAddress],
-            mapToken_initialDToMint[token],
-            mapToken_poolFeeCollected[token],
-            mapToken_initialized[token]
-        );
-    }
-
-    function poolStreamQueue(bytes32 pairId) external view returns (Swap[] memory swaps, uint256 front, uint256 back) {
-        return (
-            mapPairId_poolStreamQueue_Swaps[pairId],
-            mapPairId_poolStreamQueue_front[pairId],
-            mapPairId_poolStreamQueue_back[pairId]
+            mapToken_initialDToMint[tokenAddress],
+            mapToken_poolFeeCollected[tokenAddress],
+            mapToken_initialized[tokenAddress]
         );
     }
 
@@ -348,6 +392,18 @@ contract Pool is IPool, Ownable {
             mapPairId_pairPendingQueue_Swaps[pairId],
             mapPairId_pairPendingQueue_front[pairId],
             mapPairId_pairPendingQueue_back[pairId]
+        );
+    }
+
+    function liquidityStreamQueue(bytes32 pairId)
+        external
+        view
+        returns (LiquidityStream[] memory liquidityStream, uint256 front, uint256 back)
+    {
+        return (
+            mapPairId_streamQueue_liquidityStream[pairId],
+            mapPairId_streamQueue_front[pairId],
+            mapPairId_streamQueue_back[pairId]
         );
     }
 
