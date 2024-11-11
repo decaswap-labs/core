@@ -16,9 +16,11 @@ interface IPoolStates {
             bool initialized
         );
     function userLpUnitInfo(address, address) external view returns (uint256);
+    function userGlobalPoolInfo(address, address) external view returns (uint256);
     function VAULT_ADDRESS() external view returns (address);
     function ROUTER_ADDRESS() external view returns (address);
     function POOL_LOGIC() external view returns (address);
+    function GLOBAL_POOL() external view returns(address);
     function pairSlippage(bytes32) external view returns (uint256);
     function globalSlippage() external view returns (uint256);
     // function pairSwapHistory(bytes32) external view returns(uint256,uint256);
@@ -32,5 +34,7 @@ interface IPoolStates {
         external
         view
         returns (RemoveLiquidityStream[] memory removeLiquidityStream, uint256 front, uint256 back);
+
+    function globalPoolDBalance(address) external view returns (uint256) ;
 
 }
