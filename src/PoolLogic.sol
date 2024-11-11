@@ -5,7 +5,7 @@ import {IPoolStates} from "./interfaces/pool/IPoolStates.sol";
 import {IPoolLogic} from "./interfaces/IPoolLogic.sol";
 import {IPoolActions} from "./interfaces/pool/IPoolActions.sol";
 import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
-import {Swap, LiquidityStream, StreamDetails, TYPE_OF_LP, GlobalPoolStream} from "src/lib/SwapQueue.sol";
+import {Swap, LiquidityStream, StreamDetails, TYPE_OF_LP, RemoveLiquidityStream, GlobalPoolStream} from "src/lib/SwapQueue.sol";
 import {DSMath} from "src/lib/DSMath.sol";
 import {console} from "forge-std/console.sol";
 
@@ -460,10 +460,57 @@ contract PoolLogic is Ownable, IPoolLogic {
             uint256 poolFeeCollected,
             bool initialized
         ) = pool.poolInfo(address(token));
-        uint256 assetToTransfer = calculateAssetTransfer(lpUnits, reserveA, poolOwnershipUnitsTotal);
-        uint256 dAmountToDeduct = calculateDToDeduct(lpUnits, reserveD, poolOwnershipUnitsTotal);
-        bytes memory removeLiqParams = abi.encode(token, user, lpUnits, assetToTransfer, dAmountToDeduct, 0); // poolFeeCollected = 0 until logic is finalized
-        IPoolActions(POOL_ADDRESS).removeLiquidity(removeLiqParams);
+        uint256 streamCount = calculateStreamCount(lpUnits, pool.globalSlippage(), reserveD);
+        uint256 lpUnitsPerStream = lpUnits / streamCount;
+        RemoveLiquidityStream memory removeLiqStream = RemoveLiquidityStream({
+            user: user,
+            lpAmount: lpUnits,
+            streamCountTotal: streamCount,
+            streamCountRemaining: streamCount,
+            conversionPerStream: lpUnitsPerStream,
+            tokenAmountOut: 0,
+            conversionRemaining: lpUnits
+        });
+        IPoolActions(POOL_ADDRESS).enqueueRemoveLiquidityStream(token, removeLiqStream);
+        _executeRemoveLiquidity(token);
+    }
+
+    function processRemoveLiquidity(address token) external onlyRouter {
+        _executeRemoveLiquidity(token);
+    }
+
+    function _executeRemoveLiquidity(address token) internal {
+        (RemoveLiquidityStream[] memory removeLiqStreams, uint256 front, uint256 back) =
+            pool.removeLiquidityStreamQueue(token);
+        if (front == back) {
+            return;
+        }
+
+        (
+            uint256 reserveD,
+            uint256 poolOwnershipUnitsTotal,
+            uint256 reserveA,
+            uint256 initialDToMint,
+            uint256 poolFeeCollected,
+            bool initialized
+        ) = pool.poolInfo(address(token));
+
+        RemoveLiquidityStream memory frontStream = removeLiqStreams[front];
+
+        uint256 assetToTransfer =
+            calculateAssetTransfer(frontStream.conversionPerStream, reserveA, poolOwnershipUnitsTotal);
+        frontStream.conversionRemaining -= frontStream.conversionPerStream;
+        frontStream.streamCountRemaining--;
+        frontStream.tokenAmountOut += assetToTransfer;
+
+        bytes memory updatedRemoveLiqData =
+            abi.encode(token, assetToTransfer, frontStream.conversionRemaining, frontStream.streamCountRemaining);
+        IPoolActions(POOL_ADDRESS).updateReservesAndRemoveLiqStream(updatedRemoveLiqData);
+
+        if (frontStream.streamCountRemaining == 0) {
+            IPoolActions(POOL_ADDRESS).transferTokens(token, frontStream.user, frontStream.tokenAmountOut);
+            IPoolActions(POOL_ADDRESS).dequeueRemoveLiquidity_streamQueue(token);
+        }
     }
 
     function swap(address user, address tokenIn, address tokenOut, uint256 amountIn, uint256 executionPrice)

@@ -34,6 +34,16 @@ struct StreamDetails {
     uint256 swapAmountRemaining;
 }
 
+struct RemoveLiquidityStream{
+    address user;
+    uint256 lpAmount;
+    uint256 streamCountTotal;
+    uint256 streamCountRemaining;
+    uint256 conversionPerStream;
+    uint256 tokenAmountOut;
+    uint256 conversionRemaining;
+}
+
 enum TYPE_OF_LP {
     SINGLE_TOKEN,
     DUAL_TOKEN

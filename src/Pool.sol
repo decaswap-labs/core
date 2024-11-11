@@ -6,7 +6,7 @@ import "@openzeppelin/contracts/access/Ownable.sol";
 import {IPoolLogicActions} from "./interfaces/pool-logic/IPoolLogicActions.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import {Queue} from "./lib/SwapQueue.sol";
-import {Swap, LiquidityStream, GlobalPoolStream} from "./lib/SwapQueue.sol"; // @todo keep structs in a different place
+import {Swap, LiquidityStream, RemoveLiquidityStream, GlobalPoolStream} from "./lib/SwapQueue.sol"; // @todo keep structs in a different place
 import {PoolSwapData} from "./lib/SwapQueue.sol";
 import {SwapSorter} from "./lib/QuickSort.sol";
 import {console} from "forge-std/console.sol";
@@ -60,6 +60,11 @@ contract Pool is IPool, Ownable {
     mapping(bytes32 pairId => LiquidityStream[] liquidityStream) public mapPairId_streamQueue_liquidityStream;
     mapping(bytes32 pairId => uint256 front) public mapPairId_streamQueue_front;
     mapping(bytes32 pairId => uint256 back) public mapPairId_streamQueue_back;
+
+    // RemoveLiquidityStream struct
+    mapping(address tokenAddress => RemoveLiquidityStream[] removeLiquidityStreams) public mapToken_removeLiqStreamQueue;
+    mapping(address tokenAddress => uint256 front) public mapToken_removeLiqQueue_front;
+    mapping(address tokenAddress => uint256 back) public mapToken_removeLiqQueue_back;
 
     // pairStreamQueue struct
     mapping(bytes32 pairId => Swap[] data) public mapPairId_pairStreamQueue_Swaps;
@@ -154,6 +159,10 @@ contract Pool is IPool, Ownable {
         mapPairId_streamQueue_front[pairId]++;
     }
 
+    function dequeueRemoveLiquidity_streamQueue(address token) external onlyPoolLogic {
+        mapToken_removeLiqQueue_front[token]++;
+    }
+
     function dequeueGlobalStream_streamQueue(bytes32 pairId) external onlyPoolLogic {
         mapPairId_globalPoolQueue_front[pairId]++;
     }
@@ -171,6 +180,17 @@ contract Pool is IPool, Ownable {
     function enqueueLiquidityStream(bytes32 pairId, LiquidityStream memory liquidityStream) external onlyPoolLogic {
         mapPairId_streamQueue_liquidityStream[pairId].push(liquidityStream);
         mapPairId_streamQueue_back[pairId]++;
+    }
+
+    function enqueueRemoveLiquidityStream(address token, RemoveLiquidityStream memory removeLiquidityStream)
+        external
+        onlyPoolLogic
+    {
+        mapToken_removeLiqStreamQueue[token].push(removeLiquidityStream);
+        mapToken_removeLiqQueue_back[token]++;
+        // @note keep this in mind WHEN implementing cancelRemoveLiquidityStreamRequest()
+        // subtracting lp balance straight away to restrict users creating invalid removeLiq requests.
+        userLpUnitInfo[removeLiquidityStream.user][token] -= removeLiquidityStream.lpAmount;
     }
 
     function enqueueGlobalPoolStream(bytes32 pairId, GlobalPoolStream memory globaPoolStream) external override onlyPoolLogic {
@@ -282,6 +302,21 @@ contract Pool is IPool, Ownable {
         (address token, address user, uint256 lpUnits) = abi.decode(updatedLpUnits, (address, address, uint256));
         userLpUnitInfo[user][token] += lpUnits;
         mapToken_poolOwnershipUnitsTotal[token] += lpUnits;
+    }
+
+    function updateReservesAndRemoveLiqStream(bytes memory updatedReservesAndRemoveLiqData) external onlyPoolLogic {
+        (address token, uint256 reservesToRemove, uint256 conversionRemaining, uint256 streamCountRemaining) =
+            abi.decode(updatedReservesAndRemoveLiqData, (address, uint256, uint256, uint256));
+        RemoveLiquidityStream storage removeLiqStream =
+            mapToken_removeLiqStreamQueue[token][mapToken_removeLiqQueue_front[token]];
+        removeLiqStream.conversionRemaining = conversionRemaining;
+        removeLiqStream.streamCountRemaining = streamCountRemaining;
+        removeLiqStream.tokenAmountOut += reservesToRemove;
+        mapToken_reserveA[token] -= reservesToRemove;
+        uint256 lpUnitsToRemove = removeLiqStream.conversionPerStream;
+        mapToken_poolOwnershipUnitsTotal[token] -= lpUnitsToRemove;
+        // @note not doing this here because lpUnits are subtracted when enqueuing user's removeLiq request
+        // userLpUnitInfo[removeLiqStream.user][token] -= lpUnitsToRemove;
     }
 
     function updateGlobalPoolBalance(bytes memory updatedBalance) external override onlyPoolLogic {
@@ -463,6 +498,16 @@ contract Pool is IPool, Ownable {
             mapPairId_streamQueue_liquidityStream[pairId],
             mapPairId_streamQueue_front[pairId],
             mapPairId_streamQueue_back[pairId]
+        );
+    }
+
+    function removeLiquidityStreamQueue(address pool)
+        external
+        view
+        returns (RemoveLiquidityStream[] memory removeLiquidityStream, uint256 front, uint256 back)
+    {
+        return (
+            mapToken_removeLiqStreamQueue[pool], mapToken_removeLiqQueue_front[pool], mapToken_removeLiqQueue_back[pool]
         );
     }
 
