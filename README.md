@@ -10,15 +10,17 @@ The AMM features a core SC Pool.sol. Users interact via an endpoint SC Router.so
 
 - `Router` endpoint for users
 
-- `Pool` mint assets, insert trade into stream/pending queue, store balances, rebalance
+- `Pool` mint internal assets, store balances, upgradability functionalities
 
-- `PoolLogic` add/remove liquidity, insert streams, rebalance pools, apply fees to stream execution
+- `PoolLogic` add/remove liquidity streams, insert swap streams, rebalance pools, apply fees to stream execution
 
-- `Bot` process stream queue process pending queue, bump the queue, execute arbitrage rebalancing
+- `FeesLogic` apply fees to streams, calculate allocation, convert accumulated fees to `tokenOut`
+
+- `Bot` process pairs, process liquidiy add/remove, execute functions to support arbitrage rebalancing
 
 - `DECAToken` ERC20 token representing a proxy for the system
 
-Together this contract architecture allows trading and generates revenues for the protocol, which are paid out to liquidity providers and stakers of both the internal unit `D` and the token `$DECA`. Any major changes, including upgrades to contracts and changes in fee structure or protocol design, are to be handed over to the DAO, and will be made according to the design principle of the Eternal storage upgradability pattern (NB it is an adapted implementation of this concept, not an off-the-shelf library).
+Together this contract architecture allows trading and generates revenues for the protocol, which are paid out to liquidity providers for pools and stakers of both the internal unit `D` (global pool) and the token `$DECA`. Any major changes, including upgrades to contracts and changes in fee structure or protocol design, are to be handed over to the DAO, and will be made according to the design principle of the Eternal storage upgradability pattern (NB it is an adapted implementation of this concept, not an off-the-shelf library).
 
 The architecture introduces to the Ethereum ecosystem some novel design features. Namely being streaming swaps and payouts to LPs in USDC. Streams provide a manner of internal non-ERC20 tracking for assets in the internal unit D, which allows LPs to be exposed to both a secure system and a lucrative system, since all assets held in the pools are a proxy of value in the system as well as secure the stability of rebalancing and take fees through trade execution.
 
