@@ -22,7 +22,7 @@ interface IPoolActions {
     function enqueueLiquidityStream(bytes32 pairId, LiquidityStream memory liquidityStream) external;
     function enqueueRemoveLiquidityStream(address token, RemoveLiquidityStream memory removeLiquidityStream) external;
     function enqueueGlobalPoolStream(bytes32 pairId, GlobalPoolStream memory globaPoolStream) external;
-    function dequeueSwap_pairStreamQueue(bytes32 pairId) external;
+    function dequeueSwap_pairStreamQueue(bytes32 pairId, uint256 executionPriceKey, uint256 index) external;
     function dequeueSwap_pairPendingQueue(bytes32 pairId) external;
     function dequeueLiquidityStream_streamQueue(bytes32 pairId) external;
     function dequeueRemoveLiquidity_streamQueue(address token) external;
