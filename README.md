@@ -1,72 +1,33 @@
+# DECASwap AMM
 
-## Foundry
+This project is a work in progress.
 
-**Foundry is a blazing fast, portable and modular toolkit for Ethereum application development written in Rust.**
+## Overview
 
-Foundry consists of:
+DECASWAP AMM (DAMM) is a permissionless, autonomous exchange platform. It is formed of three major elements, being the AMM itself, the token for the protocol $DECA and a DAO.
 
--   **Forge**: Ethereum testing framework (like Truffle, Hardhat and DappTools).
--   **Cast**: Swiss army knife for interacting with EVM smart contracts, sending transactions and getting chain data.
--   **Anvil**: Local Ethereum node, akin to Ganache, Hardhat Network.
--   **Chisel**: Fast, utilitarian, and verbose solidity REPL.
+The AMM features a core SC Pool.sol. Users interact via an endpoint SC Router.sol. The Pool contract is responsible for containing the state of balances for all external and internal asset types interacting with or within the protocol, as well as holding the state for the surrounding contracts in the ecosystem (their ethereum addresses), in the image of the Eternal proxy pattern. The logics required to execute trades are split between several contracts. These govern the different types of transactions being executed in the protocol, listed as follows:
 
-## Documentation
+- `Router` endpoint for users
 
-https://book.getfoundry.sh/
+- `Pool` mint assets, insert trade into stream/pending queue, store balances, rebalance
 
-## Usage
+- `PoolLogic` add/remove liquidity, insert streams, rebalance pools, apply fees to stream execution
 
-### Build
+- `Bot` process stream queue process pending queue, bump the queue, execute arbitrage rebalancing
 
-```shell
-$ forge build
-```
+- `DECAToken` ERC20 token representing a proxy for the system
 
-### Test
+Together this contract architecture allows trading and generates revenues for the protocol, which are paid out to liquidity providers and stakers of both the internal unit `D` and the token `$DECA`. Any major changes, including upgrades to contracts and changes in fee structure or protocol design, are to be handed over to the DAO, and will be made according to the design principle of the Eternal storage upgradability pattern (NB it is an adapted implementation of this concept, not an off-the-shelf library).
 
-```shell
-$ forge test
-```
+The architecture introduces to the Ethereum ecosystem some novel design features. Namely being streaming swaps and payouts to LPs in USDC. Streams provide a manner of internal non-ERC20 tracking for assets in the internal unit D, which allows LPs to be exposed to both a secure system and a lucrative system, since all assets held in the pools are a proxy of value in the system as well as secure the stability of rebalancing and take fees through trade execution.
 
-### Format
+Users should thereafter receive an intuitive, streamlined, low risk experience from both angles of trading and liquidity provisioning in a permissionless swap environment, earning in USDC, being exposed to and earning fees from both trading and lending activity.
 
-```shell
-$ forge fmt
-```
+## Build
 
-### Gas Snapshots
+Built using Foundry [https://book.getfoundry.sh/]
 
-```shell
-$ forge snapshot
-```
-
-### Anvil
-
-```shell
-$ anvil
-```
-
-### Deploy
-
-```shell
-$ forge script script/Counter.s.sol:CounterScript --rpc-url <your_rpc_url> --private-key <your_private_key>
-```
-
-### Cast
-
-```shell
-$ cast <subcommand>
-```
-
-### Help
-
-```shell
-$ forge --help
-$ anvil --help
-$ cast --help
-```
-
-## Core Contracts
-
+## Whitepaper
 
 Gitbook: https://decaswap-1.gitbook.io/decaswap-docs
