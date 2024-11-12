@@ -1,0 +1,32 @@
+@startuml Router
+!pragma teoz true
+
+title Pool.sol
+
+actor User as U
+
+box "Swap" #LightBlue
+    database Market as S1
+    database Limit as S2
+end box
+box "Liquidity" #LightPink
+    database Add as A
+    database Remove as R
+end box
+box "Borrow" #LightGreen
+    database Borrow as B
+end box
+
+U --> S1 : Calls Market
+S1 --> S1: Some logic
+S1 --> S1: Some logic
+U --> S2 : Calls swapB
+S2 --> S2 : Some logic
+U --> A : Adds liquidity to contract
+A --> A : Some logic
+U --> R : Removes liquidity from contract
+R --> R : Some logic
+U --> B : Borrows from contract
+B --> B : Some logic
+
+@enduml

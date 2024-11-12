@@ -1,0 +1,43 @@
+@startuml Router
+!pragma teoz true
+
+title Streaming Asset
+
+actor LP as LP
+
+
+box "Router" #LightBlue
+    participant addLiquidity as RA
+end box
+
+box "PoolLogic" #LightYellow
+    participant _addLiquidity as PLA
+    participant _streamLiquidity as SLA
+    participant _mintLPPoints as MLP
+end box
+
+box "Pool" #LightGreen
+    participant addLiquidityStreamQueue as ALQ
+    database LiquidityQueue as DBLP
+    database LiquidityArray as LPA
+end box
+
+box "FeesLogic" #LightPink
+    participant _mintLPPoints as MLPF
+    database poolToEpochToLp as LPD
+end box
+
+group Asset Stream Execution
+LP --> RA : ERC20.transfer
+RA --> PLA : Forward\nERC20 tokens\nmetadata
+PLA --> ALQ : Stores the add liquity\nstream object
+PLA -> DBLP : Updates the queue
+PLA -> SLA : Bumps the addliquidity queue\nProcess the streams
+end
+SLA -> MLP : calls creation of decleration
+MLP --> MLPF : passes metadata
+MLPF --> LPD : write the struct into mapping
+SLA -> LPA: Adds Liquidity Struct  
+
+
+@enduml

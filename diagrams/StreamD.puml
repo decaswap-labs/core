@@ -1,0 +1,48 @@
+@startuml Router
+!pragma teoz true
+
+title Streaming Asset
+
+actor LP as LP
+
+' // There's a pool with 100A tokens and 10D tokens
+' // Streaming D => I am providing tokenB amount and will buy D from PoolB
+' // Then that D will be added in the poolA, so I am buying D, and adding D
+' // no tokenA is added here. Arb will balance the pool
+
+box "Router" #LightBlue
+    participant addLiquidityOnlyD as RA
+end box
+
+box "PoolLogic" #LightYellow
+    participant _addLiquidityOnlyD as PLA
+    participant _streamLiquidity as SLA
+    participant _mintLPPoints as MLP
+end box
+
+box "Pool" #LightGreen
+    participant addLiquidityStreamQueue as ALQ
+    database LiquidityQueue as DBLP
+    database LiquidityArray as LPA
+    participant updateReserves as UPR
+end box
+
+box "FeesLogic" #LightPink
+    participant _mintLPPoints as MLPF
+    database poolToEpochToLp as LPD
+end box
+
+group D Stream Execution
+LP --> RA : ERC20.transfer of tokenB
+RA --> PLA : Forward\nERC20 tokens\nmetadata
+PLA --> ALQ : Stores the add liquity\nstream object
+ALQ -> DBLP : Updates the queue of D streams
+PLA -> SLA : Bumps the addliquidity queue\nProcess the streams\nBuy D from another pool
+PLA --> UPR : Updates the reserves of PoolA and PoolB with\nnew D and tokenB amount
+PLA -> MLP : Calculates new LP units to mint
+end
+PLA -> MLP : calls creation of decleration
+MLP --> MLPF : passes metadata
+MLPF --> LPD : write the struct into mapping
+PLA -> LPA: Adds Liquidity Struct  
+@enduml

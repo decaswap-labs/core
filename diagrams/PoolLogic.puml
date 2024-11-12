@@ -1,0 +1,53 @@
+@startuml Router
+!pragma teoz true
+
+title PoolLogic.sol
+
+actor User as U
+
+box "Pool.sol" #Maroon
+    database ENDPOINT as E
+end box
+
+box "D Units" #LightSalmon
+    database calculateDUnitsToMint as MD
+    database updateBaseDAmount as UD 
+    database calculateDToDeduct as DD
+end box
+box "Swaps & Streams" #LightSteelBlue
+    database calcAssetTransfer as A
+    database calcStreamCount as S
+    database getSwapAmountOut as GSO 
+    database calcLpUnits as LP
+end box
+box "Utilities" #LightYellow
+    database updatePoolAddress as UP
+end box
+
+U --> E: Calls THISFUNCTION
+E --> MD : Calls calculateDUnitsToMint
+MD --> MD: Some logic
+U --> E: Calls THISFUNCTION
+E --> UD : Calls updateBaseDAmount
+UD --> UD: Some logic
+U --> E: Calls THISFUNCTION
+E --> DD : Calls calculateDToDeduct
+DD --> DD: Some logic
+U --> E: Calls THISFUNCTION
+E --> A : Calls calcAssetTransfer
+A --> A: Some logic
+U --> E: Calls THISFUNCTION
+E --> S : Calls calcStreamCount
+S --> S: Some logic
+U --> E: Calls THISFUNCTION
+E --> GSO : Calls getSwapAmountOut
+GSO --> GSO: Some logic
+U --> E: Calls THISFUNCTION
+E --> LP : Calls calcLpUnits
+LP --> LP: Some logic
+U --> E: Calls THISFUNCTION
+E --> UP : Calls updatePoolAddress
+UP --> UP : Some logic
+
+
+@enduml
