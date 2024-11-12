@@ -106,26 +106,6 @@ contract Pool is IPool, Ownable {
         emit PoolLogicAddressUpdated(address(0), POOL_LOGIC);
     }
 
-    // creatPoolParams encoding format => (address token, address user, uint256 amount, uint256 minLaunchReserveA, uint256 minLaunchReserveD, uint256 initialDToMint, uint newLpUnits, uint newDUnits, uint256 poolFeeCollected)
-    // function createPool(bytes calldata creatPoolParams) external onlyPoolLogic {
-    //     (
-    //         address token,
-    //         address user,
-    //         uint256 amount,
-    //         uint256 minLaunchReserveA,
-    //         uint256 minLaunchReserveD,
-    //         uint256 initialDToMint,
-    //         uint256 newLpUnits,
-    //         uint256 newDUnits,
-    //         uint256 poolFeeCollected
-    //     ) = abi.decode(
-    //         creatPoolParams, (address, address, uint256, uint256, uint256, uint256, uint256, uint256, uint256)
-    //     );
-    //     _createPool(token, minLaunchReserveA, minLaunchReserveD, initialDToMint);
-    //     bytes memory addLiqParam = abi.encode(token, user, amount, newLpUnits, newDUnits, poolFeeCollected);
-    //     _addLiquidity(addLiqParam);
-    // }
-
     // initGenesisPool encoding format => (address token, address user, uint256 amount, uint256 initialDToMint, uint newLpUnits, uint newDUnits, uint256 poolFeeCollected)
     function initGenesisPool(bytes calldata initPoolParams) external onlyPoolLogic {
         (
@@ -196,16 +176,6 @@ contract Pool is IPool, Ownable {
     function enqueueGlobalPoolStream(bytes32 pairId, GlobalPoolStream memory globaPoolStream) external override onlyPoolLogic {
         mapPairId_globalPoolQueue_streams[pairId].push(globaPoolStream);
         mapPairId_globalPoolQueue_back[pairId]++;
-    }
-
-    // addLiqParams encoding format => (address token, address user, uint amount, uint256 newLpUnits, uint256 newDUnits, uint256 poolFeeCollected)
-    function addLiquidity(bytes memory addLiqParams) external onlyPoolLogic {
-        _addLiquidity(addLiqParams);
-    }
-
-    // removeLiqParams encoding format => (address token, address user, uint lpUnits, uint256 assetToTransfer, uint256 dAmountToDeduct, uint256 poolFeeCollected)
-    function removeLiquidity(bytes memory removeLiqParams) external onlyPoolLogic {
-        _removeLiquidity(removeLiqParams);
     }
 
     // updateReservesParams encoding format => (bool aToB, address tokenA, address tokenB, uint256 reserveA_A, uint256 reserveD_A,uint256 reserveA_B, uint256 reserveD_B)
@@ -383,20 +353,6 @@ contract Pool is IPool, Ownable {
         globalSlippage = newGlobalSlippage;
     }
 
-    // function _createPool(address token, uint256 minLaunchReserveA, uint256 minLaunchReserveD, uint256 initialDToMint)
-    //     internal
-    // {
-    //     if (mapToken_initialized[token]) revert DuplicatePool();
-
-    //     mapToken_initialized[token] = true;
-    //     mapToken_minLaunchReserveA[token] = minLaunchReserveA;
-    //     mapToken_minLaunchReserveD[token] = minLaunchReserveD;
-    //     // @todo need confirmation on that. hardcoded?
-    //     mapToken_initialDToMint[token] = initialDToMint;
-
-    //     emit PoolCreated(token, minLaunchReserveA, minLaunchReserveD);
-    // }
-
     function _initPool(address token, uint256 initialDToMint) internal {
         if (mapToken_initialized[token]) revert DuplicatePool();
 
@@ -420,30 +376,6 @@ contract Pool is IPool, Ownable {
         userLpUnitInfo[user][token] += newLpUnits;
 
         emit LiquidityAdded(user, token, amount, newLpUnits, newDUnits);
-    }
-
-    // removeLiqParams encoding format => (address token, address user, uint lpUnits, uint256 assetToTransfer, uint256 dAmountToDeduct, uint256 poolFeeCollected)
-    function _removeLiquidity(bytes memory removeLiqParams) internal {
-        (
-            address token,
-            address user,
-            uint256 lpUnits,
-            uint256 assetToTransfer,
-            uint256 dAmountToDeduct,
-            uint256 poolFeeCollected
-        ) = abi.decode(removeLiqParams, (address, address, uint256, uint256, uint256, uint256));
-        // deduct lp from user
-        userLpUnitInfo[user][token] -= lpUnits;
-
-        // updating pool state
-        mapToken_reserveA[token] -= assetToTransfer;
-        mapToken_reserveD[token] -= dAmountToDeduct;
-        mapToken_poolOwnershipUnitsTotal[token] -= lpUnits;
-        mapToken_poolFeeCollected[token] += poolFeeCollected;
-
-        IERC20(token).safeTransfer(user, assetToTransfer);
-
-        emit LiquidityRemoved(user, token, lpUnits, assetToTransfer, dAmountToDeduct);
     }
 
     function poolInfo(address tokenAddress)

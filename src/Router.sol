@@ -105,21 +105,10 @@ contract Router is Ownable, ReentrancyGuard, IRouter {
     }
 
     function processLiqStream(address poolA, address poolB) external {
-        if (poolA == poolB) revert SamePool();
         if (!poolExist(poolA) || !poolExist(poolB)) revert InvalidPool();
         IPoolLogic(poolStates.POOL_LOGIC()).processLiqStream(poolA, poolB);
     }
 
-    function addLiquidity(address token, uint256 amount) external override nonReentrant {
-        // @todo confirm about the appoach, where to keep checks? PoolLogic/Pool/Router??Then refactor
-        if (!poolExist(token)) revert InvalidPool();
-        if (amount == 0) revert InvalidAmount();
-
-        IERC20(token).safeTransferFrom(msg.sender, POOL_ADDRESS, amount);
-        IPoolLogic(poolStates.POOL_LOGIC()).addLiquidity(token, msg.sender, amount);
-
-        emit LiquidityAdded(msg.sender, token, amount);
-    }
 
     function removeLiquidity(address token, uint256 lpUnits) external override nonReentrant {
         if (!poolExist(token)) revert InvalidPool();
