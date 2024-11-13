@@ -157,25 +157,24 @@ contract Router is Ownable, ReentrancyGuard, IRouter {
         IPoolLogic(poolStates.POOL_LOGIC()).swap(msg.sender, tokenIn, tokenOut, amountIn, executionPrice);
     }
 
-
     function depositToGlobalPool(address token, uint256 amount) external override nonReentrant {
-        if(!poolExist(token)) revert InvalidPool();
-        if(amount == 0) revert InvalidAmount();
+        if (!poolExist(token)) revert InvalidPool();
+        if (amount == 0) revert InvalidAmount();
         IERC20(token).safeTransferFrom(msg.sender, POOL_ADDRESS, amount);
         IPoolLogic(poolStates.POOL_LOGIC()).depositToGlobalPool(msg.sender, token, amount);
     }
 
     function withdrawFromGlobalPool(address poolAddress, uint256 dAmount) external override nonReentrant {
-        if(!poolExist(poolAddress)) revert InvalidPool();
-        if(poolStates.userGlobalPoolInfo(msg.sender, poolAddress) < dAmount) revert InvalidAmount();
+        if (!poolExist(poolAddress)) revert InvalidPool();
+        if (poolStates.userGlobalPoolInfo(msg.sender, poolAddress) < dAmount) revert InvalidAmount();
         IPoolLogic(poolStates.POOL_LOGIC()).withdrawFromGlobalPool(msg.sender, poolAddress, dAmount);
     }
 
     function processGlobalStreamPair(address token) external override nonReentrant {
-        if(!poolExist(token)) revert InvalidPool();
+        if (!poolExist(token)) revert InvalidPool();
         IPoolLogic(poolStates.POOL_LOGIC()).processGlobalStreamPair(token);
-
     }
+
     function processPair(address tokenIn, address tokenOut) external nonReentrant {
         if (tokenIn == tokenOut) revert SamePool();
         if (!poolExist(tokenIn) || !poolExist(tokenOut)) revert InvalidPool();

@@ -16,7 +16,7 @@ struct Swap {
     address tokenOut;
     bool completed;
 }
-/* $10, we will iterate over all the swaps <=$10, n=50, 50 streams */ 
+/* $10, we will iterate over all the swaps <=$10, n=50, 50 streams */
 
 struct LiquidityStream {
     address user;
@@ -35,7 +35,7 @@ struct StreamDetails {
     uint256 swapAmountRemaining;
 }
 
-struct RemoveLiquidityStream{
+struct RemoveLiquidityStream {
     address user;
     uint256 lpAmount;
     uint256 streamCountTotal;
@@ -55,7 +55,7 @@ struct PoolSwapData {
     uint256 totalSwapsPool;
 }
 
-struct GlobalPoolStream{
+struct GlobalPoolStream {
     address user;
     address tokenIn;
     uint256 tokenAmount;

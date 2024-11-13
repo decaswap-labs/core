@@ -6,7 +6,6 @@ import {IRouterErrors} from "src/interfaces/router/IRouterErrors.sol";
 import {LiquidityStream} from "src/lib/SwapQueue.sol";
 import "forge-std/Test.sol";
 
-
 contract RouterTest is Deploys {
     address nonAuthorized = makeAddr("nonAuthorized");
 
@@ -36,7 +35,7 @@ contract RouterTest is Deploys {
         uint256 poolBalanceAfter = tokenA.balanceOf(address(pool));
 
         assertEq(reserveD, dToMint);
-        assertEq(poolOwnershipUnitsTotal, lpUnitsAfter); 
+        assertEq(poolOwnershipUnitsTotal, lpUnitsAfter);
         assertEq(lpUnitsBefore, lpUnitsAfter);
         assertEq(reserveA, addLiquidityTokenAmount);
         assertEq(poolBalanceAfter, addLiquidityTokenAmount);
@@ -99,10 +98,13 @@ contract RouterTest is Deploys {
         (uint256 reserveDBeforeB, uint256 poolOwnershipUnitsTotalBeforeB, uint256 reserveABeforeB,,,) =
             pool.poolInfo(address(tokenB));
 
-        (uint256 dToTransfer,) = poolLogic.getSwapAmountOut(swapPerStreamToDToken, reserveABeforeA, 0, reserveDBeforeA, 0);
+        (uint256 dToTransfer,) =
+            poolLogic.getSwapAmountOut(swapPerStreamToDToken, reserveABeforeA, 0, reserveDBeforeA, 0);
 
-        uint256 lpUnitsBeforeFromToken = poolLogic.calculateLpUnitsToMint(0, swapPerStreamInputToken, swapPerStreamInputToken, 0, 0);
-        uint256 lpUnitsBeforeFromD = poolLogic.calculateLpUnitsToMint(lpUnitsBeforeFromToken, 0, swapPerStreamInputToken, dToTransfer, 0);
+        uint256 lpUnitsBeforeFromToken =
+            poolLogic.calculateLpUnitsToMint(0, swapPerStreamInputToken, swapPerStreamInputToken, 0, 0);
+        uint256 lpUnitsBeforeFromD =
+            poolLogic.calculateLpUnitsToMint(lpUnitsBeforeFromToken, 0, swapPerStreamInputToken, dToTransfer, 0);
 
         uint256 tokenBBalanceBefore = tokenB.balanceOf(owner);
 
@@ -111,7 +113,7 @@ contract RouterTest is Deploys {
         uint256 tokenBBalanceAfter = tokenB.balanceOf(owner);
 
         assertLt(tokenBBalanceAfter, tokenBBalanceBefore);
-        assertEq(tokenBBalanceAfter, tokenBBalanceBefore-streamTokenAmount);
+        assertEq(tokenBBalanceAfter, tokenBBalanceBefore - streamTokenAmount);
 
         (uint256 reserveDAfterA,, uint256 reserveAAfterA,,,) = pool.poolInfo(address(tokenA));
         (uint256 reserveDAfterB, uint256 poolOwnershipUnitsTotalAfterB, uint256 reserveAAfterB,,,) =
@@ -134,7 +136,9 @@ contract RouterTest is Deploys {
         assertEq(reserveDAfterA, reserveDBeforeA - dToTransfer);
         assertEq(reserveAAfterA, reserveABeforeA + swapPerStreamToDToken);
 
-        assertEq(poolOwnershipUnitsTotalAfterB, poolOwnershipUnitsTotalBeforeB + lpUnitsBeforeFromToken + lpUnitsBeforeFromD);
+        assertEq(
+            poolOwnershipUnitsTotalAfterB, poolOwnershipUnitsTotalBeforeB + lpUnitsBeforeFromToken + lpUnitsBeforeFromD
+        );
         assertEq(reserveDAfterB, reserveDBeforeB + dToTransfer);
         assertEq(reserveAAfterB, reserveABeforeB + swapPerStreamInputToken);
     }

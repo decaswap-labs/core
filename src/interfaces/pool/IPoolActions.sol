@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.13;
 
-import {Swap, LiquidityStream, RemoveLiquidityStream, GlobalPoolStream  } from "../../lib/SwapQueue.sol";
+import {Swap, LiquidityStream, RemoveLiquidityStream, GlobalPoolStream} from "../../lib/SwapQueue.sol";
 
 interface IPoolActions {
     // creatPoolParams encoding format => (address token, address user, uint256 amount, uint256 minLaunchReserveA, uint256 minLaunchReserveD, uint256 initialDToMint, uint newLpUnits, uint newDUnits, uint256 poolFeeCollected)
@@ -51,8 +51,7 @@ interface IPoolActions {
     function updatePairSlippage(address, address, uint256) external;
     function updateGlobalSlippage(uint256) external;
 
-    function updateOrderBook(bytes32, Swap memory swap, uint256 ) external;
+    function updateOrderBook(bytes32, Swap memory swap, uint256) external;
 
-    function getNextSwapId() external view returns(uint256);
-
+    function getNextSwapId() external view returns (uint256);
 }
