@@ -671,9 +671,33 @@ contract PoolLogic is Ownable, IPoolLogic {
         }
     }
 
-    // function processPair(address tokenIn, address tokenOut) external onlyRouter {
-    //     _executeStream(tokenIn, tokenOut);
-    // }
+    function processPair(address tokenIn, address tokenOut) external onlyRouter {
+        _executeStream(tokenIn, tokenOut);
+    }
+
+    function _executeStream(address tokenIn, address tokenOut) internal {
+        (,, uint256 reserveA_In,,,) = pool.poolInfo(address(tokenIn));
+
+        bytes32 currentPairId = bytes32(abi.encodePacked(tokenIn,tokenOut));
+
+        uint executionPriceCurrentSwap = pool.highestPriceMarker(currentPairId);
+        Swap[] memory swaps = pool.orderBook(currentPairId,executionPriceCurrentSwap);
+        Swap memory currentSwap = swaps[0]; // front swap
+        uint256 executionPriceReciprocal = getReciprocalOppositePrice(currentSwap.executionPrice, reserveA_In);
+        uint256 executionPriceLower = getExecutionPriceLower(executionPriceReciprocal);
+        Swap memory swap = _settleCurrentSwapAgainstOpposite(
+                currentSwap, executionPriceLower, currentSwap.executionPrice, executionPriceReciprocal
+            );
+
+        if(swap.completed) {
+            IPoolActions(POOL_ADDRESS).dequeueSwap_pairStreamQueue(currentPairId, executionPriceCurrentSwap, 0);
+            IPoolActions(POOL_ADDRESS).transferTokens(swap.tokenOut, swap.user, swap.amountOut);
+            if(swap.dustTokenAmount > 0) IPoolActions(POOL_ADDRESS).transferTokens(swap.tokenIn, swap.user, swap.dustTokenAmount); // @audit is it worth transferring dust tokens?
+        }
+        else {
+            // confirm this flow
+        }
+    }
 
     function _settleCurrentSwapAgainstOpposite(
         Swap memory swap,
