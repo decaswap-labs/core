@@ -82,8 +82,8 @@ contract Pool is IPool, Ownable {
     mapping(address => mapping(address => uint256)) public override userGlobalPoolInfo;
     mapping(address => uint256) public override globalPoolDBalance;
 
-    mapping(bytes32 => mapping(uint256 => Swap[])) public orderBook;
-    mapping(bytes32 => uint256) public highestPriceMarker; 
+    mapping(bytes32 => mapping(uint256 => Swap[])) public  orderBookQueue;
+    mapping(bytes32 => uint256) public override highestPriceMarker; 
 
     uint256 public SWAP_IDS = 0;
 
@@ -154,9 +154,9 @@ contract Pool is IPool, Ownable {
         external
         onlyPoolLogic
     {
-        uint256 lastIndex = orderBook[pairId][executionPriceKey].length - 1;
-        orderBook[pairId][executionPriceKey][index] = orderBook[pairId][executionPriceKey][lastIndex];
-        orderBook[pairId][executionPriceKey].pop();
+        uint256 lastIndex = orderBookQueue[pairId][executionPriceKey].length - 1;
+        orderBookQueue[pairId][executionPriceKey][index] = orderBookQueue[pairId][executionPriceKey][lastIndex];
+        orderBookQueue[pairId][executionPriceKey].pop();
     }
 
     function dequeueSwap_pairPendingQueue(bytes32 pairId) external onlyPoolLogic {
@@ -284,7 +284,7 @@ contract Pool is IPool, Ownable {
             uint256 swapPerStream,
             uint256 dustTokenAmount
         ) = abi.decode(updatedSwapData, (bytes32, uint256, uint256, bool, uint256, uint256, uint256, uint256));
-        Swap storage swap = orderBook[pairId][executionPriceKey][index];
+        Swap storage swap = orderBookQueue[pairId][executionPriceKey][index];
         swap.amountOut += amountOut;
         swap.swapAmountRemaining = swapAmountRemaining;
         swap.completed = completed;
@@ -345,7 +345,7 @@ contract Pool is IPool, Ownable {
     }
 
     function updateOrderBook(bytes32 pairId, Swap memory swap, uint256 key) external override onlyPoolLogic {
-        orderBook[pairId][key].push(swap);
+        orderBookQueue[pairId][key].push(swap);
     }
 
     function updateGlobalPoolUserBalance(bytes memory userBalance) external override onlyPoolLogic {
@@ -551,7 +551,15 @@ contract Pool is IPool, Ownable {
         return keccak256(abi.encodePacked(A, B));
     }
 
-    function getNextSwapId() external view override returns (uint256) {
+    function getNextSwapId() external override returns (uint256) {
         return SWAP_IDS++;
+    }
+
+    function setHighestPriceMarker(bytes32 pairId, uint256 value) external override onlyPoolLogic{
+        highestPriceMarker[pairId] = value;
+    }
+
+    function orderBook(bytes32 pairId, uint256 priceKey) external view override returns (Swap[] memory){
+        return orderBookQueue[pairId][priceKey];
     }
 }

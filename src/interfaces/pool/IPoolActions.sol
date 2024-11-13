@@ -38,13 +38,12 @@ interface IPoolActions {
     function updateGlobalPoolBalance(bytes memory updatedBalance) external;
     function updateGlobalPoolUserBalance(bytes memory userBalance) external;
     function updateGlobalStreamQueueStream(bytes memory updatedStream) external;
-    function updatePairStreamQueueSwap(bytes memory updatedSwapData) external;
     function transferTokens(address tokenAddress, address to, uint256 amount) external;
     function sortPairPendingQueue(bytes32 pairId) external;
     function globalStreamQueue(bytes32 pairId)
         external
         returns (GlobalPoolStream[] memory globalPoolStream, uint256 front, uint256 back);
-
+    function updatePairStreamQueueSwap(bytes memory updatedSwapData, uint256 executionPriceKey, uint256 index) external;
     function updatePoolLogicAddress(address) external;
     function updateVaultAddress(address) external;
     function updateRouterAddress(address) external;
@@ -53,5 +52,7 @@ interface IPoolActions {
 
     function updateOrderBook(bytes32, Swap memory swap, uint256) external;
 
-    function getNextSwapId() external view returns (uint256);
+    function getNextSwapId() external returns (uint256);
+
+    function setHighestPriceMarker(bytes32 pairId, uint256 value) external;
 }
