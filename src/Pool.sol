@@ -273,8 +273,9 @@ contract Pool is IPool, Ownable {
             bool completed,
             uint256 streamsRemaining,
             uint256 streamCount,
-            uint256 swapPerStream
-        ) = abi.decode(updatedSwapData, (bytes32, uint256, uint256, bool, uint256, uint256, uint256));
+            uint256 swapPerStream,
+            uint256 dustTokenAmount
+        ) = abi.decode(updatedSwapData, (bytes32, uint256, uint256, bool, uint256, uint256, uint256, uint256 ));
         Swap storage swap = orderBook[pairId][executionPriceKey][index];
         swap.amountOut += amountOut;
         swap.swapAmountRemaining = swapAmountRemaining;
@@ -282,6 +283,7 @@ contract Pool is IPool, Ownable {
         swap.streamsRemaining = streamsRemaining;
         swap.streamsCount = streamCount;
         swap.swapPerStream = swapPerStream;
+        swap.dustTokenAmount = dustTokenAmount;
     }
 
     // updatedStreamData encoding format => (bytes32 pairId, uint256 amountAToDeduct, uint256 amountBToDeduct, uint256 poolAStreamsRemaining,uint256 poolBStreamsRemaining, uint dAmountOut)
@@ -332,6 +334,10 @@ contract Pool is IPool, Ownable {
         }else{
             globalPoolDBalance[GLOBAL_POOL] -= changeInD;
         }
+    }
+
+    function updateOrderBook(bytes32 pairId, Swap memory swap, uint256 key) external override onlyPoolLogic {
+        orderBook[pairId][key].push(swap);
     }
 
     function updateGlobalPoolUserBalance(bytes memory userBalance) external override onlyPoolLogic {
@@ -535,7 +541,7 @@ contract Pool is IPool, Ownable {
         return keccak256(abi.encodePacked(A, B));
     }
 
-    function getNextSwapId() public view returns(uint256){
+    function getNextSwapId() external override view returns(uint256){
         return SWAP_IDS++;
     }
 }

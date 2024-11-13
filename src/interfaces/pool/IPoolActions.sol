@@ -51,4 +51,8 @@ interface IPoolActions {
     function updatePairSlippage(address, address, uint256) external;
     function updateGlobalSlippage(uint256) external;
 
+    function updateOrderBook(bytes32, Swap memory swap, uint256 ) external;
+
+    function getNextSwapId() external view returns(uint256);
+
 }

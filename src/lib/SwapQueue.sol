@@ -10,6 +10,7 @@ struct Swap {
     uint256 swapPerStream;
     uint256 executionPrice; // using executionPrice current ratio of D/token during deposit/withdraw
     uint256 amountOut;
+    uint256 dustTokenAmount;
     address user;
     address tokenIn;
     address tokenOut;
