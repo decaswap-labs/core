@@ -550,7 +550,7 @@ contract PoolLogic is Ownable, IPoolLogic {
             uint256 executionPriceLower = getExecutionPriceLower(executionPriceReciprocal);
 
             Swap memory swap = _settleCurrentSwapAgainstOpposite(
-                currentSwap, executionPriceReciprocal, executionPrice, executionPriceReciprocal
+                currentSwap, executionPriceLower, executionPrice, executionPriceReciprocal
             );
 
             if (swap.completed) {
@@ -591,7 +591,7 @@ contract PoolLogic is Ownable, IPoolLogic {
                 // bytes memory updateReservesParams =
                 //     abi.encode(true, tokenIn, tokenOut, frontSwap.swapPerStream, dToUpdate, amountOut, dToUpdate);
                 // IPoolActions(POOL_ADDRESS).updateReserves(updateReservesParams);
-
+                // @audit this should not be here I suppose. As it is creating a new entry instead of updating the old one.
                 if (!updatedSwap.completed) {
                     _insertInOrderBook(pairId, updatedSwap, executionPriceKey);
                 }
@@ -680,13 +680,14 @@ contract PoolLogic is Ownable, IPoolLogic {
 
         bytes32 currentPairId = bytes32(abi.encodePacked(tokenIn,tokenOut));
 
-        uint executionPriceCurrentSwap = pool.highestPriceMarker(currentPairId);
-        Swap[] memory swaps = pool.orderBook(currentPairId,executionPriceCurrentSwap);
+        uint executionPriceCurrentSwap = pool.highestPriceMarker(currentPairId); // @note how to update this
+        uint256 frontKey = getExecutionPriceLower(executionPriceCurrentSwap);
+        Swap[] memory swaps = pool.orderBook(currentPairId,frontKey);
         Swap memory currentSwap = swaps[0]; // front swap
-        uint256 executionPriceReciprocal = getReciprocalOppositePrice(currentSwap.executionPrice, reserveA_In);
-        uint256 executionPriceLower = getExecutionPriceLower(executionPriceReciprocal);
+        uint256 executionPriceReciprocal = getReciprocalOppositePrice(executionPriceCurrentSwap, reserveA_In);
+        uint256 oppkey = getExecutionPriceLower(executionPriceReciprocal);
         Swap memory swap = _settleCurrentSwapAgainstOpposite(
-                currentSwap, executionPriceLower, currentSwap.executionPrice, executionPriceReciprocal
+                currentSwap, oppkey, executionPriceCurrentSwap, executionPriceReciprocal
             );
 
         if(swap.completed) {
@@ -695,8 +696,42 @@ contract PoolLogic is Ownable, IPoolLogic {
             if(swap.dustTokenAmount > 0) IPoolActions(POOL_ADDRESS).transferTokens(swap.tokenIn, swap.user, swap.dustTokenAmount); // @audit is it worth transferring dust tokens?
         }
         else {
-            // confirm this flow
+
+            uint[] memory completedSwapsId = new uint[](swaps.length);
+            for(uint i; i < swaps.length - 1;) {
+                // settle against pool
+                if((_settleCurrentSwapAgainstPool(swaps[i],swaps[i].executionPrice)).completed) {
+
+                    IPoolActions(POOL_ADDRESS).dequeueSwap_pairStreamQueue(currentPairId, frontKey, i);
+                    IPoolActions(POOL_ADDRESS).transferTokens(swaps[i].tokenOut, swaps[i].user, swaps[i].amountOut);
+
+                }
+                else {
+                    unchecked {
+                        ++i;
+                    }
+                }
+            }
+
+            
         }
+
+    }
+
+    function dequeueSwapAndTransferTokens(bytes32 pairId, uint priceKey, uint swapId) internal {
+        Swap[] memory swaps = pool.orderBook(pairId,priceKey);
+        uint indexOfSwapToRemove;
+
+        for(uint i; i < swaps.length - 1; i++) {
+            if(swaps[i].swapID == swapId) {
+                indexOfSwapToRemove  = i;
+                break;
+            }
+        }
+
+        IPoolActions(POOL_ADDRESS).dequeueSwap_pairStreamQueue(pairId, priceKey, indexOfSwapToRemove);
+        IPoolActions(POOL_ADDRESS).transferTokens(swaps[indexOfSwapToRemove].tokenOut, swaps[indexOfSwapToRemove].user, swaps[indexOfSwapToRemove].amountOut);
+
     }
 
     function _settleCurrentSwapAgainstOpposite(
