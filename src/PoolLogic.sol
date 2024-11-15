@@ -265,6 +265,15 @@ contract PoolLogic is Ownable, IPoolLogic {
 
     function processGlobalStreamPair(address token) external override onlyRouter {
         // _streamGlobalStream(token);
+        _streamGlobalPoolDepositMultiple(token);
+    }
+
+    function _streamGlobalPoolDepositMultiple(address token) internal {
+
+    }
+
+    function _streamGlobalPoolWithdrawMultiple(address token) internal {
+        
     }
 
     // function _enqueueGlobalPoolStream(bytes32 pairId, address user, address token, uint256 amount, bool isDeposit)
