@@ -21,7 +21,9 @@ interface IPoolActions {
     function enqueueSwap_pairPendingQueue(bytes32 pairId, Swap memory swap) external;
     function enqueueLiquidityStream(bytes32 pairId, LiquidityStream memory liquidityStream) external;
     function enqueueRemoveLiquidityStream(address token, RemoveLiquidityStream memory removeLiquidityStream) external;
-    function enqueueGlobalPoolStream(bytes32 pairId, GlobalPoolStream memory globaPoolStream) external;
+    function enqueueGlobalPoolDepositStream(bytes32 pairId, GlobalPoolStream memory globaPoolStream) external;
+    function enqueueGlobalPoolWithdrawStream(bytes32 pairId, GlobalPoolStream memory globaPoolStream) external;
+
     function dequeueSwap_pairStreamQueue(bytes32 pairId, uint256 executionPriceKey, uint256 index) external;
     function dequeueSwap_pairPendingQueue(bytes32 pairId) external;
     function dequeueLiquidityStream_streamQueue(bytes32 pairId) external;
@@ -37,12 +39,15 @@ interface IPoolActions {
     function updateReservesGlobalStream(bytes memory updatedReservesParams) external;
     function updateGlobalPoolBalance(bytes memory updatedBalance) external;
     function updateGlobalPoolUserBalance(bytes memory userBalance) external;
-    function updateGlobalStreamQueueStream(bytes memory updatedStream) external;
+    // function updateGlobalStreamQueueStream(bytes memory updatedStream) external;
     function transferTokens(address tokenAddress, address to, uint256 amount) external;
     function sortPairPendingQueue(bytes32 pairId) external;
-    function globalStreamQueue(bytes32 pairId)
+    function globalStreamQueueDeposit(bytes32 pairId)
         external
-        returns (GlobalPoolStream[] memory globalPoolStream, uint256 front, uint256 back);
+        returns (GlobalPoolStream[] memory globalPoolStream);
+    function globalStreamQueueWithdraw(bytes32 pairId)
+        external
+        returns (GlobalPoolStream[] memory globalPoolStream);
     function updatePairStreamQueueSwap(bytes memory updatedSwapData, uint256 executionPriceKey, uint256 index) external;
     function updatePoolLogicAddress(address) external;
     function updateVaultAddress(address) external;

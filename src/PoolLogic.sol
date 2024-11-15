@@ -166,115 +166,226 @@ contract PoolLogic is Ownable, IPoolLogic {
         _streamLiquidity(token, token);
     }
 
-    function depositToGlobalPool(address user, address token, uint256 amount) external override onlyRouter {
-        bytes32 pairId = keccak256(abi.encodePacked(token, token));
-        _enqueueGlobalPoolStream(pairId, user, token, amount, true);
+    function depositToGlobalPool(address user, address token, uint256 amount, uint256 streamCount, uint256 swapPerStream) external override onlyRouter {
+        bytes32 pairId = bytes32(abi.encodePacked(token, token));
+        _settleDPoolStream(pairId, user, token, amount, streamCount, swapPerStream, true);
 
-        _streamGlobalStream(token);
+        // _enqueueGlobalPoolStream(pairId, user, token, amount, true);
+
+        // _streamGlobalStream(token);
     }
 
     function withdrawFromGlobalPool(address user, address token, uint256 amount) external override onlyRouter {
-        bytes32 pairId = keccak256(abi.encodePacked(token, token));
-        _enqueueGlobalPoolStream(pairId, user, token, amount, false);
-        _streamGlobalStream(token);
-    }
+        bytes32 pairId = bytes32(abi.encodePacked(token, token));
 
-    function processGlobalStreamPair(address token) external override onlyRouter {
-        _streamGlobalStream(token);
-    }
-
-    function _enqueueGlobalPoolStream(bytes32 pairId, address user, address token, uint256 amount, bool isDeposit)
-        internal
-    {
         (uint256 reserveD,,,,,) = pool.poolInfo(address(token));
         uint256 streamCount = calculateStreamCount(amount, pool.globalSlippage(), reserveD);
-        uint256 swapPerStream = amount / streamCount;
+        uint256 swapPerStream = amount/streamCount;
 
-        IPoolActions(POOL_ADDRESS).enqueueGlobalPoolStream(
-            pairId,
-            GlobalPoolStream({
-                user: user,
-                tokenIn: token,
-                tokenAmount: amount,
-                streamCount: streamCount,
-                streamsRemaining: streamCount,
-                swapPerStream: swapPerStream,
-                swapAmountRemaining: amount,
-                amountOut: 0,
-                deposit: isDeposit
-            })
-        );
+        _settleDPoolStream(pairId, user, token, amount, streamCount, swapPerStream, false);
+
+        // _enqueueGlobalPoolStream(pairId, user, token, amount, false);
+        // _streamGlobalStream(token);
     }
 
-    function _streamGlobalStream(address poolA) internal {
-        bytes32 pairId = keccak256(abi.encodePacked(poolA, poolA));
-        (GlobalPoolStream[] memory globalPoolStream, uint256 front, uint256 back) =
-            IPoolActions(POOL_ADDRESS).globalStreamQueue(pairId);
-        // true = there are streams pending
-        if (back - front != 0) {
-            (
-                uint256 reserveD,
-                uint256 poolOwnershipUnitsTotal,
-                uint256 reserveA,
-                uint256 initialDToMint,
-                uint256 poolFeeCollected,
-                bool initialized
-            ) = pool.poolInfo(poolA);
+    function _settleDPoolStream(bytes32 pairId, address user, address token, uint256 amount, uint256 streamCount, uint256 swapPerStream, bool isDeposit) internal {
+        /* 
+        * Break stream count and collect dust amount as well. 
+        * Update queue function for array insertion
+        * Make queues for deposits and withdrawals separately
+        * EOA flow, where only after enqueuing, 1 stream will be handled
+        * Bot flow, where after pairId, whole array's 1 stream is executed
+        */  
 
-            // get the front stream
-            GlobalPoolStream memory globalStream = globalPoolStream[front];
+        GlobalPoolStream memory localStream = GlobalPoolStream({
+            user: user,
+            tokenIn: token,
+            tokenAmount: amount,
+            streamCount: streamCount,
+            streamsRemaining: streamCount,
+            swapPerStream: swapPerStream,
+            swapAmountRemaining: amount,
+            amountOut: 0,
+            deposit: isDeposit
+        });
 
-            if (globalStream.deposit) {
-                (uint256 poolNewStreamsRemaining, uint256 poolReservesToAdd, uint256 changeInD) =
-                    _streamDGlobal(globalStream);
-
-                // // update reserves
-                bytes memory updatedReserves = abi.encode(poolA, poolReservesToAdd, changeInD, true);
-                IPoolActions(POOL_ADDRESS).updateReservesGlobalStream(updatedReserves);
-
-                bytes memory updatedGlobalPoolBalnace = abi.encode(changeInD, true);
-                IPoolActions(POOL_ADDRESS).updateGlobalPoolBalance(updatedGlobalPoolBalnace);
-
-                bytes memory updatedGlobalPoolUserBalanace = abi.encode(globalStream.user, poolA, changeInD, true);
-                IPoolActions(POOL_ADDRESS).updateGlobalPoolUserBalance(updatedGlobalPoolUserBalanace);
-
-                // update stream struct
-                bytes memory updatedStreamData =
-                    abi.encode(pairId, poolNewStreamsRemaining, globalStream.swapPerStream, changeInD);
-                IPoolActions(POOL_ADDRESS).updateGlobalStreamQueueStream(updatedStreamData);
-
-                if (poolNewStreamsRemaining == 0) {
-                    IPoolActions(POOL_ADDRESS).dequeueGlobalStream_streamQueue(pairId);
-                }
-            } else {
-                (uint256 poolNewStreamsRemaining, uint256 poolReservesToAdd, uint256 amountOut) =
-                    _streamDGlobal(globalStream);
-
-                // // update reserves
-                bytes memory updatedReserves = abi.encode(poolA, poolReservesToAdd, amountOut, false);
-                IPoolActions(POOL_ADDRESS).updateReservesGlobalStream(updatedReserves);
-
-                bytes memory updatedGlobalPoolBalnace = abi.encode(globalStream.swapPerStream, false);
-                IPoolActions(POOL_ADDRESS).updateGlobalPoolBalance(updatedGlobalPoolBalnace);
-
-                bytes memory updatedGlobalPoolUserBalanace =
-                    abi.encode(globalStream.user, poolA, globalStream.swapPerStream, false);
-                IPoolActions(POOL_ADDRESS).updateGlobalPoolUserBalance(updatedGlobalPoolUserBalanace);
-
-                // update stream struct
-                bytes memory updatedStreamData =
-                    abi.encode(pairId, poolNewStreamsRemaining, globalStream.swapPerStream, amountOut);
-                IPoolActions(POOL_ADDRESS).updateGlobalStreamQueueStream(updatedStreamData);
-
-                if (poolNewStreamsRemaining == 0) {
-                    IPoolActions(POOL_ADDRESS).transferTokens(
-                        poolA, globalStream.user, globalStream.amountOut + amountOut
-                    );
-                    IPoolActions(POOL_ADDRESS).dequeueGlobalStream_streamQueue(pairId);
-                }
+        GlobalPoolStream memory updatedStream = _streamGlobalPoolSingle(localStream);
+        if(updatedStream.streamsRemaining != 0) {
+            if(updatedStream.deposit){
+                IPoolActions(POOL_ADDRESS).enqueueGlobalPoolDepositStream(pairId, updatedStream);
+            }else{
+                IPoolActions(POOL_ADDRESS).enqueueGlobalPoolWithdrawStream(pairId, updatedStream);
             }
         }
     }
+
+    function _streamGlobalPoolSingle(GlobalPoolStream memory stream) internal returns (GlobalPoolStream memory){
+       
+        uint256 poolNewStreamRemaining;
+        uint256 poolReservesToAdd;
+        uint256 changeInD;
+        uint256 amountOut;
+
+        if(stream.deposit){
+            (poolNewStreamRemaining,  poolReservesToAdd,  changeInD) =
+                _streamDGlobal(stream);
+            stream.amountOut += changeInD;
+
+            // // update reserves
+            bytes memory updatedReserves = abi.encode(stream.tokenIn, poolReservesToAdd, changeInD, true);
+            IPoolActions(POOL_ADDRESS).updateReservesGlobalStream(updatedReserves);
+
+            bytes memory updatedGlobalPoolBalnace = abi.encode(changeInD, true);
+            IPoolActions(POOL_ADDRESS).updateGlobalPoolBalance(updatedGlobalPoolBalnace);
+
+            bytes memory updatedGlobalPoolUserBalanace = abi.encode(stream.user, stream.tokenIn, changeInD, true);
+            IPoolActions(POOL_ADDRESS).updateGlobalPoolUserBalance(updatedGlobalPoolUserBalanace);
+
+        }else{
+            (poolNewStreamRemaining,poolReservesToAdd, amountOut) =
+                    _streamDGlobal(stream);
+            stream.amountOut = amountOut;
+
+            // // update reserves
+            bytes memory updatedReserves = abi.encode(stream.tokenIn, poolReservesToAdd, amountOut, false);
+            IPoolActions(POOL_ADDRESS).updateReservesGlobalStream(updatedReserves);
+
+            bytes memory updatedGlobalPoolBalnace = abi.encode(stream.swapPerStream, false);
+            IPoolActions(POOL_ADDRESS).updateGlobalPoolBalance(updatedGlobalPoolBalnace);
+
+            bytes memory updatedGlobalPoolUserBalanace =
+                abi.encode(stream.user, stream.tokenIn, stream.swapPerStream, false);
+            IPoolActions(POOL_ADDRESS).updateGlobalPoolUserBalance(updatedGlobalPoolUserBalanace);
+        }
+        stream.streamsRemaining = poolNewStreamRemaining;
+        return stream;
+    }
+
+ 
+
+    function processGlobalStreamPair(address token) external override onlyRouter {
+        // _streamGlobalStream(token);
+    }
+
+    // function _enqueueGlobalPoolStream(bytes32 pairId, address user, address token, uint256 amount, bool isDeposit)
+    //     internal
+    // {
+    //     (uint256 reserveD,,,,,) = pool.poolInfo(address(token));
+    //     uint256 streamCount = calculateStreamCount(amount, pool.globalSlippage(), reserveD);
+
+    //     // START FROM HERE
+
+    //     /* 
+    //     * Break stream count and collect dust amount as well. 
+    //     * Update queue function for array insertion
+    //     * Make queues for deposits and withdrawals separately
+    //     * EOA flow, where only after enqueuing, 1 stream will be handled
+    //     * Bot flow, where after pairId, whole array's 1 stream is executed
+    //     */  
+
+
+    //     uint256 swapPerStream = amount / streamCount;
+    //     if (amount % streamCount != 0) {
+    //         amount = streamCount * swapPerStream;
+    //     }
+
+    //     GlobalPoolStream memory localDStream = GlobalPoolStream({
+    //         user: user,
+    //         tokenIn: token,
+    //         tokenAmount: amount,
+    //         streamCount: streamCount,
+    //         streamsRemaining: streamCount,
+    //         swapPerStream: swapPerStream,
+    //         swapAmountRemaining: amount,
+    //         amountOut: 0,
+    //         deposit: isDeposit
+    //     });
+
+    //     // IPoolActions(POOL_ADDRESS).enqueueGlobalPoolDepositStream(
+    //     //     pairId,
+    //     //     GlobalPoolStream({
+    //     //         user: user,
+    //     //         tokenIn: token,
+    //     //         tokenAmount: amount,
+    //     //         streamCount: streamCount,
+    //     //         streamsRemaining: streamCount,
+    //     //         swapPerStream: swapPerStream,
+    //     //         swapAmountRemaining: amount,
+    //     //         amountOut: 0,
+    //     //         deposit: isDeposit
+    //     //     })
+    //     // );
+    // }
+
+    // function _streamGlobalStream(address poolA) internal {
+    //     bytes32 pairId = keccak256(abi.encodePacked(poolA, poolA));
+    //     (GlobalPoolStream[] memory globalPoolStream, uint256 front, uint256 back) =
+    //         IPoolActions(POOL_ADDRESS).globalStreamQueue(pairId);
+    //     // true = there are streams pending
+    //     if (back - front != 0) {
+    //         (
+    //             uint256 reserveD,
+    //             uint256 poolOwnershipUnitsTotal,
+    //             uint256 reserveA,
+    //             uint256 initialDToMint,
+    //             uint256 poolFeeCollected,
+    //             bool initialized
+    //         ) = pool.poolInfo(poolA);
+
+    //         // get the front stream
+    //         GlobalPoolStream memory globalStream = globalPoolStream[front];
+
+    //         if (globalStream.deposit) {
+    //             (uint256 poolNewStreamsRemaining, uint256 poolReservesToAdd, uint256 changeInD) =
+    //                 _streamDGlobal(globalStream);
+
+    //             // // update reserves
+    //             bytes memory updatedReserves = abi.encode(poolA, poolReservesToAdd, changeInD, true);
+    //             IPoolActions(POOL_ADDRESS).updateReservesGlobalStream(updatedReserves);
+
+    //             bytes memory updatedGlobalPoolBalnace = abi.encode(changeInD, true);
+    //             IPoolActions(POOL_ADDRESS).updateGlobalPoolBalance(updatedGlobalPoolBalnace);
+
+    //             bytes memory updatedGlobalPoolUserBalanace = abi.encode(globalStream.user, poolA, changeInD, true);
+    //             IPoolActions(POOL_ADDRESS).updateGlobalPoolUserBalance(updatedGlobalPoolUserBalanace);
+
+    //             // update stream struct
+    //             bytes memory updatedStreamData =
+    //                 abi.encode(pairId, poolNewStreamsRemaining, globalStream.swapPerStream, changeInD);
+    //             IPoolActions(POOL_ADDRESS).updateGlobalStreamQueueStream(updatedStreamData);
+
+    //             if (poolNewStreamsRemaining == 0) {
+    //                 IPoolActions(POOL_ADDRESS).dequeueGlobalStream_streamQueue(pairId);
+    //             }
+    //         } else {
+    //             (uint256 poolNewStreamsRemaining, uint256 poolReservesToAdd, uint256 amountOut) =
+    //                 _streamDGlobal(globalStream);
+
+    //             // // update reserves
+    //             bytes memory updatedReserves = abi.encode(poolA, poolReservesToAdd, amountOut, false);
+    //             IPoolActions(POOL_ADDRESS).updateReservesGlobalStream(updatedReserves);
+
+    //             bytes memory updatedGlobalPoolBalnace = abi.encode(globalStream.swapPerStream, false);
+    //             IPoolActions(POOL_ADDRESS).updateGlobalPoolBalance(updatedGlobalPoolBalnace);
+
+    //             bytes memory updatedGlobalPoolUserBalanace =
+    //                 abi.encode(globalStream.user, poolA, globalStream.swapPerStream, false);
+    //             IPoolActions(POOL_ADDRESS).updateGlobalPoolUserBalance(updatedGlobalPoolUserBalanace);
+
+    //             // update stream struct
+    //             bytes memory updatedStreamData =
+    //                 abi.encode(pairId, poolNewStreamsRemaining, globalStream.swapPerStream, amountOut);
+    //             IPoolActions(POOL_ADDRESS).updateGlobalStreamQueueStream(updatedStreamData);
+
+    //             if (poolNewStreamsRemaining == 0) {
+    //                 IPoolActions(POOL_ADDRESS).transferTokens(
+    //                     poolA, globalStream.user, globalStream.amountOut + amountOut
+    //                 );
+    //                 IPoolActions(POOL_ADDRESS).dequeueGlobalStream_streamQueue(pairId);
+    //             }
+    //         }
+    //     }
+    // }
 
     function _streamA(LiquidityStream memory liqStream)
         internal
@@ -823,6 +934,11 @@ contract PoolLogic is Ownable, IPoolLogic {
         return calculateStreamCount(amountIn, pool.pairSlippage(poolId), minPoolDepth);
     }
 
+    function getStreamCountForDPool(address tokenIn, uint256 amountIn) external override view returns (uint256) {
+        (uint256 reserveD,,,,,) = pool.poolInfo(address(tokenIn));
+        return calculateStreamCount(amountIn, pool.globalSlippage(), reserveD);
+    }
+
     function getExecutionPriceLower(uint256 executionPrice) public view returns (uint256) {
         uint256 mod = executionPrice % 10000000000; // @audit decide decimals for precission + use global variable for precission
         return executionPrice - mod;
@@ -990,7 +1106,6 @@ contract PoolLogic is Ownable, IPoolLogic {
     }
 
     function poolExist(address tokenAddress) private view returns (bool) {
-        // TODO : Resolve this tuple unbundling issue
         (,,,,, bool initialized) = pool.poolInfo(tokenAddress);
         return initialized;
     }

@@ -76,9 +76,11 @@ contract Pool is IPool, Ownable {
     mapping(bytes32 pairId => uint256 back) public mapPairId_pairPendingQueue_back;
 
     // GlobalPoolQueue struct
-    mapping(bytes32 pairId => GlobalPoolStream[] data) public mapPairId_globalPoolQueue_streams;
-    mapping(bytes32 pairId => uint256 front) public mapPairId_globalPoolQueue_front;
-    mapping(bytes32 pairId => uint256 back) public mapPairId_globalPoolQueue_back;
+    mapping(bytes32 pairId => GlobalPoolStream[] data) public mapPairId_globalPoolQueue_deposit;
+    mapping(bytes32 pairId => GlobalPoolStream[] data) public mapPairId_globalPoolQueue_withdraw;
+
+    // mapping(bytes32 pairId => uint256 front) public mapPairId_globalPoolQueue_front;
+    // mapping(bytes32 pairId => uint256 back) public mapPairId_globalPoolQueue_back;
     mapping(address => mapping(address => uint256)) public override userGlobalPoolInfo;
     mapping(address => uint256) public override globalPoolDBalance;
 
@@ -172,7 +174,7 @@ contract Pool is IPool, Ownable {
     }
 
     function dequeueGlobalStream_streamQueue(bytes32 pairId) external onlyPoolLogic {
-        mapPairId_globalPoolQueue_front[pairId]++;
+        // mapPairId_globalPoolQueue_front[pairId]++;
     }
 
     function enqueueSwap_pairStreamQueue(bytes32 pairId, Swap memory swap) external onlyPoolLogic {
@@ -201,13 +203,20 @@ contract Pool is IPool, Ownable {
         userLpUnitInfo[removeLiquidityStream.user][token] -= removeLiquidityStream.lpAmount;
     }
 
-    function enqueueGlobalPoolStream(bytes32 pairId, GlobalPoolStream memory globaPoolStream)
+    function enqueueGlobalPoolDepositStream(bytes32 pairId, GlobalPoolStream memory globaPoolStream)
         external
         override
         onlyPoolLogic
     {
-        mapPairId_globalPoolQueue_streams[pairId].push(globaPoolStream);
-        mapPairId_globalPoolQueue_back[pairId]++;
+        mapPairId_globalPoolQueue_deposit[pairId].push(globaPoolStream);
+    }
+
+    function enqueueGlobalPoolWithdrawStream(bytes32 pairId, GlobalPoolStream memory globaPoolStream)
+        external
+        override
+        onlyPoolLogic
+    {
+        mapPairId_globalPoolQueue_withdraw[pairId].push(globaPoolStream);
     }
 
     // addLiqParams encoding format => (address token, address user, uint amount, uint256 newLpUnits, uint256 newDUnits, uint256 poolFeeCollected)
@@ -358,15 +367,15 @@ contract Pool is IPool, Ownable {
         }
     }
 
-    function updateGlobalStreamQueueStream(bytes memory updatedStream) external override onlyPoolLogic {
-        (bytes32 pairId, uint256 streamsRemaining, uint256 swapRemaining, uint256 amountOut) =
-            abi.decode(updatedStream, (bytes32, uint256, uint256, uint256));
-        GlobalPoolStream storage globalStream =
-            mapPairId_globalPoolQueue_streams[pairId][mapPairId_globalPoolQueue_front[pairId]];
-        globalStream.streamsRemaining = streamsRemaining;
-        globalStream.swapAmountRemaining -= swapRemaining;
-        globalStream.amountOut += amountOut;
-    }
+    // function updateGlobalStreamQueueStream(bytes memory updatedStream) external override onlyPoolLogic {
+    //     (bytes32 pairId, uint256 streamsRemaining, uint256 swapRemaining, uint256 amountOut) =
+    //         abi.decode(updatedStream, (bytes32, uint256, uint256, uint256));
+    //     GlobalPoolStream storage globalStream =
+    //         mapPairId_globalPoolQueue_streams[pairId][mapPairId_globalPoolQueue_front[pairId]];
+    //     globalStream.streamsRemaining = streamsRemaining;
+    //     globalStream.swapAmountRemaining -= swapRemaining;
+    //     globalStream.amountOut += amountOut;
+    // }
 
     // @todo ask if we should sort it here, or pass sorted array from logic and just save
     function sortPairPendingQueue(bytes32 pairId) external view onlyPoolLogic {
@@ -533,16 +542,25 @@ contract Pool is IPool, Ownable {
         );
     }
 
-    function globalStreamQueue(bytes32 pairId)
+    function globalStreamQueueDeposit(bytes32 pairId)
         external
         view
         override
-        returns (GlobalPoolStream[] memory globalPoolStream, uint256 front, uint256 back)
+        returns (GlobalPoolStream[] memory globalPoolStream)
     {
         return (
-            mapPairId_globalPoolQueue_streams[pairId],
-            mapPairId_globalPoolQueue_front[pairId],
-            mapPairId_globalPoolQueue_back[pairId]
+            mapPairId_globalPoolQueue_deposit[pairId]
+        );
+    }
+
+    function globalStreamQueueWithdraw(bytes32 pairId)
+        external
+        view
+        override
+        returns (GlobalPoolStream[] memory globalPoolStream)
+    {
+        return (
+            mapPairId_globalPoolQueue_withdraw[pairId]
         );
     }
 

@@ -160,8 +160,17 @@ contract Router is Ownable, ReentrancyGuard, IRouter {
     function depositToGlobalPool(address token, uint256 amount) external override nonReentrant {
         if (!poolExist(token)) revert InvalidPool();
         if (amount == 0) revert InvalidAmount();
+    
+        // calculate and remove dust residual        
+        uint256 streamCount = IPoolLogic(poolStates.POOL_LOGIC()).getStreamCountForDPool(token, amount);
+        uint256 swapPerStream;
+        if (amount % streamCount != 0) {
+            swapPerStream = amount / streamCount;
+            amount = streamCount * swapPerStream;
+        }
+
         IERC20(token).safeTransferFrom(msg.sender, POOL_ADDRESS, amount);
-        IPoolLogic(poolStates.POOL_LOGIC()).depositToGlobalPool(msg.sender, token, amount);
+        IPoolLogic(poolStates.POOL_LOGIC()).depositToGlobalPool(msg.sender, token, amount, streamCount, swapPerStream);
     }
 
     function withdrawFromGlobalPool(address poolAddress, uint256 dAmount) external override nonReentrant {
