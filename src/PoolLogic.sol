@@ -593,6 +593,54 @@ contract PoolLogic is Ownable, IPoolLogic {
         }
     }
 
+    function processPair(address tokenIn, address tokenOut) external onlyRouter {
+        _executeStream(tokenIn, tokenOut);
+    }
+
+    function _executeStream(address tokenIn, address tokenOut) internal {
+        (,, uint256 reserveA_In,,,) = pool.poolInfo(address(tokenIn));
+
+        bytes32 currentPairId = bytes32(abi.encodePacked(tokenIn, tokenOut));
+        uint256 executionPriceCurrentSwap = pool.highestPriceMarker(currentPairId); // @note how to update this
+        uint256 frontKey = getExecutionPriceLower(executionPriceCurrentSwap);
+        Swap[] memory swaps = pool.orderBook(currentPairId, frontKey);
+        Swap memory currentSwap = swaps[0]; // front swap
+        uint256 executionPriceReciprocal = getReciprocalOppositePrice(executionPriceCurrentSwap, reserveA_In);
+        uint256 oppkey = getExecutionPriceLower(executionPriceReciprocal);
+        currentSwap =
+            _settleCurrentSwapAgainstOpposite(currentSwap, oppkey, executionPriceCurrentSwap, executionPriceReciprocal);
+
+        if (currentSwap.completed) {
+            IPoolActions(POOL_ADDRESS).dequeueSwap_pairStreamQueue(currentPairId, executionPriceCurrentSwap, 0);
+            IPoolActions(POOL_ADDRESS).transferTokens(currentSwap.tokenOut, currentSwap.user, currentSwap.amountOut);
+            if (currentSwap.dustTokenAmount > 0) {
+                IPoolActions(POOL_ADDRESS).transferTokens(
+                    currentSwap.tokenIn, currentSwap.user, currentSwap.dustTokenAmount
+                );
+            } // @audit is it worth transferring dust tokens?
+        } else {
+            uint256 swapRemoved;
+            for (uint256 i; i < swaps.length - 1;) {
+                // settle against pool
+                if ((_settleCurrentSwapAgainstPool(swaps[i], swaps[i].executionPrice)).completed) {
+                    IPoolActions(POOL_ADDRESS).dequeueSwap_pairStreamQueue(currentPairId, frontKey, i);
+                    IPoolActions(POOL_ADDRESS).transferTokens(swaps[i].tokenOut, swaps[i].user, swaps[i].amountOut);
+                    swapRemoved++;
+                    if (swapRemoved == swaps.length) {
+                        break;
+                    }
+                    uint256 lastIndex = swaps.length - swapRemoved;
+                    swaps[i] = swaps[lastIndex];
+                    delete swaps[lastIndex];
+                } else {
+                    unchecked {
+                        ++i;
+                    }
+                }
+            }
+        }
+    }
+
     function _settleCurrentSwapAgainstOpposite(
         Swap memory currentSwap,
         uint256 executionPriceOppositeKey,
