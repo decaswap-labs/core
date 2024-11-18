@@ -129,75 +129,106 @@ contract RouterTest is Deploys {
         router.depositToGlobalPool(address(tokenA), 0);
     }
 
-    // // ------------------------------------------------- REMOVE GLOBAL POOL ------------------------------- //
+    // ------------------------------------------------- REMOVE GLOBAL POOL ------------------------------- //
 
-    // function test_withdrawGlobalPool_success() public {
-    //     uint256 tokenAReserve = 500e18;
-    //     uint256 dToMint = 100e18;
-    //     _initGenesisPool(dToMint, tokenAReserve);
+    function test_withdrawGlobalPool_oneStreamExecutionAndEnqueueInArray_eoaFlow_success() public {
+        uint256 tokenAReserve = 100e18;
+        uint256 dToMint = 1000e18;
+        _initGenesisPool(dToMint, tokenAReserve);
 
-    //     uint256 depositAmount = 100e18;
+        uint256 depositAmount = 200e18; 
 
-    //     vm.startPrank(owner);
-    //     router.depositToGlobalPool(address(tokenA), depositAmount);
+        vm.startPrank(owner);
+        router.depositToGlobalPool(address(tokenA), depositAmount);
 
-    //     bytes32 pairId = keccak256(abi.encodePacked(tokenA, tokenA));
-    //     (GlobalPoolStream[] memory globalPoolStreamBefore, uint256 frontB, uint256 backB) =
-    //         pool.globalStreamQueue(pairId);
+        uint256 dToWtihdraw = pool.userGlobalPoolInfo(owner, address(tokenA));
 
-    //     if (frontB == backB) frontB = frontB - 1;
-    //     uint256 dToWtihdraw = globalPoolStreamBefore[frontB].amountOut;
+        (uint256 reserveDBefore,, uint256 reserveABefore,,,) = pool.poolInfo(address(tokenA));
 
-    //     (uint256 reserveDBefore,, uint256 reserveABefore,,,) = pool.poolInfo(address(tokenA));
+        uint256 dGlobalBalanceBefore = pool.globalPoolDBalance(pool.GLOBAL_POOL());
+        uint256 userDPoolBalanceBefore = pool.userGlobalPoolInfo(owner, address(tokenA));
+        uint256 userBalanceBefore = tokenA.balanceOf(owner);
 
-    //     uint256 dGlobalBalanceBefore = pool.globalPoolDBalance(pool.GLOBAL_POOL());
-    //     uint256 userDPoolBalanceBefore = pool.userGlobalPoolInfo(owner, address(tokenA));
-    //     uint256 userBalanceBefore = tokenA.balanceOf(owner);
+        uint256 streamCount = poolLogic.calculateStreamCount(dToWtihdraw, pool.globalSlippage(), reserveDBefore);
+        uint256 swapPerStream = dToWtihdraw / streamCount;
+        uint256 amountOutPerStream = poolLogic.getSwapAmountOutFromD(swapPerStream, reserveABefore, reserveDBefore);
 
-    //     uint256 streamCount = poolLogic.calculateStreamCount(dToWtihdraw, pool.globalSlippage(), reserveDBefore);
-    //     uint256 swapPerStream = dToWtihdraw / streamCount;
-    //     uint256 amountOutPerStream = poolLogic.getSwapAmountOutFromD(swapPerStream, reserveABefore, reserveDBefore);
+        router.withdrawFromGlobalPool(address(tokenA), dToWtihdraw);
 
-    //     router.withdrawFromGlobalPool(address(tokenA), dToWtihdraw);
+        uint256 userBalanceAfter = tokenA.balanceOf(owner);
 
-    //     uint256 userBalanceAfter = tokenA.balanceOf(owner);
+        bytes32 pairId = bytes32(abi.encodePacked(tokenA, tokenA));
 
-    //     (GlobalPoolStream[] memory globalPoolStreamAfter, uint256 frontA, uint256 backA) =
-    //         pool.globalStreamQueue(pairId);
-    //     if (frontA == backA) {
-    //         frontA = frontA - 1;
-    //         assertEq(userBalanceAfter, userBalanceBefore + amountOutPerStream);
-    //     }
+        GlobalPoolStream[] memory globalPoolStream =
+            pool.globalStreamQueueWithdraw(pairId);
 
-    //     uint256 dGlobalBalanceAfter = pool.globalPoolDBalance(pool.GLOBAL_POOL());
-    //     uint256 userDPoolBalanceAfter = pool.userGlobalPoolInfo(owner, address(tokenA));
+        uint256 dGlobalBalanceAfter = pool.globalPoolDBalance(pool.GLOBAL_POOL());
+        uint256 userDPoolBalanceAfter = pool.userGlobalPoolInfo(owner, address(tokenA));
 
-    //     (uint256 reserveDAfter,, uint256 reserveAAfter,,,) = pool.poolInfo(address(tokenA));
+        (uint256 reserveDAfter,, uint256 reserveAAfter,,,) = pool.poolInfo(address(tokenA));
 
-    //     GlobalPoolStream memory globalStream = globalPoolStreamAfter[frontA];
+        GlobalPoolStream memory globalStream = globalPoolStream[0];
 
-    //     assertEq(globalStream.amountOut, amountOutPerStream);
-    //     assertEq(globalStream.streamsRemaining, streamCount - 1);
-    //     assertEq(globalStream.swapPerStream, swapPerStream);
-    //     assertEq(globalStream.swapAmountRemaining, dToWtihdraw - swapPerStream);
+        assertEq(globalStream.amountOut, amountOutPerStream);
+        assertEq(globalStream.streamsRemaining, streamCount - 1);
+        assertEq(globalStream.swapPerStream, swapPerStream);
+        assertEq(globalStream.swapAmountRemaining, dToWtihdraw - swapPerStream);
 
-    //     assertEq(reserveDAfter, reserveDBefore + swapPerStream);
-    //     assertEq(reserveAAfter, reserveABefore - globalStream.amountOut);
+        assertEq(reserveDAfter, reserveDBefore + swapPerStream);
+        assertEq(reserveAAfter, reserveABefore - amountOutPerStream);
+      
+        assertEq(dGlobalBalanceAfter, dGlobalBalanceBefore - globalStream.swapPerStream); 
+        assertEq(userDPoolBalanceAfter, userDPoolBalanceBefore - globalStream.swapPerStream);
+    }
 
-    //     assertEq(dGlobalBalanceAfter, dGlobalBalanceBefore - dToWtihdraw);
-    //     assertEq(userDPoolBalanceAfter, userDPoolBalanceBefore - dToWtihdraw);
-    // }
+    function test_withdrawGlobalPool_oneStreamExecution_eoaFlow_success() public {
+        uint256 tokenAReserve = 200e18;
+        uint256 dToMint = 10e18;
+        _initGenesisPool(dToMint, tokenAReserve);
 
-    // function test_withdrawFromGlobalPool_invalidPool() public {
-    //     vm.startPrank(owner);
-    //     vm.expectRevert(IRouterErrors.InvalidPool.selector);
-    //     router.withdrawFromGlobalPool(address(tokenA), 1);
-    // }
+        uint256 depositAmount = 100e18;
+        vm.startPrank(owner);
+        router.depositToGlobalPool(address(tokenA), depositAmount);
 
-    // function test_withdrawFromGlobalPool_invalidAmount() public {
-    //     _initGenesisPool(100e18, 100e18);
-    //     vm.startPrank(owner);
-    //     vm.expectRevert(IRouterErrors.InvalidAmount.selector);
-    //     router.withdrawFromGlobalPool(address(tokenA), 1);
-    // }
+        uint256 dToWtihdraw = pool.userGlobalPoolInfo(owner, address(tokenA));
+
+        (uint256 reserveDBefore,, uint256 reserveABefore,,,) = pool.poolInfo(address(tokenA));
+
+        uint256 dGlobalBalanceBefore = pool.globalPoolDBalance(pool.GLOBAL_POOL());
+        uint256 userDPoolBalanceBefore = pool.userGlobalPoolInfo(owner, address(tokenA));
+        uint256 userBalanceBefore = tokenA.balanceOf(owner);
+
+        uint256 streamCount = poolLogic.calculateStreamCount(dToWtihdraw, pool.globalSlippage(), reserveDBefore);
+        console.log(streamCount);
+        uint256 swapPerStream = dToWtihdraw / streamCount;
+        uint256 amountOutPerStream = poolLogic.getSwapAmountOutFromD(swapPerStream, reserveABefore, reserveDBefore);
+
+        router.withdrawFromGlobalPool(address(tokenA), dToWtihdraw);
+
+        uint256 userBalanceAfter = tokenA.balanceOf(owner);
+
+        uint256 dGlobalBalanceAfter = pool.globalPoolDBalance(pool.GLOBAL_POOL());
+        uint256 userDPoolBalanceAfter = pool.userGlobalPoolInfo(owner, address(tokenA));
+
+        (uint256 reserveDAfter,, uint256 reserveAAfter,,,) = pool.poolInfo(address(tokenA));
+
+        assertEq(reserveDAfter, reserveDBefore + swapPerStream);
+        assertEq(reserveAAfter, reserveABefore - amountOutPerStream);
+    
+        assertEq(dGlobalBalanceAfter, dGlobalBalanceBefore - dToWtihdraw); //dividing by 2 because globalPool is being withdrawn in 2 stream
+        assertEq(userDPoolBalanceAfter, userDPoolBalanceBefore - dToWtihdraw);
+    }
+
+    function test_withdrawFromGlobalPool_invalidPool() public {
+        vm.startPrank(owner);
+        vm.expectRevert(IRouterErrors.InvalidPool.selector);
+        router.withdrawFromGlobalPool(address(tokenA), 1);
+    }
+
+    function test_withdrawFromGlobalPool_invalidAmount() public {
+        _initGenesisPool(100e18, 100e18);
+        vm.startPrank(owner);
+        vm.expectRevert(IRouterErrors.InvalidAmount.selector);
+        router.withdrawFromGlobalPool(address(tokenA), 1);
+    }
 }

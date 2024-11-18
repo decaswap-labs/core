@@ -207,6 +207,7 @@ contract PoolLogic is Ownable, IPoolLogic {
             if(updatedStream.deposit){
                 IPoolActions(POOL_ADDRESS).enqueueGlobalPoolDepositStream(pairId, updatedStream);
             }else{
+                // @audit for d, as the damount will be very low as compared to the reserve, stream will likely happen
                 IPoolActions(POOL_ADDRESS).enqueueGlobalPoolWithdrawStream(pairId, updatedStream);
             }
         }
