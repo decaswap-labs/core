@@ -189,14 +189,6 @@ contract PoolLogic is Ownable, IPoolLogic {
     }
 
     function _settleDPoolStream(bytes32 pairId, address user, address token, uint256 amount, uint256 streamCount, uint256 swapPerStream, bool isDeposit) internal {
-        /* 
-        * Break stream count and collect dust amount as well. 
-        * Update queue function for array insertion
-        * Make queues for deposits and withdrawals separately
-        * EOA flow, where only after enqueuing, 1 stream will be handled
-        * Bot flow, where after pairId, whole array's 1 stream is executed
-        */  
-
         GlobalPoolStream memory localStream = GlobalPoolStream({
             user: user,
             tokenIn: token,
@@ -211,6 +203,7 @@ contract PoolLogic is Ownable, IPoolLogic {
 
         GlobalPoolStream memory updatedStream = _streamGlobalPoolSingle(localStream);
         if(updatedStream.streamsRemaining != 0) {
+            updatedStream.swapAmountRemaining = updatedStream.swapAmountRemaining - updatedStream.swapPerStream;
             if(updatedStream.deposit){
                 IPoolActions(POOL_ADDRESS).enqueueGlobalPoolDepositStream(pairId, updatedStream);
             }else{
@@ -220,7 +213,6 @@ contract PoolLogic is Ownable, IPoolLogic {
     }
 
     function _streamGlobalPoolSingle(GlobalPoolStream memory stream) internal returns (GlobalPoolStream memory){
-       
         uint256 poolNewStreamRemaining;
         uint256 poolReservesToAdd;
         uint256 changeInD;

@@ -9,6 +9,8 @@ import {IPoolLogic} from "./interfaces/IPoolLogic.sol";
 import {IRouter} from "./interfaces/IRouter.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
+import {console} from "forge-std/console.sol";
+
 
 // @todo decide where to keep events. Router/Pool?
 // @todo remove unused errors
@@ -167,6 +169,8 @@ contract Router is Ownable, ReentrancyGuard, IRouter {
         if (amount % streamCount != 0) {
             swapPerStream = amount / streamCount;
             amount = streamCount * swapPerStream;
+        }else{
+            swapPerStream = amount/streamCount;
         }
 
         IERC20(token).safeTransferFrom(msg.sender, POOL_ADDRESS, amount);

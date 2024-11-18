@@ -21,110 +21,113 @@ contract RouterTest is Deploys {
         vm.stopPrank();
     }
 
-    // function test_depositGlobalPool_success() public {
-    //     uint256 tokenAReserve = 500e18;
-    //     uint256 dToMint = 100e18;
-    //     _initGenesisPool(dToMint, tokenAReserve);
+    function test_depositGlobalPool_oneStreamExecutionAndEnqueueInArray_eoaFlow_success() public {
+        uint256 tokenAReserve = 500e18;
+        uint256 dToMint = 100e18;
+        _initGenesisPool(dToMint, tokenAReserve);
 
-    //     uint256 depositAmount = 200e18;
+        uint256 depositAmount = 200e18;
 
-    //     (uint256 reserveDBefore,, uint256 reserveABefore,,,) = pool.poolInfo(address(tokenA));
+        (uint256 reserveDBefore,, uint256 reserveABefore,,,) = pool.poolInfo(address(tokenA));
 
-    //     uint256 dGlobalBalanceBefore = pool.globalPoolDBalance(pool.GLOBAL_POOL());
-    //     uint256 userDPoolBalanceBefore = pool.userGlobalPoolInfo(owner, address(tokenA));
-    //     uint256 userBalanceBefore = tokenA.balanceOf(owner);
+        uint256 dGlobalBalanceBefore = pool.globalPoolDBalance(pool.GLOBAL_POOL());
+        uint256 userDPoolBalanceBefore = pool.userGlobalPoolInfo(owner, address(tokenA));
+        uint256 userBalanceBefore = tokenA.balanceOf(owner);
 
-    //     uint256 streamCount = poolLogic.calculateStreamCount(depositAmount, pool.globalSlippage(), reserveDBefore);
-    //     uint256 swapPerStream = depositAmount / streamCount;
-    //     (uint256 dOutPerStream,) = poolLogic.getSwapAmountOut(swapPerStream, reserveABefore, 0, reserveDBefore, 0);
+        uint256 streamCount = poolLogic.calculateStreamCount(depositAmount, pool.globalSlippage(), reserveDBefore);
+        uint256 swapPerStream = depositAmount / streamCount;
 
-    //     vm.startPrank(owner);
-    //     router.depositToGlobalPool(address(tokenA), depositAmount);
+        if (depositAmount % streamCount != 0) {
+            depositAmount = streamCount * swapPerStream;
+        }
 
-    //     uint256 userBalanceAfter = tokenA.balanceOf(owner);
+        (uint256 dOutPerStream,) = poolLogic.getSwapAmountOut(swapPerStream, reserveABefore, 0, reserveDBefore, 0);
 
-    //     uint256 dGlobalBalanceAfter = pool.globalPoolDBalance(pool.GLOBAL_POOL());
-    //     uint256 userDPoolBalanceAfter = pool.userGlobalPoolInfo(owner, address(tokenA));
+        vm.startPrank(owner);
+        router.depositToGlobalPool(address(tokenA), depositAmount);
 
-    //     bytes32 pairId = keccak256(abi.encodePacked(tokenA, tokenA));
-    //     (GlobalPoolStream[] memory globalPoolStream, uint256 front, uint256 back) = pool.globalStreamQueue(pairId);
-    //     (uint256 reserveDAfter,, uint256 reserveAAfter,,,) = pool.poolInfo(address(tokenA));
+        uint256 userBalanceAfter = tokenA.balanceOf(owner);
 
-    //     GlobalPoolStream memory globalStream = globalPoolStream[front];
+        uint256 dGlobalBalanceAfter = pool.globalPoolDBalance(pool.GLOBAL_POOL());
+        uint256 userDPoolBalanceAfter = pool.userGlobalPoolInfo(owner, address(tokenA));
 
-    //     assertEq(userBalanceAfter, userBalanceBefore - depositAmount);
+        bytes32 pairId = bytes32(abi.encodePacked(tokenA, tokenA));
+        GlobalPoolStream[] memory globalPoolStream = pool.globalStreamQueueDeposit(pairId);
+        (uint256 reserveDAfter,, uint256 reserveAAfter,,,) = pool.poolInfo(address(tokenA));
 
-    //     assertEq(globalStream.amountOut, dOutPerStream);
-    //     assertEq(globalStream.streamsRemaining, streamCount - 1);
-    //     assertEq(globalStream.swapPerStream, swapPerStream);
-    //     assertEq(globalStream.swapAmountRemaining, depositAmount - swapPerStream);
+        GlobalPoolStream memory globalStream = globalPoolStream[0];
 
-    //     assertEq(reserveDAfter, reserveDBefore - globalStream.amountOut);
-    //     assertEq(reserveAAfter, reserveABefore + swapPerStream);
+        assertEq(userBalanceAfter, userBalanceBefore - depositAmount);
 
-    //     assertEq(dGlobalBalanceAfter, dGlobalBalanceBefore + dOutPerStream);
-    //     assertEq(userDPoolBalanceAfter, userDPoolBalanceBefore + dOutPerStream);
-    // }
+        assertEq(globalStream.amountOut, dOutPerStream);
+        assertEq(globalStream.streamsRemaining, streamCount - 1);
+        assertEq(globalStream.swapPerStream, swapPerStream);
+        assertEq(globalStream.swapAmountRemaining, depositAmount - swapPerStream);
 
-    // function test_depositGlobalPoolCompleteStreaming_success() public {
-    //     uint256 tokenAReserve = 500e18;
-    //     uint256 dToMint = 100e18;
-    //     _initGenesisPool(dToMint, tokenAReserve);
+        assertEq(reserveDAfter, reserveDBefore - globalStream.amountOut);
+        assertEq(reserveAAfter, reserveABefore + swapPerStream);
 
-    //     uint256 depositAmount = 100e18;
+        assertEq(dGlobalBalanceAfter, dGlobalBalanceBefore + dOutPerStream);
+        assertEq(userDPoolBalanceAfter, userDPoolBalanceBefore + dOutPerStream);
+    }
+    
+    
+    function test_depositGlobalPool_oneStreamExecution_eoaFlow_success() public {
+        uint256 tokenAReserve = 500e18;
+        uint256 dToMint = 100e18;
+        _initGenesisPool(dToMint, tokenAReserve);
 
-    //     (uint256 reserveDBefore,, uint256 reserveABefore,,,) = pool.poolInfo(address(tokenA));
+        uint256 depositAmount = 100e18; // for 1 stream
 
-    //     uint256 dGlobalBalanceBefore = pool.globalPoolDBalance(pool.GLOBAL_POOL());
-    //     uint256 userDPoolBalanceBefore = pool.userGlobalPoolInfo(owner, address(tokenA));
-    //     uint256 userBalanceBefore = tokenA.balanceOf(owner);
+        (uint256 reserveDBefore,, uint256 reserveABefore,,,) = pool.poolInfo(address(tokenA));
 
-    //     uint256 streamCount = poolLogic.calculateStreamCount(depositAmount, pool.globalSlippage(), reserveDBefore);
-    //     uint256 swapPerStream = depositAmount / streamCount;
-    //     (uint256 dOutPerStream,) = poolLogic.getSwapAmountOut(swapPerStream, reserveABefore, 0, reserveDBefore, 0);
+        uint256 dGlobalBalanceBefore = pool.globalPoolDBalance(pool.GLOBAL_POOL());
+        uint256 userDPoolBalanceBefore = pool.userGlobalPoolInfo(owner, address(tokenA));
+        uint256 userBalanceBefore = tokenA.balanceOf(owner);
 
-    //     vm.startPrank(owner);
-    //     router.depositToGlobalPool(address(tokenA), depositAmount);
+        uint256 streamCount = poolLogic.calculateStreamCount(depositAmount, pool.globalSlippage(), reserveDBefore);
+        uint256 swapPerStream = depositAmount / streamCount;
 
-    //     uint256 userBalanceAfter = tokenA.balanceOf(owner);
+        if (depositAmount % streamCount != 0) {
+            depositAmount = streamCount * swapPerStream;
+        }
 
-    //     uint256 dGlobalBalanceAfter = pool.globalPoolDBalance(pool.GLOBAL_POOL());
-    //     uint256 userDPoolBalanceAfter = pool.userGlobalPoolInfo(owner, address(tokenA));
+        (uint256 dOutPerStream,) = poolLogic.getSwapAmountOut(swapPerStream, reserveABefore, 0, reserveDBefore, 0);
 
-    //     bytes32 pairId = keccak256(abi.encodePacked(tokenA, tokenA));
-    //     (GlobalPoolStream[] memory globalPoolStream, uint256 front, uint256 back) = pool.globalStreamQueue(pairId);
-    //     (uint256 reserveDAfter,, uint256 reserveAAfter,,,) = pool.poolInfo(address(tokenA));
+        vm.startPrank(owner);
+        router.depositToGlobalPool(address(tokenA), depositAmount);
 
-    //     assertEq(front, back);
+        uint256 userBalanceAfter = tokenA.balanceOf(owner);
 
-    //     GlobalPoolStream memory globalStream = globalPoolStream[front - 1];
+        uint256 dGlobalBalanceAfter = pool.globalPoolDBalance(pool.GLOBAL_POOL());
+        uint256 userDPoolBalanceAfter = pool.userGlobalPoolInfo(owner, address(tokenA));
 
-    //     assertEq(userBalanceAfter, userBalanceBefore - depositAmount);
+        bytes32 pairId = bytes32(abi.encodePacked(tokenA, tokenA));
+        GlobalPoolStream[] memory globalPoolStream = pool.globalStreamQueueDeposit(pairId);
+        (uint256 reserveDAfter,, uint256 reserveAAfter,,,) = pool.poolInfo(address(tokenA));
 
-    //     assertEq(globalStream.amountOut, dOutPerStream);
-    //     assertEq(globalStream.streamsRemaining, streamCount - 1);
-    //     assertEq(globalStream.swapPerStream, swapPerStream);
-    //     assertEq(globalStream.swapAmountRemaining, depositAmount - swapPerStream);
+        assertEq(userBalanceAfter, userBalanceBefore - depositAmount);
+        assertEq(reserveDAfter, reserveDBefore - dOutPerStream);
+        assertEq(reserveAAfter, reserveABefore + swapPerStream);
 
-    //     assertEq(reserveDAfter, reserveDBefore - globalStream.amountOut);
-    //     assertEq(reserveAAfter, reserveABefore + swapPerStream);
+        assertEq(dGlobalBalanceAfter, dGlobalBalanceBefore + dOutPerStream);
+        assertEq(userDPoolBalanceAfter, userDPoolBalanceBefore + dOutPerStream);
 
-    //     assertEq(dGlobalBalanceAfter, dGlobalBalanceBefore + dOutPerStream);
-    //     assertEq(userDPoolBalanceAfter, userDPoolBalanceBefore + dOutPerStream);
-    // }
+        assertEq(globalPoolStream.length,0);
+    }
 
-    // function test_depositGlobalPool_invalidPool() public {
-    //     vm.startPrank(owner);
-    //     vm.expectRevert(IRouterErrors.InvalidPool.selector);
-    //     router.depositToGlobalPool(address(tokenA), 1);
-    // }
+    function test_depositGlobalPool_invalidPool() public {
+        vm.startPrank(owner);
+        vm.expectRevert(IRouterErrors.InvalidPool.selector);
+        router.depositToGlobalPool(address(tokenA), 1);
+    }
 
-    // function test_depositGlobalPool_invalidAmount() public {
-    //     _initGenesisPool(100e18, 100e18);
-    //     vm.startPrank(owner);
-    //     vm.expectRevert(IRouterErrors.InvalidAmount.selector);
-    //     router.depositToGlobalPool(address(tokenA), 0);
-    // }
+    function test_depositGlobalPool_invalidAmount() public {
+        _initGenesisPool(100e18, 100e18);
+        vm.startPrank(owner);
+        vm.expectRevert(IRouterErrors.InvalidAmount.selector);
+        router.depositToGlobalPool(address(tokenA), 0);
+    }
 
     // // ------------------------------------------------- REMOVE GLOBAL POOL ------------------------------- //
 
