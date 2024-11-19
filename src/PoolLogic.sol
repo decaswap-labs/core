@@ -648,9 +648,12 @@ contract PoolLogic is Ownable, IPoolLogic {
         uint256 executionPriceOppositeSwap
     ) internal returns (Swap memory) {
         uint256 initialTokenInAmountIn = currentSwap.swapAmountRemaining;
+        uint256 dustTokenInAmountIn = currentSwap.dustTokenAmount;
+
 
         // tokenInAmountIn is the amount of tokenIn that is remaining to be processed from the selected swap
-        uint256 tokenInAmountIn = initialTokenInAmountIn;
+        // it contains the dust token amount
+        uint256 tokenInAmountIn = initialTokenInAmountIn + dustTokenInAmountIn;
         address tokenIn = currentSwap.tokenIn;
         address tokenOut = currentSwap.tokenOut;
 
@@ -688,7 +691,8 @@ contract PoolLogic is Ownable, IPoolLogic {
             Swap memory oppositeSwap = oppositeSwaps[i];
 
             // tokenOutAmountIn is the amount of tokenOut that is remaining to be processed from the opposite swap
-            uint256 tokenOutAmountIn = oppositeSwap.swapAmountRemaining;
+            // it contains opp swap dust token
+            uint256 tokenOutAmountIn = oppositeSwap.swapAmountRemaining + oppositeSwap.dustTokenAmount;
 
             // we need to calculate the amount of tokenOut for the given tokenInAmountIn -> tokenA -> tokenB
             uint256 tokenOutAmountOut = getAmountOut(tokenInAmountIn, reserveA_In, reserveAOutFromPrice);
@@ -725,6 +729,7 @@ contract PoolLogic is Ownable, IPoolLogic {
 
                 currentSwap.amountOut += tokenOutAmountOut;
                 currentSwap.completed = true; // we don't need to do this
+                currentSwap.dustTokenAmount = 0;
 
                 // 2. we recalculate the oppositeSwap conditions and update it (if tokenInAmountIn == tokenInAmountOut we complete the oppositeSwap)
 

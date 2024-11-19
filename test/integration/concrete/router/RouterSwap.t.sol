@@ -357,12 +357,13 @@ contract RouterTest_Swap is RouterTest {
             uint256 reserveAInFromPrice =
                 poolLogic.getOtherReserveFromPrice(executionPriceOppositeSwap, reserveA_tokenB);
             uint256 reserveAOutFromPrice = poolLogic.getOtherReserveFromPrice(executionPrice, reserveA_tokenA);
+            uint256 oppSwapTokenAmount = oppositeSwap.swapAmountRemaining + oppositeSwap.dustTokenAmount;
 
             uint256 oppTokenInAmountOut =
-                poolLogic.getAmountOut(oppositeSwap.swapAmountRemaining, reserveA_tokenB, reserveAInFromPrice);
+                poolLogic.getAmountOut(oppSwapTokenAmount, reserveA_tokenB, reserveAInFromPrice);
 
             if (swapTokenAAmountInForCalculation > oppTokenInAmountOut) {
-                swapTokenBAmountOut += oppositeSwap.swapAmountRemaining;
+                swapTokenBAmountOut += oppSwapTokenAmount;
                 swapTokenAAmountInForCalculation -= oppTokenInAmountOut;
 
                 if (i == oppositeSwaps.length - 1) {
@@ -447,11 +448,11 @@ contract RouterTest_Swap is RouterTest {
 
         // we calculate the amount of tokenA we need to fully execute the opposite swaps
         uint256 reserveAInFromPrice = poolLogic.getOtherReserveFromPrice(executionPriceOppositeSwap, reserveA_tokenB);
-        uint256 tokenBInOppSwaps = (oppSwapAmount - oppDust) * oppositeSwapsCount;
+        uint256 tokenBInOppSwaps = oppSwapAmount * oppositeSwapsCount; // oppSwapAmount contains the oppDustToken amount
 
         uint256 tokenAOutOppSwaps;
         for (uint256 i = 0; i < oppositeSwapsCount; i++) {
-            tokenAOutOppSwaps += poolLogic.getAmountOut((oppSwapAmount - oppDust), reserveA_tokenB, reserveAInFromPrice);
+            tokenAOutOppSwaps += poolLogic.getAmountOut(oppSwapAmount, reserveA_tokenB, reserveAInFromPrice);
         }
 
         // we get the price of our swap based on the inversed price of opposite swaps
