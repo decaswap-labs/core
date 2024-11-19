@@ -584,10 +584,13 @@ contract PoolLogic is Ownable, IPoolLogic {
                 currentSwap.streamsRemaining = streamCount;
                 currentSwap.swapPerStream = swapPerStream;
 
-                Swap memory updatedSwap = _settleCurrentSwapAgainstPool(currentSwap, executionPrice);
-
-                if (!updatedSwap.completed) {
-                    _insertInOrderBook(pairId, updatedSwap, executionPriceKey);
+                currentSwap = _settleCurrentSwapAgainstPool(currentSwap, executionPrice); // amountOut is updated
+                if (currentSwap.completed) {
+                    IPoolActions(POOL_ADDRESS).transferTokens(
+                        currentSwap.tokenOut, currentSwap.user, currentSwap.amountOut
+                    );
+                } else {
+                    _insertInOrderBook(pairId, currentSwap, executionPriceKey);
                 }
             }
         }
@@ -620,15 +623,14 @@ contract PoolLogic is Ownable, IPoolLogic {
             } // @audit is it worth transferring dust tokens?
         } else {
             uint256 swapRemoved;
+            uint256 count;
             for (uint256 i; i < swaps.length - 1;) {
                 // settle against pool
-                if ((_settleCurrentSwapAgainstPool(swaps[i], swaps[i].executionPrice)).completed) {
-                    IPoolActions(POOL_ADDRESS).dequeueSwap_pairStreamQueue(currentPairId, frontKey, i);
-                    IPoolActions(POOL_ADDRESS).transferTokens(swaps[i].tokenOut, swaps[i].user, swaps[i].amountOut);
+                Swap memory _swap = _settleCurrentSwapAgainstPool(swaps[i], swaps[i].executionPrice);
+                if (_swap.completed) {
                     swapRemoved++;
-                    if (swapRemoved == swaps.length) {
-                        break;
-                    }
+                    IPoolActions(POOL_ADDRESS).dequeueSwap_pairStreamQueue(currentPairId, frontKey, i);
+                    IPoolActions(POOL_ADDRESS).transferTokens(_swap.tokenOut, _swap.user, _swap.amountOut);
                     uint256 lastIndex = swaps.length - swapRemoved;
                     swaps[i] = swaps[lastIndex];
                     delete swaps[lastIndex];
@@ -637,6 +639,10 @@ contract PoolLogic is Ownable, IPoolLogic {
                         ++i;
                     }
                 }
+                if (count == swaps.length - 1) {
+                    break;
+                }
+                count++;
             }
         }
     }
@@ -649,7 +655,6 @@ contract PoolLogic is Ownable, IPoolLogic {
     ) internal returns (Swap memory) {
         uint256 initialTokenInAmountIn = currentSwap.swapAmountRemaining;
         uint256 dustTokenInAmountIn = currentSwap.dustTokenAmount;
-
 
         // tokenInAmountIn is the amount of tokenIn that is remaining to be processed from the selected swap
         // it contains the dust token amount
@@ -783,52 +788,29 @@ contract PoolLogic is Ownable, IPoolLogic {
         uint256 reserveAOutnFromPrice = getOtherReserveFromPrice(executionPriceCurrentSwap, reserveA_In);
         uint256 reserveDOutFromPrice = getOtherReserveFromPrice(executionPriceCurrentSwap, reserveD_In);
 
-        (uint256 dToUpdate, uint256 amountOut) = getSwapAmountOut(
-            currentSwap.swapPerStream, reserveA_In, reserveAOutnFromPrice, reserveD_In, reserveDOutFromPrice
-        );
+        uint256 swapAmountIn = currentSwap.swapPerStream;
 
-        bytes memory updateReservesParams = abi.encode(
-            true, currentSwap.tokenIn, currentSwap.tokenOut, currentSwap.swapPerStream, dToUpdate, amountOut, dToUpdate
-        );
+        // the logic here is that we add, if present, the dust token amount to the swapAmountRemaining on the last swap (when streamsRemaining == 1)
+        if (currentSwap.streamsRemaining == 1) {
+            swapAmountIn += currentSwap.dustTokenAmount;
+        }
+
+        (uint256 dToUpdate, uint256 amountOut) =
+            getSwapAmountOut(swapAmountIn, reserveA_In, reserveAOutnFromPrice, reserveD_In, reserveDOutFromPrice);
+
+        bytes memory updateReservesParams =
+            abi.encode(true, currentSwap.tokenIn, currentSwap.tokenOut, swapAmountIn, dToUpdate, amountOut, dToUpdate);
         IPoolActions(POOL_ADDRESS).updateReserves(updateReservesParams);
 
         currentSwap.streamsRemaining--;
         if (currentSwap.streamsRemaining == 0) {
             currentSwap.completed = true;
-            IPoolActions(POOL_ADDRESS).transferTokens(
-                currentSwap.tokenOut, currentSwap.user, currentSwap.amountOut + amountOut
-            );
-
-            if (currentSwap.dustTokenAmount > 0) {
-                IPoolActions(POOL_ADDRESS).transferTokens(
-                    currentSwap.tokenIn, currentSwap.user, currentSwap.dustTokenAmount
-                );
-            }
-            // completedSwapToken = frontSwap.tokenOut;
-            // swapUser = frontSwap.user;
-            // amountOutSwap = frontSwap.amountOut + amountOut;
         } else {
-            currentSwap.swapAmountRemaining -= currentSwap.swapPerStream;
-            currentSwap.amountOut += amountOut;
+            currentSwap.swapAmountRemaining -= swapAmountIn;
         }
-        // updating frontSwap
-        // updatedSwapData_front = abi.encode(
-        //     pairId,
-        //     amountOut,
-        //     frontSwap.swapAmountRemaining - frontSwap.swapPerStream,
-        //     frontSwap.completed,
-        //     frontSwap.streamsRemaining,
-        //     frontSwap.streamsCount,
-        //     frontSwap.swapPerStream
-        // );
+        currentSwap.amountOut += amountOut;
 
         return currentSwap;
-        // IPoolActions(POOL_ADDRESS).updatePairStreamQueueSwap(updatedSwapData_front);
-
-        // if (frontSwap.streamsRemaining == 0) {
-        //     require(back > front, "Queue is empty");
-        //     IPoolActions(POOL_ADDRESS).dequeueSwap_pairStreamQueue(pairId);
-        // }
     }
 
     function _insertInOrderBook(bytes32 pairId, Swap memory _swap, uint256 executionPriceKey) internal {
