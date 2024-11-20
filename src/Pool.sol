@@ -84,8 +84,8 @@ contract Pool is IPool, Ownable {
     mapping(address => mapping(address => uint256)) public override userGlobalPoolInfo;
     mapping(address => uint256) public override globalPoolDBalance;
 
-    mapping(bytes32 => mapping(uint256 => Swap[])) public  orderBookQueue;
-    mapping(bytes32 => uint256) public override highestPriceMarker; 
+    mapping(bytes32 => mapping(uint256 => Swap[])) public orderBookQueue;
+    mapping(bytes32 => uint256) public override highestPriceMarker;
 
     uint256 public SWAP_IDS = 0;
 
@@ -211,41 +211,39 @@ contract Pool is IPool, Ownable {
         mapPairId_globalPoolQueue_deposit[pairId].push(globaPoolStream);
     }
 
-    function dequeueGlobalPoolDepositStream(bytes32 pairId, uint256 index)
-        external
-        override
-        onlyPoolLogic
-    {
+    function dequeueGlobalPoolDepositStream(bytes32 pairId, uint256 index) external override onlyPoolLogic {
         uint256 lastIndex = mapPairId_globalPoolQueue_deposit[pairId].length - 1;
         mapPairId_globalPoolQueue_deposit[pairId][index] = mapPairId_globalPoolQueue_deposit[pairId][lastIndex];
-        mapPairId_globalPoolQueue_deposit[pairId].pop();    
+        mapPairId_globalPoolQueue_deposit[pairId].pop();
     }
-
 
     function enqueueGlobalPoolWithdrawStream(bytes32 pairId, GlobalPoolStream memory globaPoolStream)
         external
         override
-        onlyPoolLogic 
+        onlyPoolLogic
     {
         mapPairId_globalPoolQueue_withdraw[pairId].push(globaPoolStream);
     }
 
-    function dequeueGlobalPoolWithdrawStream(bytes32 pairId,  uint256 index)
+    function dequeueGlobalPoolWithdrawStream(bytes32 pairId, uint256 index) external override onlyPoolLogic {
+        uint256 lastIndex = mapPairId_globalPoolQueue_withdraw[pairId].length - 1;
+        mapPairId_globalPoolQueue_withdraw[pairId][index] = mapPairId_globalPoolQueue_withdraw[pairId][lastIndex];
+        mapPairId_globalPoolQueue_withdraw[pairId].pop();
+    }
+
+    function updateGlobalPoolDepositStream(GlobalPoolStream memory stream, bytes32 pairId, uint256 index)
         external
         override
         onlyPoolLogic
     {
-        uint256 lastIndex = mapPairId_globalPoolQueue_withdraw[pairId].length - 1;
-        mapPairId_globalPoolQueue_withdraw[pairId][index] = mapPairId_globalPoolQueue_withdraw[pairId][lastIndex];
-        mapPairId_globalPoolQueue_withdraw[pairId].pop();  
-    }
-
-    function updateGlobalPoolDepositStream(GlobalPoolStream memory stream, bytes32 pairId, uint256 index) external override onlyPoolLogic {
         mapPairId_globalPoolQueue_deposit[pairId][index] = stream;
-
     }
 
-    function updateGlobalPoolWithdrawStream(GlobalPoolStream memory stream, bytes32 pairId, uint256 index) external override onlyPoolLogic {
+    function updateGlobalPoolWithdrawStream(GlobalPoolStream memory stream, bytes32 pairId, uint256 index)
+        external
+        override
+        onlyPoolLogic
+    {
         mapPairId_globalPoolQueue_withdraw[pairId][index] = stream;
     }
 
@@ -578,9 +576,7 @@ contract Pool is IPool, Ownable {
         override
         returns (GlobalPoolStream[] memory globalPoolStream)
     {
-        return (
-            mapPairId_globalPoolQueue_deposit[pairId]
-        );
+        return (mapPairId_globalPoolQueue_deposit[pairId]);
     }
 
     function globalStreamQueueWithdraw(bytes32 pairId)
@@ -589,9 +585,7 @@ contract Pool is IPool, Ownable {
         override
         returns (GlobalPoolStream[] memory globalPoolStream)
     {
-        return (
-            mapPairId_globalPoolQueue_withdraw[pairId]
-        );
+        return (mapPairId_globalPoolQueue_withdraw[pairId]);
     }
 
     function getPoolId(address tokenA, address tokenB) public pure returns (bytes32) {
@@ -603,11 +597,11 @@ contract Pool is IPool, Ownable {
         return SWAP_IDS++;
     }
 
-    function setHighestPriceMarker(bytes32 pairId, uint256 value) external override onlyPoolLogic{
+    function setHighestPriceMarker(bytes32 pairId, uint256 value) external override onlyPoolLogic {
         highestPriceMarker[pairId] = value;
     }
 
-    function orderBook(bytes32 pairId, uint256 priceKey) external view override returns (Swap[] memory){
+    function orderBook(bytes32 pairId, uint256 priceKey) external view override returns (Swap[] memory) {
         return orderBookQueue[pairId][priceKey];
     }
 }

@@ -70,8 +70,7 @@ contract RouterTest is Deploys {
         assertEq(dGlobalBalanceAfter, dGlobalBalanceBefore + dOutPerStream);
         assertEq(userDPoolBalanceAfter, userDPoolBalanceBefore + dOutPerStream);
     }
-    
-    
+
     function test_depositGlobalPool_oneStreamExecution_eoaFlow_success() public {
         uint256 tokenAReserve = 500e18;
         uint256 dToMint = 100e18;
@@ -113,7 +112,7 @@ contract RouterTest is Deploys {
         assertEq(dGlobalBalanceAfter, dGlobalBalanceBefore + dOutPerStream);
         assertEq(userDPoolBalanceAfter, userDPoolBalanceBefore + dOutPerStream);
 
-        assertEq(globalPoolStream.length,0);
+        assertEq(globalPoolStream.length, 0);
     }
 
     function test_depositGlobalPool_invalidPool() public {
@@ -136,7 +135,7 @@ contract RouterTest is Deploys {
         uint256 dToMint = 1000e18;
         _initGenesisPool(dToMint, tokenAReserve);
 
-        uint256 depositAmount = 200e18; 
+        uint256 depositAmount = 200e18;
 
         vm.startPrank(owner);
         router.depositToGlobalPool(address(tokenA), depositAmount);
@@ -159,8 +158,7 @@ contract RouterTest is Deploys {
 
         bytes32 pairId = bytes32(abi.encodePacked(tokenA, tokenA));
 
-        GlobalPoolStream[] memory globalPoolStream =
-            pool.globalStreamQueueWithdraw(pairId);
+        GlobalPoolStream[] memory globalPoolStream = pool.globalStreamQueueWithdraw(pairId);
 
         uint256 dGlobalBalanceAfter = pool.globalPoolDBalance(pool.GLOBAL_POOL());
         uint256 userDPoolBalanceAfter = pool.userGlobalPoolInfo(owner, address(tokenA));
@@ -176,8 +174,8 @@ contract RouterTest is Deploys {
 
         assertEq(reserveDAfter, reserveDBefore + swapPerStream);
         assertEq(reserveAAfter, reserveABefore - amountOutPerStream);
-      
-        assertEq(dGlobalBalanceAfter, dGlobalBalanceBefore - globalStream.swapPerStream); 
+
+        assertEq(dGlobalBalanceAfter, dGlobalBalanceBefore - globalStream.swapPerStream);
         assertEq(userDPoolBalanceAfter, userDPoolBalanceBefore - globalStream.swapPerStream);
     }
 
@@ -215,7 +213,7 @@ contract RouterTest is Deploys {
 
         assertEq(reserveDAfter, reserveDBefore + swapPerStream);
         assertEq(reserveAAfter, reserveABefore - amountOutPerStream);
-    
+
         assertEq(dGlobalBalanceAfter, dGlobalBalanceBefore - dToWtihdraw); //dividing by 2 because globalPool is being withdrawn in 2 stream
         assertEq(userDPoolBalanceAfter, userDPoolBalanceBefore - dToWtihdraw);
         assertEq(userBalanceAfter, userTokenBalanceBefore + amountOutPerStream);
@@ -245,14 +243,14 @@ contract RouterTest is Deploys {
         uint256 streamCount = poolLogic.calculateStreamCount(depositAmount, pool.globalSlippage(), dToMint);
 
         vm.startPrank(owner);
-        for(uint256 i=0; i<10; i++){
+        for (uint256 i = 0; i < 10; i++) {
             router.depositToGlobalPool(address(tokenA), depositAmount);
         }
 
         bytes32 pairId = bytes32(abi.encodePacked(tokenA, tokenA));
         GlobalPoolStream[] memory globalPoolStream = pool.globalStreamQueueDeposit(pairId);
 
-        for(uint256 i=0; i<globalPoolStream.length; i++){
+        for (uint256 i = 0; i < globalPoolStream.length; i++) {
             assertEq(globalPoolStream[i].streamsRemaining, streamCount - 1);
         }
 
@@ -260,7 +258,7 @@ contract RouterTest is Deploys {
 
         GlobalPoolStream[] memory globalPoolStreamAfter = pool.globalStreamQueueDeposit(pairId);
 
-        for(uint256 i=0; i<globalPoolStreamAfter.length; i++){
+        for (uint256 i = 0; i < globalPoolStreamAfter.length; i++) {
             assertEq(globalPoolStreamAfter[i].streamsRemaining, streamCount - 2);
         }
     }
@@ -275,14 +273,14 @@ contract RouterTest is Deploys {
         uint256 streamCount = poolLogic.calculateStreamCount(depositAmount, pool.globalSlippage(), dToMint);
 
         vm.startPrank(owner);
-        for(uint256 i=0; i<10; i++){
+        for (uint256 i = 0; i < 10; i++) {
             router.depositToGlobalPool(address(tokenA), depositAmount);
         }
 
         bytes32 pairId = bytes32(abi.encodePacked(tokenA, tokenA));
         GlobalPoolStream[] memory globalPoolStream = pool.globalStreamQueueDeposit(pairId);
 
-        for(uint256 i=0; i<globalPoolStream.length; i++){
+        for (uint256 i = 0; i < globalPoolStream.length; i++) {
             assertEq(globalPoolStream[i].streamsRemaining, streamCount - 1);
         }
 
@@ -290,11 +288,12 @@ contract RouterTest is Deploys {
 
         GlobalPoolStream[] memory globalPoolStreamAfter = pool.globalStreamQueueDeposit(pairId);
 
-        assertEq(globalPoolStreamAfter.length,0);
+        assertEq(globalPoolStreamAfter.length, 0);
     }
     /*
     * @notice, for first swap, 10 stream, for 2nd 5 streams
-    */ 
+    */
+
     function test_processGlobalStreamPairWithdraw_executeOneStreamOfMultipleObjects_success() public {
         uint256 tokenAReserve = 100e18;
         uint256 dToMint = 2000e18;
@@ -311,17 +310,18 @@ contract RouterTest is Deploys {
 
         (uint256 reserveDBefore,,,,,) = pool.poolInfo(address(tokenA));
 
-        uint256 streamCount = poolLogic.calculateStreamCount(dBalanceToWithdraw/totalTx, pool.globalSlippage(), reserveDBefore);
+        uint256 streamCount =
+            poolLogic.calculateStreamCount(dBalanceToWithdraw / totalTx, pool.globalSlippage(), reserveDBefore);
 
-        uint256 dToWithdraw = dBalanceToWithdraw/totalTx;
+        uint256 dToWithdraw = dBalanceToWithdraw / totalTx;
 
-        for(uint256 i=0; i<totalTx; i++){
+        for (uint256 i = 0; i < totalTx; i++) {
             router.withdrawFromGlobalPool(address(tokenA), dToWithdraw);
         }
         bytes32 pairId = bytes32(abi.encodePacked(tokenA, tokenA));
         GlobalPoolStream[] memory globalPoolStreamBefore = pool.globalStreamQueueWithdraw(pairId);
 
-        for(uint256 i=0; i<globalPoolStreamBefore.length; i++){
+        for (uint256 i = 0; i < globalPoolStreamBefore.length; i++) {
             console.log(globalPoolStreamBefore[i].streamsRemaining);
             // assertEq(globalPoolStream[i].streamsRemaining, globalPoolStream[i].streamCount - 1);
         }
@@ -331,11 +331,10 @@ contract RouterTest is Deploys {
         // bytes32 pairId = bytes32(abi.encodePacked(tokenA, tokenA));
         GlobalPoolStream[] memory globalPoolStream = pool.globalStreamQueueWithdraw(pairId);
 
-        for(uint256 i=0; i<globalPoolStream.length; i++){
+        for (uint256 i = 0; i < globalPoolStream.length; i++) {
             console.log(globalPoolStream[i].streamsRemaining);
             assertEq(globalPoolStream[i].streamsRemaining, globalPoolStream[i].streamCount - 1);
         }
-
     }
 
     function test_processGlobalStreamPairWithdraw_executeOneStreamOfMultipleObjectsAndEmptyArray_success() public {
@@ -357,13 +356,12 @@ contract RouterTest is Deploys {
         router.withdrawFromGlobalPool(address(tokenA), dBalanceToWithdraw);
         bytes32 pairId = bytes32(abi.encodePacked(tokenA, tokenA));
         GlobalPoolStream[] memory globalPoolStreamBefore = pool.globalStreamQueueWithdraw(pairId);
-        
-        for(uint256 i=0; i<globalPoolStreamBefore[0].streamCount; i++ ){
+
+        for (uint256 i = 0; i < globalPoolStreamBefore[0].streamCount; i++) {
             router.processGlobalStreamPairWithdraw(address(tokenA));
         }
 
         GlobalPoolStream[] memory globalPoolStreamAfter = pool.globalStreamQueueWithdraw(pairId);
-        assertEq(globalPoolStreamAfter.length,0);
-
+        assertEq(globalPoolStreamAfter.length, 0);
     }
 }

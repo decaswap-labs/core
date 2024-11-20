@@ -166,7 +166,13 @@ contract PoolLogic is Ownable, IPoolLogic {
         _streamLiquidity(token, token);
     }
 
-    function depositToGlobalPool(address user, address token, uint256 amount, uint256 streamCount, uint256 swapPerStream) external override onlyRouter {
+    function depositToGlobalPool(
+        address user,
+        address token,
+        uint256 amount,
+        uint256 streamCount,
+        uint256 swapPerStream
+    ) external override onlyRouter {
         bytes32 pairId = bytes32(abi.encodePacked(token, token));
         _settleDPoolStream(pairId, user, token, amount, streamCount, swapPerStream, true);
 
@@ -180,7 +186,7 @@ contract PoolLogic is Ownable, IPoolLogic {
 
         (uint256 reserveD,,,,,) = pool.poolInfo(address(token));
         uint256 streamCount = calculateStreamCount(amount, pool.globalSlippage(), reserveD);
-        uint256 swapPerStream = amount/streamCount;
+        uint256 swapPerStream = amount / streamCount;
 
         _settleDPoolStream(pairId, user, token, amount, streamCount, swapPerStream, false);
 
@@ -188,7 +194,15 @@ contract PoolLogic is Ownable, IPoolLogic {
         // _streamGlobalStream(token);
     }
 
-    function _settleDPoolStream(bytes32 pairId, address user, address token, uint256 amount, uint256 streamCount, uint256 swapPerStream, bool isDeposit) internal {
+    function _settleDPoolStream(
+        bytes32 pairId,
+        address user,
+        address token,
+        uint256 amount,
+        uint256 streamCount,
+        uint256 swapPerStream,
+        bool isDeposit
+    ) internal {
         GlobalPoolStream memory localStream = GlobalPoolStream({
             user: user,
             tokenIn: token,
@@ -202,30 +216,29 @@ contract PoolLogic is Ownable, IPoolLogic {
         });
 
         GlobalPoolStream memory updatedStream = _streamGlobalPoolSingle(localStream);
-        if(updatedStream.streamsRemaining != 0) {
+        if (updatedStream.streamsRemaining != 0) {
             updatedStream.swapAmountRemaining = updatedStream.swapAmountRemaining - updatedStream.swapPerStream;
-            if(updatedStream.deposit){
+            if (updatedStream.deposit) {
                 IPoolActions(POOL_ADDRESS).enqueueGlobalPoolDepositStream(pairId, updatedStream);
-            }else{
+            } else {
                 // @audit for d, as the damount will be very low as compared to the reserve, stream will likely happen
                 IPoolActions(POOL_ADDRESS).enqueueGlobalPoolWithdrawStream(pairId, updatedStream);
             }
-        }else{
-            if(!updatedStream.deposit) {
+        } else {
+            if (!updatedStream.deposit) {
                 IPoolActions(POOL_ADDRESS).transferTokens(token, user, updatedStream.amountOut);
             }
         }
     }
 
-    function _streamGlobalPoolSingle(GlobalPoolStream memory stream) internal returns (GlobalPoolStream memory){
+    function _streamGlobalPoolSingle(GlobalPoolStream memory stream) internal returns (GlobalPoolStream memory) {
         uint256 poolNewStreamRemaining;
         uint256 poolReservesToAdd;
         uint256 changeInD;
         uint256 amountOut;
 
-        if(stream.deposit){
-            (poolNewStreamRemaining,  poolReservesToAdd,  changeInD) =
-                _streamDGlobal(stream);
+        if (stream.deposit) {
+            (poolNewStreamRemaining, poolReservesToAdd, changeInD) = _streamDGlobal(stream);
             stream.amountOut += changeInD;
 
             // // update reserves
@@ -237,10 +250,8 @@ contract PoolLogic is Ownable, IPoolLogic {
 
             bytes memory updatedGlobalPoolUserBalanace = abi.encode(stream.user, stream.tokenIn, changeInD, true);
             IPoolActions(POOL_ADDRESS).updateGlobalPoolUserBalance(updatedGlobalPoolUserBalanace);
-
-        }else{
-            (poolNewStreamRemaining,poolReservesToAdd, amountOut) =
-                    _streamDGlobal(stream);
+        } else {
+            (poolNewStreamRemaining, poolReservesToAdd, amountOut) = _streamDGlobal(stream);
             stream.amountOut = amountOut;
 
             // // update reserves
@@ -258,8 +269,6 @@ contract PoolLogic is Ownable, IPoolLogic {
         return stream;
     }
 
- 
-
     function processGlobalStreamPairWithdraw(address token) external override onlyRouter {
         // _streamGlobalStream(token);
         _streamGlobalPoolWithdrawMultiple(token);
@@ -267,73 +276,70 @@ contract PoolLogic is Ownable, IPoolLogic {
 
     function processGlobalStreamPairDeposit(address token) external override onlyRouter {
         _streamGlobalPoolDepositMultiple(token);
-
     }
 
     function _streamGlobalPoolDepositMultiple(address token) internal {
         bytes32 pairId = bytes32(abi.encodePacked(token, token));
         GlobalPoolStream[] memory globalPoolStream = IPoolActions(POOL_ADDRESS).globalStreamQueueDeposit(pairId);
-        if(globalPoolStream.length > 0) {
+        if (globalPoolStream.length > 0) {
             uint256 streamRemoved;
             uint256 count;
 
-        for(uint256 i=0; i< globalPoolStream.length;){
-            GlobalPoolStream memory stream = _streamGlobalPoolSingle(globalPoolStream[i]);
-            if(stream.streamsRemaining == 0){
-                streamRemoved++;    
-                IPoolActions(POOL_ADDRESS).dequeueGlobalPoolDepositStream(pairId, i);
-                uint256 lastIndex = globalPoolStream.length - streamRemoved;
-                globalPoolStream[i] = globalPoolStream[lastIndex];
-                delete globalPoolStream[lastIndex];
-            }else{
-                IPoolActions(POOL_ADDRESS).updateGlobalPoolDepositStream(stream, pairId, i);
-                unchecked {
-                    i++;
+            for (uint256 i = 0; i < globalPoolStream.length;) {
+                GlobalPoolStream memory stream = _streamGlobalPoolSingle(globalPoolStream[i]);
+                if (stream.streamsRemaining == 0) {
+                    streamRemoved++;
+                    IPoolActions(POOL_ADDRESS).dequeueGlobalPoolDepositStream(pairId, i);
+                    uint256 lastIndex = globalPoolStream.length - streamRemoved;
+                    globalPoolStream[i] = globalPoolStream[lastIndex];
+                    delete globalPoolStream[lastIndex];
+                } else {
+                    IPoolActions(POOL_ADDRESS).updateGlobalPoolDepositStream(stream, pairId, i);
+                    unchecked {
+                        i++;
+                    }
                 }
+                if (count == globalPoolStream.length - 1) {
+                    break;
+                }
+                count++;
             }
-            if(count == globalPoolStream.length -1){
-                break;
-            }
-            count++;
-        }
         }
     }
     // @TODO NEED TO FIX THIS
+
     function _streamGlobalPoolWithdrawMultiple(address token) internal {
         bytes32 pairId = bytes32(abi.encodePacked(token, token));
         GlobalPoolStream[] memory globalPoolStream = IPoolActions(POOL_ADDRESS).globalStreamQueueWithdraw(pairId);
-        
-        if(globalPoolStream.length>0){
-        
-        uint256 streamRemoved;
-        uint256 count;
-        
-        for(uint256 i=0; i< globalPoolStream.length;){
-           
-            GlobalPoolStream memory stream = _streamGlobalPoolSingle(globalPoolStream[i]);
-           
-            if(stream.streamsRemaining == 0){
-               
-                streamRemoved++;
-                IPoolActions(POOL_ADDRESS).dequeueGlobalPoolWithdrawStream(pairId, i);
-                IPoolActions(POOL_ADDRESS).transferTokens(globalPoolStream[i].tokenIn, globalPoolStream[i].user, globalPoolStream[i].amountOut);
-                uint256 lastIndex = globalPoolStream.length - streamRemoved;
-                globalPoolStream[i] = globalPoolStream[lastIndex];
-                delete globalPoolStream[lastIndex];          
-            }else{
-          
-                IPoolActions(POOL_ADDRESS).updateGlobalPoolWithdrawStream(stream, pairId, i);
-                unchecked {
-                    i++;
-                }
-            }
-            if(count == globalPoolStream.length -1){
-                break;
-            }
-            count++;
-        }
-        }
 
+        if (globalPoolStream.length > 0) {
+            uint256 streamRemoved;
+            uint256 count;
+
+            for (uint256 i = 0; i < globalPoolStream.length;) {
+                GlobalPoolStream memory stream = _streamGlobalPoolSingle(globalPoolStream[i]);
+
+                if (stream.streamsRemaining == 0) {
+                    streamRemoved++;
+                    IPoolActions(POOL_ADDRESS).dequeueGlobalPoolWithdrawStream(pairId, i);
+                    IPoolActions(POOL_ADDRESS).transferTokens(
+                        globalPoolStream[i].tokenIn, globalPoolStream[i].user, globalPoolStream[i].amountOut
+                    );
+                    uint256 lastIndex = globalPoolStream.length - streamRemoved;
+                    globalPoolStream[i] = globalPoolStream[lastIndex];
+                    delete globalPoolStream[lastIndex];
+                } else {
+                    IPoolActions(POOL_ADDRESS).updateGlobalPoolWithdrawStream(stream, pairId, i);
+                    unchecked {
+                        i++;
+                    }
+                }
+                if (count == globalPoolStream.length - 1) {
+                    break;
+                }
+                count++;
+            }
+        }
     }
 
     // function _enqueueGlobalPoolStream(bytes32 pairId, address user, address token, uint256 amount, bool isDeposit)
@@ -344,14 +350,13 @@ contract PoolLogic is Ownable, IPoolLogic {
 
     //     // START FROM HERE
 
-    //     /* 
-    //     * Break stream count and collect dust amount as well. 
+    //     /*
+    //     * Break stream count and collect dust amount as well.
     //     * Update queue function for array insertion
     //     * Make queues for deposits and withdrawals separately
     //     * EOA flow, where only after enqueuing, 1 stream will be handled
     //     * Bot flow, where after pairId, whole array's 1 stream is executed
-    //     */  
-
+    //     */
 
     //     uint256 swapPerStream = amount / streamCount;
     //     if (amount % streamCount != 0) {
@@ -1003,7 +1008,7 @@ contract PoolLogic is Ownable, IPoolLogic {
         return calculateStreamCount(amountIn, pool.pairSlippage(poolId), minPoolDepth);
     }
 
-    function getStreamCountForDPool(address tokenIn, uint256 amountIn) external override view returns (uint256) {
+    function getStreamCountForDPool(address tokenIn, uint256 amountIn) external view override returns (uint256) {
         (uint256 reserveD,,,,,) = pool.poolInfo(address(tokenIn));
         return calculateStreamCount(amountIn, pool.globalSlippage(), reserveD);
     }

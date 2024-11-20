@@ -11,7 +11,6 @@ import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import {console} from "forge-std/console.sol";
 
-
 // @todo decide where to keep events. Router/Pool?
 // @todo remove unused errors
 
@@ -162,15 +161,15 @@ contract Router is Ownable, ReentrancyGuard, IRouter {
     function depositToGlobalPool(address token, uint256 amount) external override nonReentrant {
         if (!poolExist(token)) revert InvalidPool();
         if (amount == 0) revert InvalidAmount();
-    
-        // calculate and remove dust residual        
+
+        // calculate and remove dust residual
         uint256 streamCount = IPoolLogic(poolStates.POOL_LOGIC()).getStreamCountForDPool(token, amount);
         uint256 swapPerStream;
         if (amount % streamCount != 0) {
             swapPerStream = amount / streamCount;
             amount = streamCount * swapPerStream;
-        }else{
-            swapPerStream = amount/streamCount;
+        } else {
+            swapPerStream = amount / streamCount;
         }
 
         IERC20(token).safeTransferFrom(msg.sender, POOL_ADDRESS, amount);

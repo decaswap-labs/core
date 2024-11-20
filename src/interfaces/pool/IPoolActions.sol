@@ -44,13 +44,10 @@ interface IPoolActions {
     // function updateGlobalStreamQueueStream(bytes memory updatedStream) external;
     function transferTokens(address tokenAddress, address to, uint256 amount) external;
     function sortPairPendingQueue(bytes32 pairId) external;
-    function globalStreamQueueDeposit(bytes32 pairId)
-        external
-        returns (GlobalPoolStream[] memory globalPoolStream);
-    function globalStreamQueueWithdraw(bytes32 pairId)
-        external
-        returns (GlobalPoolStream[] memory globalPoolStream);
-    function updatePairStreamQueueSwap(bytes memory updatedSwapData, uint256 executionPriceKey, uint256 index) external;
+    function globalStreamQueueDeposit(bytes32 pairId) external returns (GlobalPoolStream[] memory globalPoolStream);
+    function globalStreamQueueWithdraw(bytes32 pairId) external returns (GlobalPoolStream[] memory globalPoolStream);
+    function updatePairStreamQueueSwap(bytes memory updatedSwapData, uint256 executionPriceKey, uint256 index)
+        external;
     function updatePoolLogicAddress(address) external;
     function updateVaultAddress(address) external;
     function updateRouterAddress(address) external;
