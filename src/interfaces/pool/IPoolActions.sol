@@ -29,6 +29,8 @@ interface IPoolActions {
     function dequeueLiquidityStream_streamQueue(bytes32 pairId) external;
     function dequeueRemoveLiquidity_streamQueue(address token) external;
     function dequeueGlobalStream_streamQueue(bytes32 pairId) external;
+    function dequeueGlobalPoolDepositStream(bytes32 pairId, uint256 index) external;
+    function dequeueGlobalPoolWithdrawStream(bytes32 pairId, uint256 index) external;
     // updateReservesParams encoding format => (bool aToB, address tokenA, address tokenB, uint256 reserveA_A, uint256 reserveD_A,uint256 reserveA_B, uint256 reserveD_B)
     function updateReserves(bytes memory updateReservesParams) external;
     // updateReservesParams encoding format => (address tokenA, address tokenB, uint256 reserveA_A, uint256 reserveA_B, uint256 changeInD)
@@ -54,6 +56,8 @@ interface IPoolActions {
     function updateRouterAddress(address) external;
     function updatePairSlippage(address, address, uint256) external;
     function updateGlobalSlippage(uint256) external;
+    function updateGlobalPoolDepositStream(GlobalPoolStream[] memory stream, bytes32 pairId) external;
+    function updateGlobalPoolWithdrawStream(GlobalPoolStream[] memory stream, bytes32 pairId) external;
 
     function updateOrderBook(bytes32, Swap memory swap, uint256) external;
 

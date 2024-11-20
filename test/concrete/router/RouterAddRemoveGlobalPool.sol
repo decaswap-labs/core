@@ -199,9 +199,10 @@ contract RouterTest is Deploys {
         uint256 userBalanceBefore = tokenA.balanceOf(owner);
 
         uint256 streamCount = poolLogic.calculateStreamCount(dToWtihdraw, pool.globalSlippage(), reserveDBefore);
-        console.log(streamCount);
         uint256 swapPerStream = dToWtihdraw / streamCount;
         uint256 amountOutPerStream = poolLogic.getSwapAmountOutFromD(swapPerStream, reserveABefore, reserveDBefore);
+
+        uint256 userTokenBalanceBefore = tokenA.balanceOf(owner);
 
         router.withdrawFromGlobalPool(address(tokenA), dToWtihdraw);
 
@@ -217,6 +218,7 @@ contract RouterTest is Deploys {
     
         assertEq(dGlobalBalanceAfter, dGlobalBalanceBefore - dToWtihdraw); //dividing by 2 because globalPool is being withdrawn in 2 stream
         assertEq(userDPoolBalanceAfter, userDPoolBalanceBefore - dToWtihdraw);
+        assertEq(userBalanceAfter, userTokenBalanceBefore + amountOutPerStream);
     }
 
     function test_withdrawFromGlobalPool_invalidPool() public {
@@ -230,5 +232,131 @@ contract RouterTest is Deploys {
         vm.startPrank(owner);
         vm.expectRevert(IRouterErrors.InvalidAmount.selector);
         router.withdrawFromGlobalPool(address(tokenA), 1);
+    }
+
+    // ------------------------------------------------ EOA FLOW -------------------------------------------- //
+    function test_processGlobalStreamPairDeposit_executeOneStreamOfMultipleObjects_success() public {
+        uint256 tokenAReserve = 50000e18;
+        uint256 dToMint = 100e18;
+        _initGenesisPool(dToMint, tokenAReserve);
+
+        uint256 depositAmount = 300e18; //for 3 streams
+
+        uint256 streamCount = poolLogic.calculateStreamCount(depositAmount, pool.globalSlippage(), dToMint);
+
+        vm.startPrank(owner);
+        for(uint256 i=0; i<10; i++){
+            router.depositToGlobalPool(address(tokenA), depositAmount);
+        }
+
+        bytes32 pairId = bytes32(abi.encodePacked(tokenA, tokenA));
+        GlobalPoolStream[] memory globalPoolStream = pool.globalStreamQueueDeposit(pairId);
+
+        for(uint256 i=0; i<globalPoolStream.length; i++){
+            assertEq(globalPoolStream[i].streamsRemaining, streamCount - 1);
+        }
+
+        router.processGlobalStreamPairDeposit(address(tokenA));
+
+        GlobalPoolStream[] memory globalPoolStreamAfter = pool.globalStreamQueueDeposit(pairId);
+
+        for(uint256 i=0; i<globalPoolStreamAfter.length; i++){
+            assertEq(globalPoolStreamAfter[i].streamsRemaining, streamCount - 2);
+        }
+    }
+
+    function test_processGlobalStreamPairDeposit_executeOneStreamOfMultipleObjectsAndEmptyTheArray_success() public {
+        uint256 tokenAReserve = 50000e18;
+        uint256 dToMint = 100e18;
+        _initGenesisPool(dToMint, tokenAReserve);
+
+        uint256 depositAmount = 200e18; //for 2 streams
+
+        uint256 streamCount = poolLogic.calculateStreamCount(depositAmount, pool.globalSlippage(), dToMint);
+
+        vm.startPrank(owner);
+        for(uint256 i=0; i<10; i++){
+            router.depositToGlobalPool(address(tokenA), depositAmount);
+        }
+
+        bytes32 pairId = bytes32(abi.encodePacked(tokenA, tokenA));
+        GlobalPoolStream[] memory globalPoolStream = pool.globalStreamQueueDeposit(pairId);
+
+        for(uint256 i=0; i<globalPoolStream.length; i++){
+            assertEq(globalPoolStream[i].streamsRemaining, streamCount - 1);
+        }
+
+        router.processGlobalStreamPairDeposit(address(tokenA));
+
+        GlobalPoolStream[] memory globalPoolStreamAfter = pool.globalStreamQueueDeposit(pairId);
+
+        assertEq(globalPoolStreamAfter.length,0);
+    }
+    /*
+    * @notice, for first swap, 10 stream, for 2nd 5 streams
+    */ 
+    function test_processGlobalStreamPairWithdraw_executeOneStreamOfMultipleObjects_success() public {
+        uint256 tokenAReserve = 100e18;
+        uint256 dToMint = 2000e18;
+        _initGenesisPool(dToMint, tokenAReserve);
+
+        uint256 depositAmount = 4000e18;
+
+        uint256 totalTx = 2;
+
+        vm.startPrank(owner);
+        router.depositToGlobalPool(address(tokenA), depositAmount);
+
+        uint256 dBalanceToWithdraw = pool.userGlobalPoolInfo(owner, address(tokenA));
+
+        (uint256 reserveDBefore,,,,,) = pool.poolInfo(address(tokenA));
+
+        uint256 streamCount = poolLogic.calculateStreamCount(dBalanceToWithdraw/totalTx, pool.globalSlippage(), reserveDBefore);
+
+        uint256 dToWithdraw = dBalanceToWithdraw/totalTx;
+
+        for(uint256 i=0; i<totalTx; i++){
+            router.withdrawFromGlobalPool(address(tokenA), dToWithdraw);
+        }
+
+        router.processGlobalStreamPairWithdraw(address(tokenA));
+
+        bytes32 pairId = bytes32(abi.encodePacked(tokenA, tokenA));
+        GlobalPoolStream[] memory globalPoolStream = pool.globalStreamQueueWithdraw(pairId);
+
+        for(uint256 i=0; i<globalPoolStream.length; i++){
+            assertEq(globalPoolStream[i].streamsRemaining, globalPoolStream[i].streamCount - 1);
+        }
+
+    }
+
+    function test_processGlobalStreamPairWithdraw_executeOneStreamOfMultipleObjectsAndEmptyArray_success() public {
+        uint256 tokenAReserve = 100e18;
+        uint256 dToMint = 2000e18;
+        _initGenesisPool(dToMint, tokenAReserve);
+
+        uint256 depositAmount = 4000e18; //for 3 streams
+
+        vm.startPrank(owner);
+        router.depositToGlobalPool(address(tokenA), depositAmount);
+
+        uint256 dBalanceToWithdraw = pool.userGlobalPoolInfo(owner, address(tokenA));
+
+        (uint256 reserveDBefore,,,,,) = pool.poolInfo(address(tokenA));
+
+        uint256 streamCount = poolLogic.calculateStreamCount(dBalanceToWithdraw, pool.globalSlippage(), reserveDBefore);
+
+        router.withdrawFromGlobalPool(address(tokenA), dBalanceToWithdraw);
+        bytes32 pairId = bytes32(abi.encodePacked(tokenA, tokenA));
+        GlobalPoolStream[] memory globalPoolStreamBefore = pool.globalStreamQueueWithdraw(pairId);
+        
+        for(uint256 i=0; i<globalPoolStreamBefore[0].streamCount-1; i++ ){
+            router.processGlobalStreamPairWithdraw(address(tokenA));
+        }
+
+        GlobalPoolStream[] memory globalPoolStreamAfter = pool.globalStreamQueueWithdraw(pairId);
+        console.log(globalPoolStreamAfter.length, "STREAMMmmmmmmmmMMM");
+        assertEq(globalPoolStreamAfter.length,0);
+
     }
 }

@@ -202,13 +202,20 @@ contract PoolLogic is Ownable, IPoolLogic {
         });
 
         GlobalPoolStream memory updatedStream = _streamGlobalPoolSingle(localStream);
+        console.log("STREAM COUNT IN METHOD",streamCount);
         if(updatedStream.streamsRemaining != 0) {
             updatedStream.swapAmountRemaining = updatedStream.swapAmountRemaining - updatedStream.swapPerStream;
             if(updatedStream.deposit){
                 IPoolActions(POOL_ADDRESS).enqueueGlobalPoolDepositStream(pairId, updatedStream);
             }else{
                 // @audit for d, as the damount will be very low as compared to the reserve, stream will likely happen
+                console.log("IN METHOD");
                 IPoolActions(POOL_ADDRESS).enqueueGlobalPoolWithdrawStream(pairId, updatedStream);
+            }
+        }else{
+            console.log("IN ELSE");
+            if(!updatedStream.deposit) {
+                IPoolActions(POOL_ADDRESS).transferTokens(token, user, updatedStream.amountOut);
             }
         }
     }
@@ -256,17 +263,78 @@ contract PoolLogic is Ownable, IPoolLogic {
 
  
 
-    function processGlobalStreamPair(address token) external override onlyRouter {
+    function processGlobalStreamPairWithdraw(address token) external override onlyRouter {
         // _streamGlobalStream(token);
+        _streamGlobalPoolWithdrawMultiple(token);
+    }
+
+    function processGlobalStreamPairDeposit(address token) external override onlyRouter {
         _streamGlobalPoolDepositMultiple(token);
+
     }
 
     function _streamGlobalPoolDepositMultiple(address token) internal {
+        bytes32 pairId = bytes32(abi.encodePacked(token, token));
+        GlobalPoolStream[] memory globalPoolStream = IPoolActions(POOL_ADDRESS).globalStreamQueueDeposit(pairId);
+        if(globalPoolStream.length > 0) {
+            uint256 streamRemoved;
+            uint256 count;
 
+        for(uint256 i=0; i< globalPoolStream.length-1;){
+            GlobalPoolStream memory stream = _streamGlobalPoolSingle(globalPoolStream[i]);
+            if(stream.streamsRemaining == 0){
+                streamRemoved++;    
+                IPoolActions(POOL_ADDRESS).dequeueGlobalPoolDepositStream(pairId, i);
+                uint256 lastIndex = globalPoolStream.length - streamRemoved;
+                globalPoolStream[i] = globalPoolStream[lastIndex];
+                delete globalPoolStream[lastIndex];
+            }else{
+                // IPoolActions(POOL_ADDRESS).updateGlobalPoolDepositStream(stream, pairId, i);
+                unchecked {
+                    ++i;
+                }
+            }
+            if(count == globalPoolStream.length -1){
+                break;
+            }
+            count++;
+        }
+
+        IPoolActions(POOL_ADDRESS).updateGlobalPoolDepositStream(globalPoolStream, pairId);
+        }
     }
 
     function _streamGlobalPoolWithdrawMultiple(address token) internal {
-        
+        console.log("===============");
+        bytes32 pairId = bytes32(abi.encodePacked(token, token));
+        GlobalPoolStream[] memory globalPoolStream = IPoolActions(POOL_ADDRESS).globalStreamQueueWithdraw(pairId);
+        if(globalPoolStream.length>0){
+        uint256 streamRemoved;
+        uint256 count;
+        for(uint256 i=0; i<= globalPoolStream.length-1;){
+            GlobalPoolStream memory stream = _streamGlobalPoolSingle(globalPoolStream[i]);
+            if(stream.streamsRemaining == 0){
+                streamRemoved++;
+                IPoolActions(POOL_ADDRESS).dequeueGlobalPoolWithdrawStream(pairId, i);
+                IPoolActions(POOL_ADDRESS).transferTokens(globalPoolStream[i].tokenIn, globalPoolStream[i].user, globalPoolStream[i].amountOut);
+                uint256 lastIndex = globalPoolStream.length - streamRemoved;
+                globalPoolStream[i] = globalPoolStream[lastIndex];
+                delete globalPoolStream[lastIndex];
+            }else{
+                console.log("IN ELSE OF METHOD");
+                // IPoolActions(POOL_ADDRESS).updateGlobalPoolWithdrawStream(stream, pairId, i);
+                unchecked {
+                    ++i;
+                }
+            }
+            if(count == globalPoolStream.length -1){
+                break;
+            }
+            count++;
+        }
+        IPoolActions(POOL_ADDRESS).updateGlobalPoolWithdrawStream(globalPoolStream, pairId);
+        }
+
     }
 
     // function _enqueueGlobalPoolStream(bytes32 pairId, address user, address token, uint256 amount, bool isDeposit)

@@ -211,12 +211,44 @@ contract Pool is IPool, Ownable {
         mapPairId_globalPoolQueue_deposit[pairId].push(globaPoolStream);
     }
 
-    function enqueueGlobalPoolWithdrawStream(bytes32 pairId, GlobalPoolStream memory globaPoolStream)
+    function dequeueGlobalPoolDepositStream(bytes32 pairId, uint256 index)
         external
         override
         onlyPoolLogic
     {
+        uint256 lastIndex = mapPairId_globalPoolQueue_deposit[pairId].length - 1;
+        mapPairId_globalPoolQueue_deposit[pairId][index] = mapPairId_globalPoolQueue_deposit[pairId][lastIndex];
+        mapPairId_globalPoolQueue_deposit[pairId].pop();    
+    }
+
+
+    function enqueueGlobalPoolWithdrawStream(bytes32 pairId, GlobalPoolStream memory globaPoolStream)
+        external
+        override
+        onlyPoolLogic 
+    {
+        console.log("IN CONSOLE", globaPoolStream.streamCount);
         mapPairId_globalPoolQueue_withdraw[pairId].push(globaPoolStream);
+    }
+
+    function dequeueGlobalPoolWithdrawStream(bytes32 pairId,  uint256 index)
+        external
+        override
+        onlyPoolLogic
+    {
+        uint256 lastIndex = mapPairId_globalPoolQueue_withdraw[pairId].length - 1;
+        mapPairId_globalPoolQueue_withdraw[pairId][index] = mapPairId_globalPoolQueue_withdraw[pairId][lastIndex];
+        mapPairId_globalPoolQueue_withdraw[pairId].pop();  
+    }
+
+    function updateGlobalPoolDepositStream(GlobalPoolStream[] memory stream, bytes32 pairId) external override onlyPoolLogic {
+        mapPairId_globalPoolQueue_deposit[pairId] = stream;
+
+    }
+
+    function updateGlobalPoolWithdrawStream(GlobalPoolStream[] memory stream, bytes32 pairId) external override onlyPoolLogic {
+        console.log("BEFORE UPDATING");
+        mapPairId_globalPoolQueue_withdraw[pairId] = stream;
     }
 
     // addLiqParams encoding format => (address token, address user, uint amount, uint256 newLpUnits, uint256 newDUnits, uint256 poolFeeCollected)
