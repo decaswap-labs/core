@@ -202,18 +202,15 @@ contract PoolLogic is Ownable, IPoolLogic {
         });
 
         GlobalPoolStream memory updatedStream = _streamGlobalPoolSingle(localStream);
-        console.log("STREAM COUNT IN METHOD",streamCount);
         if(updatedStream.streamsRemaining != 0) {
             updatedStream.swapAmountRemaining = updatedStream.swapAmountRemaining - updatedStream.swapPerStream;
             if(updatedStream.deposit){
                 IPoolActions(POOL_ADDRESS).enqueueGlobalPoolDepositStream(pairId, updatedStream);
             }else{
                 // @audit for d, as the damount will be very low as compared to the reserve, stream will likely happen
-                console.log("IN METHOD");
                 IPoolActions(POOL_ADDRESS).enqueueGlobalPoolWithdrawStream(pairId, updatedStream);
             }
         }else{
-            console.log("IN ELSE");
             if(!updatedStream.deposit) {
                 IPoolActions(POOL_ADDRESS).transferTokens(token, user, updatedStream.amountOut);
             }
@@ -280,7 +277,7 @@ contract PoolLogic is Ownable, IPoolLogic {
             uint256 streamRemoved;
             uint256 count;
 
-        for(uint256 i=0; i< globalPoolStream.length-1;){
+        for(uint256 i=0; i< globalPoolStream.length;){
             GlobalPoolStream memory stream = _streamGlobalPoolSingle(globalPoolStream[i]);
             if(stream.streamsRemaining == 0){
                 streamRemoved++;    
@@ -289,9 +286,9 @@ contract PoolLogic is Ownable, IPoolLogic {
                 globalPoolStream[i] = globalPoolStream[lastIndex];
                 delete globalPoolStream[lastIndex];
             }else{
-                // IPoolActions(POOL_ADDRESS).updateGlobalPoolDepositStream(stream, pairId, i);
+                IPoolActions(POOL_ADDRESS).updateGlobalPoolDepositStream(stream, pairId, i);
                 unchecked {
-                    ++i;
+                    i++;
                 }
             }
             if(count == globalPoolStream.length -1){
@@ -299,32 +296,35 @@ contract PoolLogic is Ownable, IPoolLogic {
             }
             count++;
         }
-
-        IPoolActions(POOL_ADDRESS).updateGlobalPoolDepositStream(globalPoolStream, pairId);
         }
     }
-
+    // @TODO NEED TO FIX THIS
     function _streamGlobalPoolWithdrawMultiple(address token) internal {
-        console.log("===============");
         bytes32 pairId = bytes32(abi.encodePacked(token, token));
         GlobalPoolStream[] memory globalPoolStream = IPoolActions(POOL_ADDRESS).globalStreamQueueWithdraw(pairId);
+        
         if(globalPoolStream.length>0){
+        
         uint256 streamRemoved;
         uint256 count;
-        for(uint256 i=0; i<= globalPoolStream.length-1;){
+        
+        for(uint256 i=0; i< globalPoolStream.length;){
+           
             GlobalPoolStream memory stream = _streamGlobalPoolSingle(globalPoolStream[i]);
+           
             if(stream.streamsRemaining == 0){
+               
                 streamRemoved++;
                 IPoolActions(POOL_ADDRESS).dequeueGlobalPoolWithdrawStream(pairId, i);
                 IPoolActions(POOL_ADDRESS).transferTokens(globalPoolStream[i].tokenIn, globalPoolStream[i].user, globalPoolStream[i].amountOut);
                 uint256 lastIndex = globalPoolStream.length - streamRemoved;
                 globalPoolStream[i] = globalPoolStream[lastIndex];
-                delete globalPoolStream[lastIndex];
+                delete globalPoolStream[lastIndex];          
             }else{
-                console.log("IN ELSE OF METHOD");
-                // IPoolActions(POOL_ADDRESS).updateGlobalPoolWithdrawStream(stream, pairId, i);
+          
+                IPoolActions(POOL_ADDRESS).updateGlobalPoolWithdrawStream(stream, pairId, i);
                 unchecked {
-                    ++i;
+                    i++;
                 }
             }
             if(count == globalPoolStream.length -1){
@@ -332,7 +332,6 @@ contract PoolLogic is Ownable, IPoolLogic {
             }
             count++;
         }
-        IPoolActions(POOL_ADDRESS).updateGlobalPoolWithdrawStream(globalPoolStream, pairId);
         }
 
     }

@@ -56,8 +56,8 @@ interface IPoolActions {
     function updateRouterAddress(address) external;
     function updatePairSlippage(address, address, uint256) external;
     function updateGlobalSlippage(uint256) external;
-    function updateGlobalPoolDepositStream(GlobalPoolStream[] memory stream, bytes32 pairId) external;
-    function updateGlobalPoolWithdrawStream(GlobalPoolStream[] memory stream, bytes32 pairId) external;
+    function updateGlobalPoolDepositStream(GlobalPoolStream memory stream, bytes32 pairId, uint256 index) external;
+    function updateGlobalPoolWithdrawStream(GlobalPoolStream memory stream, bytes32 pairId, uint256 index) external;
 
     function updateOrderBook(bytes32, Swap memory swap, uint256) external;
 
