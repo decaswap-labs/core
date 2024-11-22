@@ -182,14 +182,12 @@ contract Router is Ownable, ReentrancyGuard, IRouter {
         IPoolLogic(poolStates.POOL_LOGIC()).withdrawFromGlobalPool(msg.sender, poolAddress, dAmount);
     }
 
-    function processGlobalStreamPairDeposit(address token) external override nonReentrant {
-        if (!poolExist(token)) revert InvalidPool();
-        IPoolLogic(poolStates.POOL_LOGIC()).processGlobalStreamPairDeposit(token);
+    function processGlobalStreamPairDeposit() external override nonReentrant {
+        IPoolLogic(poolStates.POOL_LOGIC()).processGlobalStreamPairDeposit();
     }
 
-    function processGlobalStreamPairWithdraw(address token) external override nonReentrant {
-        if (!poolExist(token)) revert InvalidPool();
-        IPoolLogic(poolStates.POOL_LOGIC()).processGlobalStreamPairWithdraw(token);
+    function processGlobalStreamPairWithdraw() external override nonReentrant {
+        IPoolLogic(poolStates.POOL_LOGIC()).processGlobalStreamPairWithdraw();
     }
 
     function processPair(address tokenIn, address tokenOut) external nonReentrant {

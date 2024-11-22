@@ -61,4 +61,6 @@ interface IPoolActions {
     function getNextSwapId() external returns (uint256);
 
     function setHighestPriceMarker(bytes32 pairId, uint256 value) external;
+
+    function getPoolAddresses() external view returns (address[] memory);
 }

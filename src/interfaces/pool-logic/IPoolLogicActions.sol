@@ -51,6 +51,6 @@ interface IPoolLogicActions {
     function getExecutionPrice(uint256, uint256) external pure returns (uint256);
     function getTokenOut(uint256, uint256, uint256) external pure returns (uint256);
     function getDOut(uint256, uint256, uint256) external pure returns (uint256);
-    function processGlobalStreamPairDeposit(address token) external;
-    function processGlobalStreamPairWithdraw(address token) external;
+    function processGlobalStreamPairDeposit() external;
+    function processGlobalStreamPairWithdraw() external;
 }

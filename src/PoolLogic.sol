@@ -269,17 +269,21 @@ contract PoolLogic is Ownable, IPoolLogic {
         return stream;
     }
 
-    function processGlobalStreamPairWithdraw(address token) external override onlyRouter {
+    function processGlobalStreamPairWithdraw() external override onlyRouter {
         // _streamGlobalStream(token);
-        _streamGlobalPoolWithdrawMultiple(token);
+        _streamGlobalPoolWithdrawMultiple();
     }
 
-    function processGlobalStreamPairDeposit(address token) external override onlyRouter {
-        _streamGlobalPoolDepositMultiple(token);
+    function processGlobalStreamPairDeposit() external override onlyRouter {
+        _streamGlobalPoolDepositMultiple();
     }
 
-    function _streamGlobalPoolDepositMultiple(address token) internal {
-        bytes32 pairId = bytes32(abi.encodePacked(token, token));
+    function _streamGlobalPoolDepositMultiple() internal {
+        address[] memory poolAddresses = IPoolActions(POOL_ADDRESS).getPoolAddresses();
+        for(uint256 i=0; i<poolAddresses.length; i++){
+                        address token = poolAddresses[i];
+
+            bytes32 pairId = bytes32(abi.encodePacked(token, token));
         GlobalPoolStream[] memory globalPoolStream = IPoolActions(POOL_ADDRESS).globalStreamQueueDeposit(pairId);
         if (globalPoolStream.length > 0) {
             uint256 streamRemoved;
@@ -305,10 +309,14 @@ contract PoolLogic is Ownable, IPoolLogic {
                 count++;
             }
         }
+        }
+        
     }
-    // @TODO NEED TO FIX THIS
 
-    function _streamGlobalPoolWithdrawMultiple(address token) internal {
+    function _streamGlobalPoolWithdrawMultiple() internal {
+        address[] memory poolAddresses = IPoolActions(POOL_ADDRESS).getPoolAddresses();
+        for(uint256 i=0; i<poolAddresses.length; i++){
+            address token = poolAddresses[i];
         bytes32 pairId = bytes32(abi.encodePacked(token, token));
         GlobalPoolStream[] memory globalPoolStream = IPoolActions(POOL_ADDRESS).globalStreamQueueWithdraw(pairId);
 
@@ -340,6 +348,8 @@ contract PoolLogic is Ownable, IPoolLogic {
                 count++;
             }
         }
+        }
+       
     }
 
     // function _enqueueGlobalPoolStream(bytes32 pairId, address user, address token, uint256 amount, bool isDeposit)

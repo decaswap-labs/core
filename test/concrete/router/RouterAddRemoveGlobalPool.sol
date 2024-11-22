@@ -254,7 +254,7 @@ contract RouterTest is Deploys {
             assertEq(globalPoolStream[i].streamsRemaining, streamCount - 1);
         }
 
-        router.processGlobalStreamPairDeposit(address(tokenA));
+        router.processGlobalStreamPairDeposit();
 
         GlobalPoolStream[] memory globalPoolStreamAfter = pool.globalStreamQueueDeposit(pairId);
 
@@ -284,7 +284,7 @@ contract RouterTest is Deploys {
             assertEq(globalPoolStream[i].streamsRemaining, streamCount - 1);
         }
 
-        router.processGlobalStreamPairDeposit(address(tokenA));
+        router.processGlobalStreamPairDeposit();
 
         GlobalPoolStream[] memory globalPoolStreamAfter = pool.globalStreamQueueDeposit(pairId);
 
@@ -325,7 +325,7 @@ contract RouterTest is Deploys {
             assertEq(globalPoolStreamBefore[i].streamsRemaining, globalPoolStreamBefore[i].streamCount - 1);
         }
 
-        router.processGlobalStreamPairWithdraw(address(tokenA));
+        router.processGlobalStreamPairWithdraw();
 
         GlobalPoolStream[] memory globalPoolStream = pool.globalStreamQueueWithdraw(pairId);
 
@@ -356,7 +356,7 @@ contract RouterTest is Deploys {
         GlobalPoolStream[] memory globalPoolStreamBefore = pool.globalStreamQueueWithdraw(pairId);
 
         for (uint256 i = 0; i < globalPoolStreamBefore[0].streamCount; i++) {
-            router.processGlobalStreamPairWithdraw(address(tokenA));
+            router.processGlobalStreamPairWithdraw();
         }
 
         GlobalPoolStream[] memory globalPoolStreamAfter = pool.globalStreamQueueWithdraw(pairId);

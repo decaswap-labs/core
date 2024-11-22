@@ -87,6 +87,8 @@ contract Pool is IPool, Ownable {
     mapping(bytes32 => mapping(uint256 => Swap[])) public orderBookQueue;
     mapping(bytes32 => uint256) public override highestPriceMarker;
 
+    address[] public poolAddress;
+
     uint256 public SWAP_IDS = 0;
 
     modifier onlyRouter() {
@@ -106,9 +108,9 @@ contract Pool is IPool, Ownable {
         POOL_LOGIC = poolLogicAddress;
         poolLogic = IPoolLogicActions(POOL_LOGIC);
 
-        emit VaultAddressUpdated(address(0), VAULT_ADDRESS);
-        emit RouterAddressUpdated(address(0), ROUTER_ADDRESS);
-        emit PoolLogicAddressUpdated(address(0), POOL_LOGIC);
+        // emit VaultAddressUpdated(address(0), VAULT_ADDRESS);
+        // emit RouterAddressUpdated(address(0), ROUTER_ADDRESS);
+        // emit PoolLogicAddressUpdated(address(0), POOL_LOGIC);
     }
 
     // creatPoolParams encoding format => (address token, address user, uint256 amount, uint256 minLaunchReserveA, uint256 minLaunchReserveD, uint256 initialDToMint, uint newLpUnits, uint newDUnits, uint256 poolFeeCollected)
@@ -463,7 +465,9 @@ contract Pool is IPool, Ownable {
         // @todo need confirmation on that. hardcoded?
         mapToken_initialDToMint[token] = initialDToMint;
 
-        emit PoolCreated(token, initialDToMint);
+        poolAddress.push(token);
+
+        // emit PoolCreated(token, initialDToMint);
     }
 
     // addLiqParams encoding format => (address token, address user, uint amount, uint256 newLpUnits, uint256 newDUnits, uint256 poolFeeCollected)
@@ -478,7 +482,7 @@ contract Pool is IPool, Ownable {
 
         userLpUnitInfo[user][token] += newLpUnits;
 
-        emit LiquidityAdded(user, token, amount, newLpUnits, newDUnits);
+        // emit LiquidityAdded(user, token, amount, newLpUnits, newDUnits);
     }
 
     // removeLiqParams encoding format => (address token, address user, uint lpUnits, uint256 assetToTransfer, uint256 dAmountToDeduct, uint256 poolFeeCollected)
@@ -502,7 +506,7 @@ contract Pool is IPool, Ownable {
 
         IERC20(token).safeTransfer(user, assetToTransfer);
 
-        emit LiquidityRemoved(user, token, lpUnits, assetToTransfer, dAmountToDeduct);
+        // emit LiquidityRemoved(user, token, lpUnits, assetToTransfer, dAmountToDeduct);
     }
 
     function poolInfo(address tokenAddress)
@@ -604,4 +608,9 @@ contract Pool is IPool, Ownable {
     function orderBook(bytes32 pairId, uint256 priceKey) external view override returns (Swap[] memory) {
         return orderBookQueue[pairId][priceKey];
     }
+
+    function getPoolAddresses() external override view returns (address[] memory){
+        return poolAddress;
+    }
 }
+
