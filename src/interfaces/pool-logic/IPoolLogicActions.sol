@@ -24,7 +24,6 @@ interface IPoolLogicActions {
     function streamDToPool(address tokenA, address tokenB, address user, uint256 amountB) external;
     function processLiqStream(address tokenA, address tokenB) external;
     function processRemoveLiquidity(address token) external;
-    function addLiquidity(address token, address user, uint256 amount) external;
     function removeLiquidity(address token, address user, uint256 lpUnits) external;
     function depositToGlobalPool(
         address user,

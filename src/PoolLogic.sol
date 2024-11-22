@@ -39,30 +39,6 @@ contract PoolLogic is Ownable, IPoolLogic {
         emit PoolAddressUpdated(address(0), POOL_ADDRESS);
     }
 
-    // function createPool(
-    //     address token,
-    //     address user,
-    //     uint256 amount,
-    //     uint256 minLaunchReserveA,
-    //     uint256 minLaunchReserveD,
-    //     uint256 initialDToMint
-    // ) external onlyRouter {
-    //     // hardcoding `poolFeeCollected` to zero as pool is just being created
-    //     // reserveA == amount for 1st deposit
-    //     bytes memory createPoolParams = abi.encode(
-    //         token,
-    //         user,
-    //         amount,
-    //         minLaunchReserveA,
-    //         minLaunchReserveD,
-    //         initialDToMint,
-    //         calculateLpUnitsToMint(amount, 0, 0),
-    //         calculateDUnitsToMint(amount, amount, 0, initialDToMint),
-    //         0
-    //     );
-    //     IPoolActions(POOL_ADDRESS).createPool(createPoolParams);
-    // }
-
     function initGenesisPool(address token, address user, uint256 tokenAmount, uint256 initialDToMint)
         external
         onlyRouter
@@ -626,21 +602,6 @@ contract PoolLogic is Ownable, IPoolLogic {
         }
     }
 
-    function addLiquidity(address token, address user, uint256 amount) external onlyRouter {
-        (
-            uint256 reserveD,
-            uint256 poolOwnershipUnitsTotal,
-            uint256 reserveA,
-            uint256 initialDToMint,
-            uint256 poolFeeCollected,
-            bool initialized
-        ) = pool.poolInfo(address(token));
-        reserveA += amount;
-        uint256 newLpUnits = calculateLpUnitsToMint(poolOwnershipUnitsTotal, amount, reserveA, 0, reserveD);
-        uint256 newDUnits = calculateDUnitsToMint(amount, reserveA, reserveD, initialDToMint);
-        bytes memory addLiqParams = abi.encode(token, user, amount, newLpUnits, newDUnits, 0); // poolFeeCollected = 0 until logic is finalized
-        IPoolActions(POOL_ADDRESS).addLiquidity(addLiqParams);
-    }
 
     function removeLiquidity(address token, address user, uint256 lpUnits) external onlyRouter {
         (
