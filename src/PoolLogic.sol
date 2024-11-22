@@ -280,10 +280,9 @@ contract PoolLogic is Ownable, IPoolLogic {
 
     function _streamGlobalPoolDepositMultiple() internal {
         address[] memory poolAddresses = IPoolActions(POOL_ADDRESS).getPoolAddresses();
-        for(uint256 i=0; i<poolAddresses.length; i++){
-                        address token = poolAddresses[i];
-
-            bytes32 pairId = bytes32(abi.encodePacked(token, token));
+        for(uint256 i=0; i<poolAddresses.length;i++){
+            address token = poolAddresses[i];
+              bytes32 pairId = bytes32(abi.encodePacked(token, token));
         GlobalPoolStream[] memory globalPoolStream = IPoolActions(POOL_ADDRESS).globalStreamQueueDeposit(pairId);
         if (globalPoolStream.length > 0) {
             uint256 streamRemoved;
@@ -309,15 +308,16 @@ contract PoolLogic is Ownable, IPoolLogic {
                 count++;
             }
         }
+
         }
-        
+      
     }
 
     function _streamGlobalPoolWithdrawMultiple() internal {
         address[] memory poolAddresses = IPoolActions(POOL_ADDRESS).getPoolAddresses();
-        for(uint256 i=0; i<poolAddresses.length; i++){
+        for(uint256 i=0; i<poolAddresses.length;i++){
             address token = poolAddresses[i];
-        bytes32 pairId = bytes32(abi.encodePacked(token, token));
+             bytes32 pairId = bytes32(abi.encodePacked(token, token));
         GlobalPoolStream[] memory globalPoolStream = IPoolActions(POOL_ADDRESS).globalStreamQueueWithdraw(pairId);
 
         if (globalPoolStream.length > 0) {

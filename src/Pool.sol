@@ -532,6 +532,16 @@ contract Pool is IPool, Ownable {
         );
     }
 
+    function getReserveA(address pool) external override view returns (uint256){
+        return  mapToken_reserveA[pool];
+
+    }
+
+    function getReserveD(address pool) external override view returns (uint256){
+        return  mapToken_reserveD[pool];
+
+    }
+
     function pairStreamQueue(bytes32 pairId) external view returns (Swap[] memory swaps, uint256 front, uint256 back) {
         return (
             mapPairId_pairStreamQueue_Swaps[pairId],

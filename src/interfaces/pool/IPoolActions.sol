@@ -59,6 +59,8 @@ interface IPoolActions {
     function updateOrderBook(bytes32, Swap memory swap, uint256) external;
 
     function getNextSwapId() external returns (uint256);
+    function getReserveA(address pool) external view returns (uint256);
+    function getReserveD(address pool) external view returns (uint256);
 
     function setHighestPriceMarker(bytes32 pairId, uint256 value) external;
 
