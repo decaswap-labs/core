@@ -147,12 +147,6 @@ contract Router is Ownable, ReentrancyGuard, IRouter {
         if (executionPrice == 0) revert InvalidExecutionPrice();
         if (!poolExist(tokenIn) || !poolExist(tokenOut)) revert InvalidPool();
 
-        // uint256 streamCount = IPoolLogic(poolStates.POOL_LOGIC()).getStreamCount(tokenIn, tokenOut, amountIn);
-        // if (amountIn % streamCount != 0) {
-        //     uint256 swapPerStream = amountIn / streamCount;
-        //     amountIn = streamCount * swapPerStream;
-        // }
-
         IERC20(tokenIn).safeTransferFrom(msg.sender, POOL_ADDRESS, amountIn);
         IPoolLogic(poolStates.POOL_LOGIC()).swap(msg.sender, tokenIn, tokenOut, amountIn, executionPrice);
     }
