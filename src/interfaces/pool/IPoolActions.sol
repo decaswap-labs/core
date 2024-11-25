@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.13;
 
-import {Swap, LiquidityStream, RemoveLiquidityStream, GlobalPoolStream  } from "../../lib/SwapQueue.sol";
+import {Swap, LiquidityStream, RemoveLiquidityStream, GlobalPoolStream} from "../../lib/SwapQueue.sol";
 
 interface IPoolActions {
     // creatPoolParams encoding format => (address token, address user, uint256 amount, uint256 minLaunchReserveA, uint256 minLaunchReserveD, uint256 initialDToMint, uint newLpUnits, uint newDUnits, uint256 poolFeeCollected)
@@ -17,12 +17,16 @@ interface IPoolActions {
     function enqueueSwap_pairPendingQueue(bytes32 pairId, Swap memory swap) external;
     function enqueueLiquidityStream(bytes32 pairId, LiquidityStream memory liquidityStream) external;
     function enqueueRemoveLiquidityStream(address token, RemoveLiquidityStream memory removeLiquidityStream) external;
-    function enqueueGlobalPoolStream(bytes32 pairId, GlobalPoolStream memory globaPoolStream) external;
-    function dequeueSwap_pairStreamQueue(bytes32 pairId) external;
+    function enqueueGlobalPoolDepositStream(bytes32 pairId, GlobalPoolStream memory globaPoolStream) external;
+    function enqueueGlobalPoolWithdrawStream(bytes32 pairId, GlobalPoolStream memory globaPoolStream) external;
+
+    function dequeueSwap_pairStreamQueue(bytes32 pairId, uint256 executionPriceKey, uint256 index) external;
     function dequeueSwap_pairPendingQueue(bytes32 pairId) external;
     function dequeueLiquidityStream_streamQueue(bytes32 pairId) external;
     function dequeueRemoveLiquidity_streamQueue(address token) external;
     function dequeueGlobalStream_streamQueue(bytes32 pairId) external;
+    function dequeueGlobalPoolDepositStream(bytes32 pairId, uint256 index) external;
+    function dequeueGlobalPoolWithdrawStream(bytes32 pairId, uint256 index) external;
     // updateReservesParams encoding format => (bool aToB, address tokenA, address tokenB, uint256 reserveA_A, uint256 reserveD_A,uint256 reserveA_B, uint256 reserveD_B)
     function updateReserves(bytes memory updateReservesParams) external;
     // updateReservesParams encoding format => (address tokenA, address tokenB, uint256 reserveA_A, uint256 reserveA_B, uint256 changeInD)
@@ -33,18 +37,28 @@ interface IPoolActions {
     function updateReservesGlobalStream(bytes memory updatedReservesParams) external;
     function updateGlobalPoolBalance(bytes memory updatedBalance) external;
     function updateGlobalPoolUserBalance(bytes memory userBalance) external;
-    function updateGlobalStreamQueueStream(bytes memory updatedStream) external;
-    function updatePairStreamQueueSwap(bytes memory updatedSwapData) external;
+    // function updateGlobalStreamQueueStream(bytes memory updatedStream) external;
     function transferTokens(address tokenAddress, address to, uint256 amount) external;
     function sortPairPendingQueue(bytes32 pairId) external;
-    function globalStreamQueue(bytes32 pairId)
-        external
-        returns (GlobalPoolStream[] memory globalPoolStream, uint256 front, uint256 back);
-
+    function globalStreamQueueDeposit(bytes32 pairId) external returns (GlobalPoolStream[] memory globalPoolStream);
+    function globalStreamQueueWithdraw(bytes32 pairId) external returns (GlobalPoolStream[] memory globalPoolStream);
+    function updatePairStreamQueueSwap(bytes memory updatedSwapData, uint256 executionPriceKey, uint256 index)
+        external;
     function updatePoolLogicAddress(address) external;
     function updateVaultAddress(address) external;
     function updateRouterAddress(address) external;
     function updatePairSlippage(address, address, uint256) external;
     function updateGlobalSlippage(uint256) external;
+    function updateGlobalPoolDepositStream(GlobalPoolStream memory stream, bytes32 pairId, uint256 index) external;
+    function updateGlobalPoolWithdrawStream(GlobalPoolStream memory stream, bytes32 pairId, uint256 index) external;
 
+    function updateOrderBook(bytes32, Swap memory swap, uint256) external;
+
+    function getNextSwapId() external returns (uint256);
+    function getReserveA(address pool) external view returns (uint256);
+    function getReserveD(address pool) external view returns (uint256);
+
+    function setHighestPriceMarker(bytes32 pairId, uint256 value) external;
+
+    function getPoolAddresses() external view returns (address[] memory);
 }

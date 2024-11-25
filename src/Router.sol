@@ -9,6 +9,7 @@ import {IPoolLogic} from "./interfaces/IPoolLogic.sol";
 import {IRouter} from "./interfaces/IRouter.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
+import {console} from "forge-std/console.sol";
 
 // @todo decide where to keep events. Router/Pool?
 // @todo remove unused errors
@@ -136,39 +137,52 @@ contract Router is Ownable, ReentrancyGuard, IRouter {
         if (executionPrice == 0) revert InvalidExecutionPrice();
         if (!poolExist(tokenIn) || !poolExist(tokenOut)) revert InvalidPool();
 
-        uint256 streamCount = IPoolLogic(poolStates.POOL_LOGIC()).getStreamCount(tokenIn, tokenOut, amountIn);
-        if (amountIn % streamCount != 0) {
-            uint256 swapPerStream = amountIn / streamCount;
-            amountIn = streamCount * swapPerStream;
-        }
+        // uint256 streamCount = IPoolLogic(poolStates.POOL_LOGIC()).getStreamCount(tokenIn, tokenOut, amountIn);
+        // if (amountIn % streamCount != 0) {
+        //     uint256 swapPerStream = amountIn / streamCount;
+        //     amountIn = streamCount * swapPerStream;
+        // }
 
         IERC20(tokenIn).safeTransferFrom(msg.sender, POOL_ADDRESS, amountIn);
         IPoolLogic(poolStates.POOL_LOGIC()).swap(msg.sender, tokenIn, tokenOut, amountIn, executionPrice);
     }
 
-
     function depositToGlobalPool(address token, uint256 amount) external override nonReentrant {
-        if(!poolExist(token)) revert InvalidPool();
-        if(amount == 0) revert InvalidAmount();
+        if (!poolExist(token)) revert InvalidPool();
+        if (amount == 0) revert InvalidAmount();
+
+        // calculate and remove dust residual
+        uint256 streamCount = IPoolLogic(poolStates.POOL_LOGIC()).getStreamCountForDPool(token, amount);
+        uint256 swapPerStream;
+        if (amount % streamCount != 0) {
+            swapPerStream = amount / streamCount;
+            amount = streamCount * swapPerStream;
+        } else {
+            swapPerStream = amount / streamCount;
+        }
+
         IERC20(token).safeTransferFrom(msg.sender, POOL_ADDRESS, amount);
-        IPoolLogic(poolStates.POOL_LOGIC()).depositToGlobalPool(msg.sender, token, amount);
+        IPoolLogic(poolStates.POOL_LOGIC()).depositToGlobalPool(msg.sender, token, amount, streamCount, swapPerStream);
     }
 
     function withdrawFromGlobalPool(address poolAddress, uint256 dAmount) external override nonReentrant {
-        if(!poolExist(poolAddress)) revert InvalidPool();
-        if(poolStates.userGlobalPoolInfo(msg.sender, poolAddress) < dAmount) revert InvalidAmount();
+        if (!poolExist(poolAddress)) revert InvalidPool();
+        if (poolStates.userGlobalPoolInfo(msg.sender, poolAddress) < dAmount) revert InvalidAmount();
         IPoolLogic(poolStates.POOL_LOGIC()).withdrawFromGlobalPool(msg.sender, poolAddress, dAmount);
     }
 
-    function processGlobalStreamPair(address token) external override nonReentrant {
-        if(!poolExist(token)) revert InvalidPool();
-        IPoolLogic(poolStates.POOL_LOGIC()).processGlobalStreamPair(token);
-
+    function processGlobalStreamPairDeposit() external override nonReentrant {
+        IPoolLogic(poolStates.POOL_LOGIC()).processGlobalStreamPairDeposit();
     }
+
+    function processGlobalStreamPairWithdraw() external override nonReentrant {
+        IPoolLogic(poolStates.POOL_LOGIC()).processGlobalStreamPairWithdraw();
+    }
+
     function processPair(address tokenIn, address tokenOut) external nonReentrant {
         if (tokenIn == tokenOut) revert SamePool();
         if (!poolExist(tokenIn) || !poolExist(tokenOut)) revert InvalidPool();
-        IPoolLogic(poolStates.POOL_LOGIC()).processPair(tokenIn, tokenOut);
+        // IPoolLogic(poolStates.POOL_LOGIC()).processPair(tokenIn, tokenOut);
     }
 
     function updatePoolAddress(address newPoolAddress) external override onlyOwner {
