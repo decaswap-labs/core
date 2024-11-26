@@ -6,6 +6,10 @@ via-ir = true
 [profile.test]
 via-ir = false
 
+[fmt]
+number_underscore = "thousands"
+
+
 [invariant]
 runs = 4
 depth = 256
