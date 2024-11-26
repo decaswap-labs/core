@@ -36,13 +36,12 @@ contract RouterTest is Deploys {
         router.initPool(address(tokenB), address(tokenA), tokenAmount, dToTokenAmount);
 
         bytes32 pairId = keccak256(abi.encodePacked(address(tokenB), address(tokenA)));
-        (LiquidityStream[] memory streams, uint256 front, uint256 back) = pool.liquidityStreamQueue(pairId);
+        (LiquidityStream[] memory streams, uint256 front,) = pool.liquidityStreamQueue(pairId);
 
         for (uint8 i = 0; i < streams[front].poolBStream.streamsRemaining; i++) {
             router.processLiqStream(address(tokenB), address(tokenA));
         }
-        (LiquidityStream[] memory streamsAfter, uint256 frontAfter, uint256 backAfter) =
-            pool.liquidityStreamQueue(pairId);
+        (LiquidityStream[] memory streamsAfter, uint256 frontAfter,) = pool.liquidityStreamQueue(pairId);
 
         assertEq(streamsAfter[frontAfter - 1].poolBStream.streamsRemaining, 0);
         assertEq(streamsAfter[frontAfter - 1].poolAStream.streamsRemaining, 0);
@@ -58,8 +57,7 @@ contract RouterTest is Deploys {
         (uint256 reserveDBeforeB, uint256 poolOwnershipUnitsTotalBeforeB, uint256 reserveABeforeB,,,) =
             pool.poolInfo(address(tokenB));
 
-        (uint256 reserveDBeforeA, uint256 poolOwnershipUnitsTotalBeforeA, uint256 reserveABeforeA,,,) =
-            pool.poolInfo(address(tokenA));
+        (uint256 reserveDBeforeA,, uint256 reserveABeforeA,,,) = pool.poolInfo(address(tokenA));
 
         uint256 tokenStreamCount =
             poolLogic.calculateStreamCount(tokenAmountSingle, pool.globalSlippage(), reserveDBeforeB);
@@ -95,7 +93,7 @@ contract RouterTest is Deploys {
         uint256 tokenBBalanceAfter = tokenB.balanceOf(owner);
         uint256 tokenABalanceAfter = tokenA.balanceOf(owner);
 
-        (LiquidityStream[] memory streamsAfterDual, uint256 frontAD, uint256 backAD) = pool.liquidityStreamQueue(pairId);
+        (LiquidityStream[] memory streamsAfterDual, uint256 frontAD,) = pool.liquidityStreamQueue(pairId);
 
         assertEq(streamsAfterDual[frontAD].poolAStream.streamsRemaining, tokenStreamCount - 1);
         assertEq(streamsAfterDual[frontAD].poolBStream.streamsRemaining, dStreamCount - 1);
@@ -141,13 +139,12 @@ contract RouterTest is Deploys {
         router.initPool(address(tokenB), address(tokenA), tokenAmount, dToTokenAmount);
 
         bytes32 pairId = keccak256(abi.encodePacked(address(tokenB), address(tokenA)));
-        (LiquidityStream[] memory streams, uint256 front, uint256 back) = pool.liquidityStreamQueue(pairId);
+        (LiquidityStream[] memory streams, uint256 front,) = pool.liquidityStreamQueue(pairId);
 
         for (uint8 i = 0; i < streams[front].poolBStream.streamsRemaining; i++) {
             router.processLiqStream(address(tokenB), address(tokenA));
         }
-        (LiquidityStream[] memory streamsAfter, uint256 frontAfter, uint256 backAfter) =
-            pool.liquidityStreamQueue(pairId);
+        (LiquidityStream[] memory streamsAfter, uint256 frontAfter,) = pool.liquidityStreamQueue(pairId);
 
         assertEq(streamsAfter[frontAfter - 1].poolBStream.streamsRemaining, 0);
         assertEq(streamsAfter[frontAfter - 1].poolAStream.streamsRemaining, 0);
@@ -179,8 +176,7 @@ contract RouterTest is Deploys {
         uint256 tokenBBalanceAfter = tokenB.balanceOf(owner);
 
         bytes32 pairIdSingle = keccak256(abi.encodePacked(address(tokenB), address(tokenB)));
-        (LiquidityStream[] memory streamsAfterDual, uint256 frontAD, uint256 backAD) =
-            pool.liquidityStreamQueue(pairIdSingle);
+        (LiquidityStream[] memory streamsAfterDual, uint256 frontAD,) = pool.liquidityStreamQueue(pairIdSingle);
 
         assertEq(streamsAfterDual[frontAD].poolAStream.streamsRemaining, tokenStreamCount - 1);
         assertEq(streamsAfterDual[frontAD].poolAStream.swapAmountRemaining, tokenAmountSingle - swapPerStreamInputToken);
@@ -188,8 +184,7 @@ contract RouterTest is Deploys {
         assertLt(tokenBBalanceAfter, tokenBBalanceBefore);
         assertEq(tokenBBalanceAfter, tokenBBalanceBefore - tokenAmountSingle);
 
-        (uint256 reserveDAfterB, uint256 poolOwnershipUnitsTotalAfterB, uint256 reserveAAfterB,,,) =
-            pool.poolInfo(address(tokenB));
+        (, uint256 poolOwnershipUnitsTotalAfterB, uint256 reserveAAfterB,,,) = pool.poolInfo(address(tokenB));
 
         assertEq(poolOwnershipUnitsTotalAfterB, poolOwnershipUnitsTotalBeforeB + lpUnitsBeforeFromToken);
         assertEq(reserveAAfterB, reserveABeforeB + swapPerStreamInputToken);
@@ -211,13 +206,12 @@ contract RouterTest is Deploys {
         router.initPool(address(tokenB), address(tokenA), tokenAmount, dToTokenAmount);
 
         bytes32 pairId = keccak256(abi.encodePacked(address(tokenB), address(tokenA)));
-        (LiquidityStream[] memory streams, uint256 front, uint256 back) = pool.liquidityStreamQueue(pairId);
+        (LiquidityStream[] memory streams, uint256 front,) = pool.liquidityStreamQueue(pairId);
 
         for (uint8 i = 0; i < streams[front].poolBStream.streamsRemaining; i++) {
             router.processLiqStream(address(tokenB), address(tokenA));
         }
-        (LiquidityStream[] memory streamsAfter, uint256 frontAfter, uint256 backAfter) =
-            pool.liquidityStreamQueue(pairId);
+        (LiquidityStream[] memory streamsAfter, uint256 frontAfter,) = pool.liquidityStreamQueue(pairId);
 
         assertEq(streamsAfter[frontAfter - 1].poolBStream.streamsRemaining, 0);
         assertEq(streamsAfter[frontAfter - 1].poolAStream.streamsRemaining, 0);
@@ -231,8 +225,7 @@ contract RouterTest is Deploys {
         (uint256 reserveDBeforeB, uint256 poolOwnershipUnitsTotalBeforeB, uint256 reserveABeforeB,,,) =
             pool.poolInfo(address(tokenB));
 
-        (uint256 reserveDBeforeA, uint256 poolOwnershipUnitsTotalBeforeA, uint256 reserveABeforeA,,,) =
-            pool.poolInfo(address(tokenA));
+        (uint256 reserveDBeforeA,, uint256 reserveABeforeA,,,) = pool.poolInfo(address(tokenA));
 
         uint256 dStreamCount =
             poolLogic.calculateStreamCount(dToTokenAmountSingle, pool.globalSlippage(), reserveDBeforeA);
@@ -251,7 +244,7 @@ contract RouterTest is Deploys {
 
         uint256 tokenABalanceAfter = tokenA.balanceOf(owner);
 
-        (LiquidityStream[] memory streamsAfterDual, uint256 frontAD, uint256 backAD) = pool.liquidityStreamQueue(pairId);
+        (LiquidityStream[] memory streamsAfterDual, uint256 frontAD,) = pool.liquidityStreamQueue(pairId);
 
         assertEq(streamsAfterDual[frontAD].poolBStream.streamsRemaining, dStreamCount - 1);
 
@@ -261,8 +254,7 @@ contract RouterTest is Deploys {
         assertLt(tokenABalanceAfter, tokenABalanceBefore);
         assertEq(tokenABalanceAfter, tokenABalanceBefore - dToTokenAmountSingle);
 
-        (uint256 reserveDAfterB, uint256 poolOwnershipUnitsTotalAfterB, uint256 reserveAAfterB,,,) =
-            pool.poolInfo(address(tokenB));
+        (uint256 reserveDAfterB, uint256 poolOwnershipUnitsTotalAfterB,,,,) = pool.poolInfo(address(tokenB));
 
         (uint256 reserveDAfterA,, uint256 reserveAAfterA,,,) = pool.poolInfo(address(tokenA));
 

@@ -24,14 +24,8 @@ contract RouterTest is Deploys {
         router.initGenesisPool(address(tokenA), addLiquidityTokenAmount, dToMint);
         uint256 lpUnitsAfter = pool.userLpUnitInfo(owner, address(tokenA));
 
-        (
-            uint256 reserveD,
-            uint256 poolOwnershipUnitsTotal,
-            uint256 reserveA,
-            uint256 initialDToMint,
-            uint256 poolFeeCollected,
-            bool initialized
-        ) = pool.poolInfo(address(tokenA));
+        (uint256 reserveD, uint256 poolOwnershipUnitsTotal, uint256 reserveA, uint256 initialDToMint,, bool initialized)
+        = pool.poolInfo(address(tokenA));
         uint256 poolBalanceAfter = tokenA.balanceOf(address(pool));
 
         assertEq(reserveD, dToMint);
