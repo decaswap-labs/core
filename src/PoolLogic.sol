@@ -258,76 +258,73 @@ contract PoolLogic is Ownable, IPoolLogic {
 
     function _streamGlobalPoolDepositMultiple() internal {
         address[] memory poolAddresses = IPoolActions(POOL_ADDRESS).getPoolAddresses();
-        for(uint256 i=0; i<poolAddresses.length;i++){
+        for (uint256 i = 0; i < poolAddresses.length; i++) {
             address token = poolAddresses[i];
-              bytes32 pairId = bytes32(abi.encodePacked(token, token));
-        GlobalPoolStream[] memory globalPoolStream = IPoolActions(POOL_ADDRESS).globalStreamQueueDeposit(pairId);
-        if (globalPoolStream.length > 0) {
-            uint256 streamRemoved;
-            uint256 count;
+            bytes32 pairId = bytes32(abi.encodePacked(token, token));
+            GlobalPoolStream[] memory globalPoolStream = IPoolActions(POOL_ADDRESS).globalStreamQueueDeposit(pairId);
+            if (globalPoolStream.length > 0) {
+                uint256 streamRemoved;
+                uint256 count;
 
-            for (uint256 i = 0; i < globalPoolStream.length;) {
-                GlobalPoolStream memory stream = _streamGlobalPoolSingle(globalPoolStream[i]);
-                if (stream.streamsRemaining == 0) {
-                    streamRemoved++;
-                    IPoolActions(POOL_ADDRESS).dequeueGlobalPoolDepositStream(pairId, i);
-                    uint256 lastIndex = globalPoolStream.length - streamRemoved;
-                    globalPoolStream[i] = globalPoolStream[lastIndex];
-                    delete globalPoolStream[lastIndex];
-                } else {
-                    IPoolActions(POOL_ADDRESS).updateGlobalPoolDepositStream(stream, pairId, i);
-                    unchecked {
-                        i++;
+                for (uint256 i = 0; i < globalPoolStream.length;) {
+                    GlobalPoolStream memory stream = _streamGlobalPoolSingle(globalPoolStream[i]);
+                    if (stream.streamsRemaining == 0) {
+                        streamRemoved++;
+                        IPoolActions(POOL_ADDRESS).dequeueGlobalPoolDepositStream(pairId, i);
+                        uint256 lastIndex = globalPoolStream.length - streamRemoved;
+                        globalPoolStream[i] = globalPoolStream[lastIndex];
+                        delete globalPoolStream[lastIndex];
+                    } else {
+                        IPoolActions(POOL_ADDRESS).updateGlobalPoolDepositStream(stream, pairId, i);
+                        unchecked {
+                            i++;
+                        }
                     }
+                    if (count == globalPoolStream.length - 1) {
+                        break;
+                    }
+                    count++;
                 }
-                if (count == globalPoolStream.length - 1) {
-                    break;
-                }
-                count++;
             }
         }
-
-        }
-      
     }
 
     function _streamGlobalPoolWithdrawMultiple() internal {
         address[] memory poolAddresses = IPoolActions(POOL_ADDRESS).getPoolAddresses();
-        for(uint256 i=0; i<poolAddresses.length;i++){
+        for (uint256 i = 0; i < poolAddresses.length; i++) {
             address token = poolAddresses[i];
-             bytes32 pairId = bytes32(abi.encodePacked(token, token));
-        GlobalPoolStream[] memory globalPoolStream = IPoolActions(POOL_ADDRESS).globalStreamQueueWithdraw(pairId);
+            bytes32 pairId = bytes32(abi.encodePacked(token, token));
+            GlobalPoolStream[] memory globalPoolStream = IPoolActions(POOL_ADDRESS).globalStreamQueueWithdraw(pairId);
 
-        if (globalPoolStream.length > 0) {
-            uint256 streamRemoved;
-            uint256 count;
+            if (globalPoolStream.length > 0) {
+                uint256 streamRemoved;
+                uint256 count;
 
-            for (uint256 i = 0; i < globalPoolStream.length;) {
-                GlobalPoolStream memory stream = _streamGlobalPoolSingle(globalPoolStream[i]);
+                for (uint256 i = 0; i < globalPoolStream.length;) {
+                    GlobalPoolStream memory stream = _streamGlobalPoolSingle(globalPoolStream[i]);
 
-                if (stream.streamsRemaining == 0) {
-                    streamRemoved++;
-                    IPoolActions(POOL_ADDRESS).dequeueGlobalPoolWithdrawStream(pairId, i);
-                    IPoolActions(POOL_ADDRESS).transferTokens(
-                        globalPoolStream[i].tokenIn, globalPoolStream[i].user, globalPoolStream[i].amountOut
-                    );
-                    uint256 lastIndex = globalPoolStream.length - streamRemoved;
-                    globalPoolStream[i] = globalPoolStream[lastIndex];
-                    delete globalPoolStream[lastIndex];
-                } else {
-                    IPoolActions(POOL_ADDRESS).updateGlobalPoolWithdrawStream(stream, pairId, i);
-                    unchecked {
-                        i++;
+                    if (stream.streamsRemaining == 0) {
+                        streamRemoved++;
+                        IPoolActions(POOL_ADDRESS).dequeueGlobalPoolWithdrawStream(pairId, i);
+                        IPoolActions(POOL_ADDRESS).transferTokens(
+                            globalPoolStream[i].tokenIn, globalPoolStream[i].user, globalPoolStream[i].amountOut
+                        );
+                        uint256 lastIndex = globalPoolStream.length - streamRemoved;
+                        globalPoolStream[i] = globalPoolStream[lastIndex];
+                        delete globalPoolStream[lastIndex];
+                    } else {
+                        IPoolActions(POOL_ADDRESS).updateGlobalPoolWithdrawStream(stream, pairId, i);
+                        unchecked {
+                            i++;
+                        }
                     }
+                    if (count == globalPoolStream.length - 1) {
+                        break;
+                    }
+                    count++;
                 }
-                if (count == globalPoolStream.length - 1) {
-                    break;
-                }
-                count++;
             }
         }
-        }
-       
     }
 
     // function _enqueueGlobalPoolStream(bytes32 pairId, address user, address token, uint256 amount, bool isDeposit)
@@ -455,15 +452,8 @@ contract PoolLogic is Ownable, IPoolLogic {
         returns (uint256 poolANewStreamsRemaining, uint256 poolAReservesToAdd, uint256 lpUnitsAToMint)
     {
         // both poolStreamA and poolStreamB tokens should be same in case of single sided liquidity
-        bytes32 pairId = keccak256(abi.encodePacked(liqStream.poolAStream.token, liqStream.poolBStream.token));
-        (
-            uint256 reserveD_A,
-            uint256 poolOwnershipUnitsTotal_A,
-            uint256 reserveA_A,
-            uint256 initialDToMint_A,
-            uint256 poolFeeCollected_A,
-            bool initialized_A
-        ) = pool.poolInfo(liqStream.poolAStream.token);
+        (uint256 reserveD_A, uint256 poolOwnershipUnitsTotal_A, uint256 reserveA_A,,,) =
+            pool.poolInfo(liqStream.poolAStream.token);
         poolANewStreamsRemaining = liqStream.poolAStream.streamsRemaining;
 
         if (liqStream.poolAStream.swapAmountRemaining != 0) {
@@ -481,15 +471,7 @@ contract PoolLogic is Ownable, IPoolLogic {
         returns (uint256 poolBNewStreamsRemaining, uint256 poolBReservesToAdd, uint256 changeInD)
     {
         // both poolStreamA and poolStreamB tokens should be same in case of single sided liquidity
-        bytes32 pairId = keccak256(abi.encodePacked(liqStream.poolAStream.token, liqStream.poolBStream.token));
-        (
-            uint256 reserveD_B,
-            uint256 poolOwnershipUnitsTotal_B,
-            uint256 reserveA_B,
-            uint256 initialDToMint_B,
-            uint256 poolFeeCollected_B,
-            bool initialized_B
-        ) = pool.poolInfo(liqStream.poolBStream.token);
+        (uint256 reserveD_B,, uint256 reserveA_B,,,) = pool.poolInfo(liqStream.poolBStream.token);
         poolBNewStreamsRemaining = liqStream.poolBStream.streamsRemaining;
         if (liqStream.poolBStream.swapAmountRemaining != 0) {
             poolBNewStreamsRemaining--;
@@ -504,14 +486,7 @@ contract PoolLogic is Ownable, IPoolLogic {
         returns (uint256 poolNewStreamsRemaining, uint256 poolReservesToAdd, uint256 amountOut)
     {
         // both poolStreamA and poolStreamB tokens should be same in case of single sided liquidity
-        (
-            uint256 reserveD,
-            uint256 poolOwnershipUnitsTotal,
-            uint256 reserveA,
-            uint256 initialDToMint,
-            uint256 poolFeeCollected,
-            bool initialized
-        ) = pool.poolInfo(globalStream.tokenIn);
+        (uint256 reserveD,, uint256 reserveA,,,) = pool.poolInfo(globalStream.tokenIn);
         poolNewStreamsRemaining = globalStream.streamsRemaining;
         poolNewStreamsRemaining--;
         poolReservesToAdd = globalStream.swapPerStream;
@@ -550,14 +525,7 @@ contract PoolLogic is Ownable, IPoolLogic {
         (LiquidityStream[] memory liquidityStreams, uint256 front, uint256 back) = pool.liquidityStreamQueue(pairId);
         // true = there are streams pending
         if (back - front != 0) {
-            (
-                uint256 reserveD_A,
-                uint256 poolOwnershipUnitsTotal_A,
-                uint256 reserveA_A,
-                uint256 initialDToMint_A,
-                uint256 poolFeeCollected_A,
-                bool initialized_A
-            ) = pool.poolInfo(poolA);
+            (uint256 reserveD_A, uint256 poolOwnershipUnitsTotal_A, uint256 reserveA_A,,,) = pool.poolInfo(poolA);
 
             // get the front stream
             LiquidityStream memory liquidityStream = liquidityStreams[front];
@@ -604,16 +572,8 @@ contract PoolLogic is Ownable, IPoolLogic {
         }
     }
 
-
     function removeLiquidity(address token, address user, uint256 lpUnits) external onlyRouter {
-        (
-            uint256 reserveD,
-            uint256 poolOwnershipUnitsTotal,
-            uint256 reserveA,
-            uint256 initialDToMint,
-            uint256 poolFeeCollected,
-            bool initialized
-        ) = pool.poolInfo(address(token));
+        (uint256 reserveD,,,,,) = pool.poolInfo(address(token));
         uint256 streamCount = calculateStreamCount(lpUnits, pool.globalSlippage(), reserveD);
         uint256 lpUnitsPerStream = lpUnits / streamCount;
         RemoveLiquidityStream memory removeLiqStream = RemoveLiquidityStream({
@@ -640,14 +600,7 @@ contract PoolLogic is Ownable, IPoolLogic {
             return;
         }
 
-        (
-            uint256 reserveD,
-            uint256 poolOwnershipUnitsTotal,
-            uint256 reserveA,
-            uint256 initialDToMint,
-            uint256 poolFeeCollected,
-            bool initialized
-        ) = pool.poolInfo(address(token));
+        (, uint256 poolOwnershipUnitsTotal, uint256 reserveA,,,) = pool.poolInfo(address(token));
 
         RemoveLiquidityStream memory frontStream = removeLiqStreams[front];
 
@@ -1077,18 +1030,18 @@ contract PoolLogic is Ownable, IPoolLogic {
         return calculateStreamCount(amountIn, pool.globalSlippage(), reserveD);
     }
 
-    function getExecutionPriceLower(uint256 executionPrice) public view returns (uint256) {
+    function getExecutionPriceLower(uint256 executionPrice) public pure returns (uint256) {
         uint256 mod = executionPrice % PRICE_PRECISION; // @audit decide decimals for precission + use global variable for precission
         return executionPrice - mod;
     }
 
-    function getReciprocalOppositePrice(uint256 executionPrice, uint256 reserveA) public view returns (uint256) {
+    function getReciprocalOppositePrice(uint256 executionPrice, uint256 reserveA) public pure returns (uint256) {
         // and divide rB/rA;
         uint256 reserveB = getOtherReserveFromPrice(executionPrice, reserveA); // @audit confirm scaling
         return getExecutionPrice(reserveB, reserveA); // @audit returned price needs to go in getExecutionPriceLower() ??
     }
 
-    function getOtherReserveFromPrice(uint256 executionPrice, uint256 reserveA) public view returns (uint256) {
+    function getOtherReserveFromPrice(uint256 executionPrice, uint256 reserveA) public pure returns (uint256) {
         return reserveA.wdiv(executionPrice); // @audit confirm scaling
     }
 
@@ -1097,14 +1050,7 @@ contract PoolLogic is Ownable, IPoolLogic {
         view
         returns (StreamDetails memory streamDetails)
     {
-        (
-            uint256 reserveD,
-            uint256 poolOwnershipUnitsTotal,
-            uint256 reserveA,
-            uint256 initialDToMint,
-            uint256 poolFeeCollected,
-            bool initialized
-        ) = pool.poolInfo(token);
+        (uint256 reserveD,,,,,) = pool.poolInfo(token);
 
         uint256 streamCount = calculateStreamCount(amount, pool.globalSlippage(), reserveD);
         uint256 swapPerStream = amount / streamCount;
