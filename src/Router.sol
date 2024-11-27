@@ -110,7 +110,6 @@ contract Router is Ownable, ReentrancyGuard, IRouter {
         IPoolLogic(poolStates.POOL_LOGIC()).processLiqStream(poolA, poolB);
     }
 
-
     function removeLiquidity(address token, uint256 lpUnits) external override nonReentrant {
         if (!poolExist(token)) revert InvalidPool();
         if (lpUnits == 0 || lpUnits > poolStates.userLpUnitInfo(msg.sender, token)) revert InvalidAmount();

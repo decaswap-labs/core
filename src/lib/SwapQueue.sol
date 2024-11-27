@@ -14,6 +14,7 @@ struct Swap {
     address user;
     address tokenIn;
     address tokenOut;
+    uint8 isMarketOrder; // 1: YES, 2: NO
     bool completed;
 }
 /* $10, we will iterate over all the swaps <=$10, n=50, 50 streams */

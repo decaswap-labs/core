@@ -16,7 +16,7 @@ contract Handler is Test {
     MockERC20 public tokenB;
     address public owner;
 
-    uint96 public constant MAX_DEPOSIT_SIZE = 10000 ether;
+    uint96 public constant MAX_DEPOSIT_SIZE = 10_000 ether;
 
     constructor(Router _router, MockERC20 _tokenA, MockERC20 _tokenB, address _owner) {
         router = _router;
@@ -51,8 +51,8 @@ contract Handler is Test {
         uint256 initialDToMintPoolA = 10 ether;
         uint256 SLIPPAGE = 10;
 
-        uint256 tokenAAmount = 500000 ether;
-        uint256 tokenBAmount = 1000000 ether;
+        uint256 tokenAAmount = 500_000 ether;
+        uint256 tokenBAmount = 1_000_000 ether;
 
         router.initGenesisPool(address(tokenA), tokenAAmount, initialDToMintPoolA);
 

@@ -15,7 +15,7 @@ contract Pool is IPool, Ownable {
     using SafeERC20 for IERC20;
 
     using Queue for Queue.QueueStruct;
-    
+
     address public override VAULT_ADDRESS = address(0);
     address public override ROUTER_ADDRESS = address(0);
     // address internal D_TOKEN = address(0xD);
@@ -84,7 +84,7 @@ contract Pool is IPool, Ownable {
     mapping(address => mapping(address => uint256)) public override userGlobalPoolInfo;
     mapping(address => uint256) public override globalPoolDBalance;
 
-    mapping(bytes32 => mapping(uint256 => Swap[])) public orderBookQueue;
+    mapping(bytes32 => mapping(uint256 => Swap[])) public triggerAndMarketOrderBook;
     mapping(bytes32 => uint256) public override highestPriceMarker;
 
     address[] public poolAddress;
@@ -138,9 +138,10 @@ contract Pool is IPool, Ownable {
         external
         onlyPoolLogic
     {
-        uint256 lastIndex = orderBookQueue[pairId][executionPriceKey].length - 1;
-        orderBookQueue[pairId][executionPriceKey][index] = orderBookQueue[pairId][executionPriceKey][lastIndex];
-        orderBookQueue[pairId][executionPriceKey].pop();
+        uint256 lastIndex = triggerAndMarketOrderBook[pairId][executionPriceKey].length - 1;
+        triggerAndMarketOrderBook[pairId][executionPriceKey][index] =
+            triggerAndMarketOrderBook[pairId][executionPriceKey][lastIndex];
+        triggerAndMarketOrderBook[pairId][executionPriceKey].pop();
     }
 
     function dequeueSwap_pairPendingQueue(bytes32 pairId) external onlyPoolLogic {
@@ -293,7 +294,7 @@ contract Pool is IPool, Ownable {
             uint256 swapPerStream,
             uint256 dustTokenAmount
         ) = abi.decode(updatedSwapData, (bytes32, uint256, uint256, bool, uint256, uint256, uint256, uint256));
-        Swap storage swap = orderBookQueue[pairId][executionPriceKey][index];
+        Swap storage swap = triggerAndMarketOrderBook[pairId][executionPriceKey][index];
         swap.amountOut += amountOut;
         swap.swapAmountRemaining = swapAmountRemaining;
         swap.completed = completed;
@@ -354,7 +355,7 @@ contract Pool is IPool, Ownable {
     }
 
     function updateOrderBook(bytes32 pairId, Swap memory swap, uint256 key) external override onlyPoolLogic {
-        orderBookQueue[pairId][key].push(swap);
+        triggerAndMarketOrderBook[pairId][key].push(swap);
     }
 
     function updateGlobalPoolUserBalance(bytes memory userBalance) external override onlyPoolLogic {
@@ -465,7 +466,6 @@ contract Pool is IPool, Ownable {
         // emit LiquidityRemoved(user, token, lpUnits, assetToTransfer, dAmountToDeduct);
     }
 
-
     function poolInfo(address tokenAddress)
         external
         view
@@ -489,14 +489,12 @@ contract Pool is IPool, Ownable {
         );
     }
 
-    function getReserveA(address pool) external override view returns (uint256){
-        return  mapToken_reserveA[pool];
-
+    function getReserveA(address pool) external view override returns (uint256) {
+        return mapToken_reserveA[pool];
     }
 
-    function getReserveD(address pool) external override view returns (uint256){
-        return  mapToken_reserveD[pool];
-
+    function getReserveD(address pool) external view override returns (uint256) {
+        return mapToken_reserveD[pool];
     }
 
     function pairStreamQueue(bytes32 pairId) external view returns (Swap[] memory swaps, uint256 front, uint256 back) {
@@ -573,11 +571,10 @@ contract Pool is IPool, Ownable {
     }
 
     function orderBook(bytes32 pairId, uint256 priceKey) external view override returns (Swap[] memory) {
-        return orderBookQueue[pairId][priceKey];
+        return triggerAndMarketOrderBook[pairId][priceKey];
     }
 
-    function getPoolAddresses() external override view returns (address[] memory){
+    function getPoolAddresses() external view override returns (address[] memory) {
         return poolAddress;
     }
 }
-
