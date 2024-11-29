@@ -178,6 +178,10 @@ contract Router is Ownable, ReentrancyGuard, IRouter {
         IPoolLogic(poolStates.POOL_LOGIC()).processPair(tokenIn, tokenOut);
     }
 
+    function processMarketOrders() external nonReentrant {
+        IPoolLogic(poolStates.POOL_LOGIC()).processMarketOrders();
+    }   
+
     function updatePoolAddress(address newPoolAddress) external override onlyOwner {
         emit PoolAddressUpdated(POOL_ADDRESS, newPoolAddress);
         POOL_ADDRESS = newPoolAddress;

@@ -62,4 +62,5 @@ interface IPoolLogicActions {
     function getDOut(uint256, uint256, uint256) external pure returns (uint256);
     function processGlobalStreamPairDeposit() external;
     function processGlobalStreamPairWithdraw() external;
+    function processMarketOrders() external;
 }

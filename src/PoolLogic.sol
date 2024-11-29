@@ -247,13 +247,71 @@ contract PoolLogic is Ownable, IPoolLogic {
         return stream;
     }
 
-    function processGlobalStreamPairWithdraw() external override onlyRouter {
-        // _streamGlobalStream(token);
-        _streamGlobalPoolWithdrawMultiple();
-    }
+    // function processGlobalStreamPairWithdraw() external override onlyRouter {
+    //     // _streamGlobalStream(token);
+    //     _streamGlobalPoolWithdrawMultiple();
+    // }
 
-    function processGlobalStreamPairDeposit() external override onlyRouter {
-        _streamGlobalPoolDepositMultiple();
+    // function processGlobalStreamPairDeposit() external override onlyRouter {
+    //     _streamGlobalPoolDepositMultiple();
+    // }
+
+    /// @notice Executes market orders for a given token from the order book
+    /// @param token The token address for which to execute market orders
+    function processMarketOrders() external override onlyRouter {
+        address[] memory poolAddresses = IPoolActions(POOL_ADDRESS).getPoolAddresses();
+        
+        for (uint256 j = 0; j < poolAddresses.length;) {
+            address token = poolAddresses[j];
+            bytes32 pairId = keccak256(abi.encodePacked(token, token));
+            (,, uint256 reserveA,,,) = pool.poolInfo(address(token));
+            uint256 currentExecPrice = getExecutionPrice(reserveA, reserveA);
+            uint256 executionPriceKey = getExecutionPriceLower(currentExecPrice);
+            
+            // Get market orders (isLimitOrder = false)
+            Swap[] memory swaps = pool.orderBook(pairId, executionPriceKey, false);
+            
+            // Process each swap in the order book
+            for (uint256 i = 0; i < swaps.length;) {
+                Swap memory currentSwap = swaps[i];
+                
+                // Execute one stream iteration
+                currentSwap = _settleCurrentSwapAgainstPool(currentSwap, currentExecPrice);
+                
+                // Update the order book entry
+                bytes memory updatedSwapData = abi.encode(
+                    pairId,
+                    currentSwap.amountOut,
+                    currentSwap.swapAmountRemaining,
+                    currentSwap.completed,
+                    currentSwap.streamsRemaining,
+                    currentSwap.streamsCount,
+                    currentSwap.swapPerStream,
+                    currentSwap.dustTokenAmount
+                );
+                
+                // Update swap object in the order book
+                pool.updatePairStreamQueueSwap(updatedSwapData, executionPriceKey, i, false);
+                
+                // If swap is completed, dequeue it and transfer tokens
+                if (currentSwap.streamsRemaining == 0) {
+                    pool.dequeueSwap_pairStreamQueue(pairId, executionPriceKey, i, false);
+                    IPoolActions(POOL_ADDRESS).transferTokens(
+                        currentSwap.tokenOut,
+                        currentSwap.user,
+                        currentSwap.amountOut
+                    );
+                }
+                
+                unchecked {
+                    ++i;
+                }
+            }
+
+            unchecked {
+                ++j;
+            }
+        }
     }
 
     function _streamGlobalPoolDepositMultiple() internal {
@@ -589,6 +647,10 @@ contract PoolLogic is Ownable, IPoolLogic {
         _executeRemoveLiquidity(token);
     }
 
+    /// @notice External function to process pending remove liquidity requests for a specific token
+    /// @dev Can only be called by the router contract
+    /// @dev Delegates to internal _executeRemoveLiquidity function to handle the actual processing
+    /// @param token The address of the token for which to process remove liquidity requests
     function processRemoveLiquidity(address token) external onlyRouter {
         _executeRemoveLiquidity(token);
     }
