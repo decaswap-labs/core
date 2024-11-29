@@ -137,7 +137,7 @@ contract Router is Ownable, ReentrancyGuard, IRouter {
         if (!poolExist(tokenIn) || !poolExist(tokenOut)) revert InvalidPool();
 
         IERC20(tokenIn).safeTransferFrom(msg.sender, POOL_ADDRESS, amountIn);
-        IPoolLogic(poolStates.POOL_LOGIC()).swap(msg.sender, tokenIn, tokenOut, amountIn, executionPrice);
+        // IPoolLogic(poolStates.POOL_LOGIC()).swap(msg.sender, tokenIn, tokenOut, amountIn, executionPrice);
     }
 
     function depositToGlobalPool(address token, uint256 amount) external override nonReentrant {
