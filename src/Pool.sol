@@ -306,9 +306,10 @@ contract Pool is IPool, Ownable {
         ) = abi.decode(updatedSwapData, (bytes32, uint256, uint256, bool, uint256, uint256, uint256, uint256));
         Swap storage swap;
         if (isLimitOrder) {
-            swap = triggerAndMarketOrderBook[pairId][executionPriceKey][index];
-        } else {
             swap = limitOrderBook[pairId][executionPriceKey][index];
+        } else {
+            swap = triggerAndMarketOrderBook[pairId][executionPriceKey][index];
+
         }
         swap.amountOut += amountOut;
         swap.swapAmountRemaining = swapAmountRemaining;
@@ -375,9 +376,10 @@ contract Pool is IPool, Ownable {
         onlyPoolLogic
     {
         if (isLimitOrder) {
-            triggerAndMarketOrderBook[pairId][key].push(swap);
-        } else {
             limitOrderBook[pairId][key].push(swap);
+        } else {
+            console.log("swap.swapID", swap.swapID);
+            triggerAndMarketOrderBook[pairId][key].push(swap);
         }
     }
 
@@ -599,7 +601,7 @@ contract Pool is IPool, Ownable {
         override
         returns (Swap[] memory)
     {
-        return isLimitOrder ? triggerAndMarketOrderBook[pairId][priceKey] : limitOrderBook[pairId][priceKey];
+        return isLimitOrder ?  limitOrderBook[pairId][priceKey]:triggerAndMarketOrderBook[pairId][priceKey];
     }
 
     function getPoolAddresses() external view override returns (address[] memory) {

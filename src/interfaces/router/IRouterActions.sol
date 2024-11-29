@@ -9,4 +9,5 @@ interface IRouterActions {
     function processGlobalStreamPairDeposit() external;
     function processGlobalStreamPairWithdraw() external;
     function processMarketOrders() external;
+    function swapMarketOrder(address tokenIn, address tokenOut, uint256 amountIn) external;
 }

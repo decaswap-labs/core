@@ -808,6 +808,7 @@ contract PoolLogic is Ownable, IPoolLogic {
         if (currentSwap.completed) {
             IPoolActions(POOL_ADDRESS).transferTokens(currentSwap.tokenOut, currentSwap.user, currentSwap.amountOut);
         } else {
+            console.log("currentSwap.streamsRemaining", currentSwap.streamsRemaining);
             _insertInOrderBook(pairId, currentSwap, executionPriceKey, false);
         }
     }
