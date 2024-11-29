@@ -247,17 +247,16 @@ contract PoolLogic is Ownable, IPoolLogic {
         return stream;
     }
 
-    // function processGlobalStreamPairWithdraw() external override onlyRouter {
-    //     // _streamGlobalStream(token);
-    //     _streamGlobalPoolWithdrawMultiple();
-    // }
+    function processGlobalStreamPairWithdraw() external override onlyRouter {
+        // _streamGlobalStream(token);
+        _streamGlobalPoolWithdrawMultiple();
+    }
 
-    // function processGlobalStreamPairDeposit() external override onlyRouter {
-    //     _streamGlobalPoolDepositMultiple();
-    // }
+    function processGlobalStreamPairDeposit() external override onlyRouter {
+        _streamGlobalPoolDepositMultiple();
+    }
 
     /// @notice Executes market orders for a given token from the order book
-    /// @param token The token address for which to execute market orders
     function processMarketOrders() external override onlyRouter {
         address[] memory poolAddresses = IPoolActions(POOL_ADDRESS).getPoolAddresses();
         
@@ -291,11 +290,11 @@ contract PoolLogic is Ownable, IPoolLogic {
                 );
                 
                 // Update swap object in the order book
-                pool.updatePairStreamQueueSwap(updatedSwapData, executionPriceKey, i, false);
+                IPoolActions(POOL_ADDRESS).updatePairStreamQueueSwap(updatedSwapData, executionPriceKey, i, false);
                 
                 // If swap is completed, dequeue it and transfer tokens
                 if (currentSwap.streamsRemaining == 0) {
-                    pool.dequeueSwap_pairStreamQueue(pairId, executionPriceKey, i, false);
+                    IPoolActions(POOL_ADDRESS).dequeueSwap_pairStreamQueue(pairId, executionPriceKey, i, false);
                     IPoolActions(POOL_ADDRESS).transferTokens(
                         currentSwap.tokenOut,
                         currentSwap.user,
@@ -841,12 +840,14 @@ contract PoolLogic is Ownable, IPoolLogic {
             typeOfOrder: 2
         });
 
+        bytes32 pairId = bytes32(abi.encodePacked(tokenIn, tokenOut)); // for one direction
+
+
         if (triggerExecutionPrice > pool.highestPriceMarker(pairId)) {
-            IPoolActions(POOL_ADDRESS).setHighestPriceMarker(pairId, limitOrderPrice);
+            IPoolActions(POOL_ADDRESS).setHighestPriceMarker(pairId, triggerExecutionPrice);
         }
 
         uint256 currentExecPrice = getExecutionPrice(reserveA_In, reserveA_Out);
-        bytes32 pairId = bytes32(abi.encodePacked(tokenIn, tokenOut)); // for one direction
         uint256 executionPriceKey = getExecutionPriceLower(currentExecPrice); //KEY
         uint256 streamCount = getStreamCount(tokenIn, tokenOut, currentSwap.swapAmountRemaining);
         uint256 swapPerStream = currentSwap.swapAmountRemaining / streamCount;
