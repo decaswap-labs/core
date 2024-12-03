@@ -849,7 +849,7 @@ contract PoolLogic is Ownable, IPoolLogic {
         }
 
         uint256 currentExecPrice = getExecutionPrice(reserveA_In, reserveA_Out);
-        uint256 executionPriceKey = getExecutionPriceLower(currentExecPrice); //KEY
+        uint256 executionPriceKey = getExecutionPriceLower(triggerExecutionPrice); //KEY
         uint256 streamCount = getStreamCount(tokenIn, tokenOut, currentSwap.swapAmountRemaining);
         uint256 swapPerStream = currentSwap.swapAmountRemaining / streamCount;
         if (currentSwap.swapAmountRemaining % streamCount != 0) {

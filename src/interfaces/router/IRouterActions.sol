@@ -10,4 +10,5 @@ interface IRouterActions {
     function processGlobalStreamPairWithdraw() external;
     function processMarketOrders() external;
     function swapMarketOrder(address tokenIn, address tokenOut, uint256 amountIn) external;
+    function swapTriggerOrder(address tokenIn, address tokenOut, uint256 amountIn, uint256 executionPrice) external;
 }
