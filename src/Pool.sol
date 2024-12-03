@@ -376,9 +376,9 @@ contract Pool is IPool, Ownable {
         onlyPoolLogic
     {
         if (isLimitOrder) {
+            console.log("swap.swapID", swap.swapID);
             limitOrderBook[pairId][key].push(swap);
         } else {
-            console.log("swap.swapID", swap.swapID);
             triggerAndMarketOrderBook[pairId][key].push(swap);
         }
     }

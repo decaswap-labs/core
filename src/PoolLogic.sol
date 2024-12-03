@@ -808,7 +808,6 @@ contract PoolLogic is Ownable, IPoolLogic {
         if (currentSwap.completed) {
             IPoolActions(POOL_ADDRESS).transferTokens(currentSwap.tokenOut, currentSwap.user, currentSwap.amountOut);
         } else {
-            console.log("currentSwap.streamsRemaining", currentSwap.streamsRemaining);
             _insertInOrderBook(pairId, currentSwap, executionPriceKey, false);
         }
     }
@@ -920,7 +919,10 @@ contract PoolLogic is Ownable, IPoolLogic {
             currentSwap, executionPriceKeyOpp, limitOrderPrice, executionPriceReciprocal
         );
 
+        console.log("currentSwap.swapID BEFORE SETTLEMENT", currentSwap.swapID);
+
         if (currentSwap.completed) {
+            console.log("currentSwap.swapID", currentSwap.swapID);
             IPoolActions(POOL_ADDRESS).transferTokens(tokenOut, user, currentSwap.amountOut);
         } else {
             /*
@@ -942,8 +944,10 @@ contract PoolLogic is Ownable, IPoolLogic {
 
             currentSwap = _settleCurrentSwapAgainstPool(currentSwap, limitOrderPrice); // amountOut is updated
             if (currentSwap.completed) {
+                console.log("currentSwap.swapID", currentSwap.swapID);
                 IPoolActions(POOL_ADDRESS).transferTokens(currentSwap.tokenOut, currentSwap.user, currentSwap.amountOut);
             } else {
+                console.log("currentSwap.swapID", currentSwap.swapID);
                 _insertInOrderBook(pairId, currentSwap, executionPriceKey, true);
             }
         }
@@ -1341,7 +1345,7 @@ contract PoolLogic is Ownable, IPoolLogic {
         returns (Swap memory)
     {
         (uint256 reserveD_In,, uint256 reserveA_In,,,) = pool.poolInfo(address(currentSwap.tokenIn));
-        uint256 reserveAOutnFromPrice = getOtherReserveFromPrice(executionPriceCurrentSwap, reserveA_In);
+        uint256 reserveAOutFromPrice = getOtherReserveFromPrice(executionPriceCurrentSwap, reserveA_In);
 
         // TODO: NEED TO FIX RESERVE D EQUATION
         uint256 reserveDOutFromPrice = getOtherReserveFromPrice(executionPriceCurrentSwap, reserveD_In);
@@ -1352,9 +1356,12 @@ contract PoolLogic is Ownable, IPoolLogic {
         if (currentSwap.streamsRemaining == 1) {
             swapAmountIn += currentSwap.dustTokenAmount;
         }
+        
+        console.log("swapAmountIn", swapAmountIn);
+        console.log("reserveA_In", reserveA_In);
 
         (uint256 dToUpdate, uint256 amountOut) =
-            getSwapAmountOut(swapAmountIn, reserveA_In, reserveAOutnFromPrice, reserveD_In, reserveDOutFromPrice);
+            getSwapAmountOut(swapAmountIn, reserveA_In, reserveAOutFromPrice, reserveD_In, reserveDOutFromPrice);
 
         bytes memory updateReservesParams =
             abi.encode(true, currentSwap.tokenIn, currentSwap.tokenOut, swapAmountIn, dToUpdate, amountOut, dToUpdate);

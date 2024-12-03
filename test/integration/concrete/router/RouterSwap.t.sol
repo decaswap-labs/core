@@ -11,7 +11,6 @@ contract RouterTest_Swap is RouterTest {
     using DSMath for uint256;
 
     address private tokenC = makeAddr("tokenC");
-    uint256 private TOKEN_A_SWAP_AMOUNT = 30 ether;
     bytes32 pairId;
     bytes32 oppositePairId;
 
@@ -141,7 +140,6 @@ contract RouterTest_Swap is RouterTest {
         if (swapAmount % streamCount != 0) {
             dust = swapAmount - (streamCount * swapPerStream);
         }
-
         // Approve the router to spend tokenA
         tokenA.approve(address(router), swapAmount);
 
@@ -196,75 +194,85 @@ contract RouterTest_Swap is RouterTest {
      * @notice This test will add a swap to the order book
      * because the swap price execution is lower than the current price (pool reserves)
      */
-    // function test_router_swap_addToOrderBook() public {
-    //     (,, uint256 reserveA_tokenA_beforeSwap,,,) = pool.poolInfo(address(tokenA));
-    //     (,, uint256 reserveA_tokenB_beforeSwap,,,) = pool.poolInfo(address(tokenB));
+    function test_swapLimitOrder_addToOrderBook() public {
+        uint256 TOKEN_A_SWAP_AMOUNT = 30 ether;
 
-    //     uint256 marketPriceBeforeSwap =
-    //         poolLogic.getExecutionPrice(reserveA_tokenA_beforeSwap, reserveA_tokenB_beforeSwap);
+        (uint256 reserveD_tokenA_beforeSwap,, uint256 reserveA_tokenA_beforeSwap,,,) = pool.poolInfo(address(tokenA));
+        (uint256 reserveD_tokenB_beforeSwap,, uint256 reserveA_tokenB_beforeSwap,,,) = pool.poolInfo(address(tokenB));
 
-    //     console.log("executionPriceBeforeSwap", marketPriceBeforeSwap);
+        uint256 marketPriceBeforeSwap =
+            poolLogic.getExecutionPrice(reserveA_tokenA_beforeSwap, reserveA_tokenB_beforeSwap);
 
-    //     // the price is expressed in 18 decimals meaning that for 1 we have 1e18
-    //     // execution price is 10% less than the market price
-    //     uint256 executionPrice = marketPriceBeforeSwap - (marketPriceBeforeSwap * 10) / 100;
+        // the price is expressed in 18 decimals meaning that for 1 we have 1e18
+        // execution price is 10% less than the market price
+        uint256 executionPrice = marketPriceBeforeSwap - (marketPriceBeforeSwap * 10) / 100;
 
-    //     uint256 swapperTokenABalance_beforeSwap = tokenA.balanceOf(owner);
-    //     uint256 poolTokenABalance_beforeSwap = tokenA.balanceOf(address(pool));
+        uint256 swapperTokenABalance_beforeSwap = tokenA.balanceOf(owner);
+        uint256 poolTokenABalance_beforeSwap = tokenA.balanceOf(address(pool));
 
-    //     uint256 swapperTokenBBalance_beforeSwap = tokenB.balanceOf(owner);
-    //     uint256 poolTokenBBalance_beforeSwap = tokenB.balanceOf(address(pool));
+        uint256 swapperTokenBBalance_beforeSwap = tokenB.balanceOf(owner);
+        uint256 poolTokenBBalance_beforeSwap = tokenB.balanceOf(address(pool));
 
-    //     vm.startPrank(owner);
-    //     tokenA.approve(address(router), TOKEN_A_SWAP_AMOUNT);
-    //     router.swap(address(tokenA), address(tokenB), TOKEN_A_SWAP_AMOUNT, executionPrice);
-    //     vm.stopPrank();
+        uint256 dust;
+        uint256 streamCount = poolLogic.getStreamCount(address(tokenA), address(tokenB), TOKEN_A_SWAP_AMOUNT);
+        uint256 swapPerStream = TOKEN_A_SWAP_AMOUNT / streamCount;
+        if (TOKEN_A_SWAP_AMOUNT % streamCount != 0) {
+            dust += (TOKEN_A_SWAP_AMOUNT - (streamCount * swapPerStream));
+        }
 
-    //     uint256 dust;
-    //     uint256 streamCount = poolLogic.getStreamCount(address(tokenA), address(tokenB), TOKEN_A_SWAP_AMOUNT);
-    //     uint256 swapPerStream = TOKEN_A_SWAP_AMOUNT / streamCount;
-    //     if (TOKEN_A_SWAP_AMOUNT % streamCount != 0) {
-    //         dust += (TOKEN_A_SWAP_AMOUNT - (streamCount * swapPerStream));
-    //     }
+         uint256 reserveAOutFromPrice = poolLogic.getOtherReserveFromPrice(executionPrice, reserveA_tokenA_beforeSwap);
 
-    //     uint256 swapperTokenABalance_afterSwap = tokenA.balanceOf(owner);
-    //     uint256 poolTokenABalance_afterSwap = tokenA.balanceOf(address(pool));
+        // TODO: NEED TO FIX RESERVE D EQUATION
+        uint256 reserveDOutFromPrice = poolLogic.getOtherReserveFromPrice(executionPrice, reserveD_tokenA_beforeSwap);
+        (uint256 dOut,uint256 amountOutPerStream) = poolLogic.getSwapAmountOut(swapPerStream, reserveA_tokenA_beforeSwap, reserveAOutFromPrice, reserveD_tokenA_beforeSwap, reserveDOutFromPrice);
 
-    //     uint256 swapperTokenBBalance_afterSwap = tokenB.balanceOf(owner);
-    //     uint256 poolTokenBBalance_afterSwap = tokenB.balanceOf(address(pool));
+        vm.startPrank(owner);
+        tokenA.approve(address(router), TOKEN_A_SWAP_AMOUNT);
+        router.swapLimitOrder(address(tokenA), address(tokenB), TOKEN_A_SWAP_AMOUNT, executionPrice);
+        vm.stopPrank();
+        
+        (uint256 reserveD_tokenA_afterSwap,, uint256 reserveA_tokenA_afterSwap,,,) = pool.poolInfo(address(tokenA));
+        (uint256 reserveD_tokenB_afterSwap,, uint256 reserveA_tokenB_afterSwap,,,) = pool.poolInfo(address(tokenB));
 
-    //     (,, uint256 reserveA_tokenA_afterSwap,,,) = pool.poolInfo(address(tokenA));
-    //     (,, uint256 reserveA_tokenB_afterSwap,,,) = pool.poolInfo(address(tokenB));
+        uint256 swapperTokenABalance_afterSwap = tokenA.balanceOf(owner);
+        uint256 poolTokenABalance_afterSwap = tokenA.balanceOf(address(pool));
 
-    //     uint256 marketPriceAfterSwap = poolLogic.getExecutionPrice(reserveA_tokenA_afterSwap, reserveA_tokenB_afterSwap);
+        uint256 swapperTokenBBalance_afterSwap = tokenB.balanceOf(owner);
+        uint256 poolTokenBBalance_afterSwap = tokenB.balanceOf(address(pool));
 
-    //     uint256 executionPriceKey = poolLogic.getExecutionPriceLower(executionPrice);
-    //     Swap[] memory swaps = pool.orderBook(pairId, executionPriceKey);
-    //     assertEq(swaps.length, 1);
-    //     Swap memory swap = swaps[0];
+        console.log("reserveA_tokenA_afterSwap", reserveA_tokenA_beforeSwap);
+        console.log("swapPerStream", swapPerStream);
+        console.log("reserveA_tokenA_afterSwap", reserveA_tokenA_afterSwap);
 
-    //     assertEq(reserveA_tokenA_beforeSwap, reserveA_tokenA_afterSwap);
-    //     assertEq(reserveA_tokenB_beforeSwap, reserveA_tokenB_afterSwap);
-    //     assertEq(marketPriceBeforeSwap, marketPriceAfterSwap);
-    //     assertEq(swapperTokenABalance_afterSwap, swapperTokenABalance_beforeSwap - TOKEN_A_SWAP_AMOUNT);
-    //     assertEq(poolTokenABalance_afterSwap, poolTokenABalance_beforeSwap + TOKEN_A_SWAP_AMOUNT);
-    //     assertEq(swapperTokenBBalance_afterSwap, swapperTokenBBalance_beforeSwap);
-    //     assertEq(poolTokenBBalance_afterSwap, poolTokenBBalance_beforeSwap);
+        uint256 executionPriceKey = poolLogic.getExecutionPriceLower(executionPrice);
+        Swap[] memory swaps = pool.orderBook(pairId, executionPriceKey, true);
+        assertEq(swaps.length, 1);
+        Swap memory swap = swaps[0];
 
-    //     // // check the swap
-    //     assertEq(swap.swapAmount, TOKEN_A_SWAP_AMOUNT);
-    //     assertEq(swap.swapAmountRemaining, TOKEN_A_SWAP_AMOUNT - dust);
-    //     assertEq(swap.dustTokenAmount, dust);
-    //     assertEq(swap.streamsCount, streamCount);
-    //     assertEq(swap.streamsRemaining, streamCount);
-    //     assertEq(swap.swapPerStream, swapPerStream);
-    //     assertEq(swap.executionPrice, executionPrice);
-    //     assertEq(swap.amountOut, 0);
-    //     assertEq(swap.user, owner);
-    //     assertEq(swap.tokenIn, address(tokenA));
-    //     assertEq(swap.tokenOut, address(tokenB));
-    //     assertEq(swap.completed, false);
-    // }
+        assertEq(reserveA_tokenA_afterSwap, reserveA_tokenA_beforeSwap + swapPerStream);
+        assertEq(reserveA_tokenB_afterSwap, reserveA_tokenB_beforeSwap - amountOutPerStream);
+        assertEq(reserveD_tokenA_afterSwap, reserveD_tokenA_beforeSwap - dOut);
+        assertEq(reserveD_tokenB_afterSwap, reserveD_tokenB_beforeSwap + dOut);
+        assertEq(swapperTokenABalance_afterSwap, swapperTokenABalance_beforeSwap - TOKEN_A_SWAP_AMOUNT);
+        assertEq(poolTokenABalance_afterSwap, poolTokenABalance_beforeSwap + TOKEN_A_SWAP_AMOUNT);
+        assertEq(swapperTokenBBalance_afterSwap, swapperTokenBBalance_beforeSwap);
+        assertEq(poolTokenBBalance_afterSwap, poolTokenBBalance_beforeSwap);
+
+        // check the swap
+        assertEq(swap.swapAmount, TOKEN_A_SWAP_AMOUNT);
+        assertEq(swap.swapAmountRemaining, TOKEN_A_SWAP_AMOUNT - dust - swapPerStream);
+        assertEq(swap.dustTokenAmount, dust);
+        assertEq(swap.streamsCount, streamCount);
+        assertEq(swap.streamsRemaining, streamCount);
+        assertEq(swap.swapPerStream, swapPerStream);
+        assertEq(swap.executionPrice, executionPrice);
+        assertEq(swap.amountOut, amountOutPerStream);
+        assertEq(swap.user, owner);
+        assertEq(swap.tokenIn, address(tokenA));
+        assertEq(swap.tokenOut, address(tokenB));
+        assertEq(swap.completed, false);
+        assertEq(swap.typeOfOrder, 3);
+    }
 
     // function test_router_swap_totallyExecuteSwapFromReserves() public {
     //     (uint256 reserveD_tokenA_beforeSwap,, uint256 reserveA_tokenA_beforeSwap,,,) = pool.poolInfo(address(tokenA));
@@ -655,6 +663,4 @@ contract RouterTest_Swap is RouterTest {
     //         swapperTokenBBalance_beforeSwap + tokenBInOppSwaps + tokenBAmountOutFromReserves
     //     );
     // }
-
-    
 }

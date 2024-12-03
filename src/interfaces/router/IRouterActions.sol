@@ -11,4 +11,5 @@ interface IRouterActions {
     function processMarketOrders() external;
     function swapMarketOrder(address tokenIn, address tokenOut, uint256 amountIn) external;
     function swapTriggerOrder(address tokenIn, address tokenOut, uint256 amountIn, uint256 executionPrice) external;
+    function swapLimitOrder(address tokenIn, address tokenOut, uint256 amountIn, uint256 executionPrice) external;
 }
