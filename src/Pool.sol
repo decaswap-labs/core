@@ -309,7 +309,6 @@ contract Pool is IPool, Ownable {
             swap = limitOrderBook[pairId][executionPriceKey][index];
         } else {
             swap = triggerAndMarketOrderBook[pairId][executionPriceKey][index];
-
         }
         swap.amountOut += amountOut;
         swap.swapAmountRemaining = swapAmountRemaining;
@@ -601,7 +600,7 @@ contract Pool is IPool, Ownable {
         override
         returns (Swap[] memory)
     {
-        return isLimitOrder ?  limitOrderBook[pairId][priceKey]:triggerAndMarketOrderBook[pairId][priceKey];
+        return isLimitOrder ? limitOrderBook[pairId][priceKey] : triggerAndMarketOrderBook[pairId][priceKey];
     }
 
     function getPoolAddresses() external view override returns (address[] memory) {

@@ -39,7 +39,6 @@ contract RouterTest_Swap is RouterTest {
     }
 
     function test_swapMarketOrder_success() public {
-
         vm.startPrank(owner);
         // Get initial pool reserves
         (uint256 reserveD_tokenA_before,, uint256 reserveA_tokenA_before,,,) = pool.poolInfo(address(tokenA));
@@ -51,7 +50,8 @@ contract RouterTest_Swap is RouterTest {
         uint256 swapAmount = 10 ether;
         uint256 expectedExecutionPrice = poolLogic.getExecutionPrice(reserveA_tokenA_before, reserveA_tokenB_before);
 
-        uint256 reserveDOutFromPriceB = poolLogic.getOtherReserveFromPrice(expectedExecutionPrice, reserveD_tokenA_before);
+        uint256 reserveDOutFromPriceB =
+            poolLogic.getOtherReserveFromPrice(expectedExecutionPrice, reserveD_tokenA_before);
 
         // Calculate expected stream details
         uint256 streamCount = poolLogic.getStreamCount(address(tokenA), address(tokenB), swapAmount);
@@ -61,7 +61,9 @@ contract RouterTest_Swap is RouterTest {
             dust = swapAmount - (streamCount * swapPerStream);
         }
 
-        (uint256 dOut, uint256 aOut) = poolLogic.getSwapAmountOut(swapPerStream, reserveA_tokenA_before, reserveA_tokenB_before, reserveD_tokenA_before, reserveDOutFromPriceB);
+        (uint256 dOut, uint256 aOut) = poolLogic.getSwapAmountOut(
+            swapPerStream, reserveA_tokenA_before, reserveA_tokenB_before, reserveD_tokenA_before, reserveDOutFromPriceB
+        );
 
         // Approve the router to spend tokenA
         tokenA.approve(address(router), swapAmount);
@@ -74,7 +76,7 @@ contract RouterTest_Swap is RouterTest {
         (uint256 reserveD_tokenB_after,, uint256 reserveA_tokenB_after,,,) = pool.poolInfo(address(tokenB));
         // Get swap from order book
         uint256 executionPriceKey = poolLogic.getExecutionPriceLower(expectedExecutionPrice);
-       
+
         Swap[] memory swaps = pool.orderBook(pairId, executionPriceKey, false);
         assertGt(swaps.length, 0, "No swap in order book");
         Swap memory swap = swaps[0];
@@ -121,7 +123,7 @@ contract RouterTest_Swap is RouterTest {
     }
 
     function test_swapTriggerOrder_success() public {
-         vm.startPrank(owner);
+        vm.startPrank(owner);
         // Get initial pool reserves
         (uint256 reserveD_tokenA_before,, uint256 reserveA_tokenA_before,,,) = pool.poolInfo(address(tokenA));
         (uint256 reserveD_tokenB_before,, uint256 reserveA_tokenB_before,,,) = pool.poolInfo(address(tokenB));
@@ -147,7 +149,7 @@ contract RouterTest_Swap is RouterTest {
         router.swapTriggerOrder(address(tokenA), address(tokenB), swapAmount, expectedExecutionPrice);
         // Get swap from order book
         uint256 executionPriceKey = poolLogic.getExecutionPriceLower(expectedExecutionPrice);
-       
+
         Swap[] memory swaps = pool.orderBook(pairId, executionPriceKey, false);
         assertGt(swaps.length, 0, "No swap in order book");
         Swap memory swap = swaps[0];
@@ -158,7 +160,7 @@ contract RouterTest_Swap is RouterTest {
 
         // Check swap object values
         assertEq(swap.swapAmount, swapAmount);
-        assertEq(swap.swapAmountRemaining, swapAmount-dust);
+        assertEq(swap.swapAmountRemaining, swapAmount - dust);
         assertEq(swap.streamsCount, streamCount);
         assertEq(swap.streamsRemaining, streamCount);
         assertEq(swap.swapPerStream, swapPerStream);
@@ -176,19 +178,19 @@ contract RouterTest_Swap is RouterTest {
         vm.startPrank(owner);
         vm.expectRevert(IRouterErrors.InvalidExecutionPrice.selector);
         router.swapTriggerOrder(address(tokenA), address(tokenB), 10 ether, 0);
-    } 
+    }
 
     function test_swapTriggerOrder_invalidPool() public {
         vm.startPrank(owner);
         vm.expectRevert(IRouterErrors.InvalidPool.selector);
         router.swapTriggerOrder(address(tokenA), address(tokenC), 10 ether, 1 ether);
-    }  
-    
+    }
+
     function test_swapTriggerOrder_invalidAmount() public {
         vm.startPrank(owner);
         vm.expectRevert(IRouterErrors.InvalidAmount.selector);
         router.swapTriggerOrder(address(tokenA), address(tokenB), 0, 1 ether);
-    }   
+    }
 
     /**
      * @notice This test will add a swap to the order book
@@ -220,17 +222,23 @@ contract RouterTest_Swap is RouterTest {
             dust += (TOKEN_A_SWAP_AMOUNT - (streamCount * swapPerStream));
         }
 
-         uint256 reserveAOutFromPrice = poolLogic.getOtherReserveFromPrice(executionPrice, reserveA_tokenA_beforeSwap);
+        uint256 reserveAOutFromPrice = poolLogic.getOtherReserveFromPrice(executionPrice, reserveA_tokenA_beforeSwap);
 
         // TODO: NEED TO FIX RESERVE D EQUATION
         uint256 reserveDOutFromPrice = poolLogic.getOtherReserveFromPrice(executionPrice, reserveD_tokenA_beforeSwap);
-        (uint256 dOut,uint256 amountOutPerStream) = poolLogic.getSwapAmountOut(swapPerStream, reserveA_tokenA_beforeSwap, reserveAOutFromPrice, reserveD_tokenA_beforeSwap, reserveDOutFromPrice);
+        (uint256 dOut, uint256 amountOutPerStream) = poolLogic.getSwapAmountOut(
+            swapPerStream,
+            reserveA_tokenA_beforeSwap,
+            reserveAOutFromPrice,
+            reserveD_tokenA_beforeSwap,
+            reserveDOutFromPrice
+        );
 
         vm.startPrank(owner);
         tokenA.approve(address(router), TOKEN_A_SWAP_AMOUNT);
         router.swapLimitOrder(address(tokenA), address(tokenB), TOKEN_A_SWAP_AMOUNT, executionPrice);
         vm.stopPrank();
-        
+
         (uint256 reserveD_tokenA_afterSwap,, uint256 reserveA_tokenA_afterSwap,,,) = pool.poolInfo(address(tokenA));
         (uint256 reserveD_tokenB_afterSwap,, uint256 reserveA_tokenB_afterSwap,,,) = pool.poolInfo(address(tokenB));
 
@@ -263,7 +271,7 @@ contract RouterTest_Swap is RouterTest {
         assertEq(swap.swapAmountRemaining, TOKEN_A_SWAP_AMOUNT - dust - swapPerStream);
         assertEq(swap.dustTokenAmount, dust);
         assertEq(swap.streamsCount, streamCount);
-        assertEq(swap.streamsRemaining, streamCount);
+        assertEq(swap.streamsRemaining, streamCount - 1);
         assertEq(swap.swapPerStream, swapPerStream);
         assertEq(swap.executionPrice, executionPrice);
         assertEq(swap.amountOut, amountOutPerStream);

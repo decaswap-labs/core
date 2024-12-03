@@ -145,27 +145,33 @@ contract Router is Ownable, ReentrancyGuard, IRouter {
         if (!poolExist(tokenIn) || !poolExist(tokenOut)) revert InvalidPool();
         IERC20(tokenIn).safeTransferFrom(msg.sender, POOL_ADDRESS, amountIn);
         IPoolLogic(poolStates.POOL_LOGIC()).swapMarketOrder(msg.sender, tokenIn, tokenOut, amountIn);
-    }   
+    }
 
-    function swapTriggerOrder(address tokenIn, address tokenOut, uint256 amountIn, uint256 executionPrice) external nonReentrant {
+    function swapTriggerOrder(address tokenIn, address tokenOut, uint256 amountIn, uint256 executionPrice)
+        external
+        nonReentrant
+    {
         if (amountIn == 0) revert InvalidAmount();
         if (!poolExist(tokenIn) || !poolExist(tokenOut)) revert InvalidPool();
         uint256 currentExecutionPrice = IPoolLogic(poolStates.POOL_LOGIC()).getExecutionPrice(
             pool.getReserveA(address(tokenIn)), pool.getReserveA(address(tokenOut))
         );
-        if(currentExecutionPrice == executionPrice) revert InvalidExecutionPrice();
+        if (currentExecutionPrice == executionPrice) revert InvalidExecutionPrice();
 
         IERC20(tokenIn).safeTransferFrom(msg.sender, POOL_ADDRESS, amountIn);
         IPoolLogic(poolStates.POOL_LOGIC()).swapTriggerOrder(msg.sender, tokenIn, tokenOut, amountIn, executionPrice);
     }
 
-    function swapLimitOrder(address tokenIn, address tokenOut, uint256 amountIn, uint256 executionPrice) external nonReentrant {
+    function swapLimitOrder(address tokenIn, address tokenOut, uint256 amountIn, uint256 executionPrice)
+        external
+        nonReentrant
+    {
         if (amountIn == 0) revert InvalidAmount();
         if (!poolExist(tokenIn) || !poolExist(tokenOut)) revert InvalidPool();
         uint256 currentExecutionPrice = IPoolLogic(poolStates.POOL_LOGIC()).getExecutionPrice(
             pool.getReserveA(address(tokenIn)), pool.getReserveA(address(tokenOut))
         );
-        if(currentExecutionPrice == executionPrice) revert InvalidExecutionPrice();
+        if (currentExecutionPrice == executionPrice) revert InvalidExecutionPrice();
         IERC20(tokenIn).safeTransferFrom(msg.sender, POOL_ADDRESS, amountIn);
         IPoolLogic(poolStates.POOL_LOGIC()).swapLimitOrder(msg.sender, tokenIn, tokenOut, amountIn, executionPrice);
     }
@@ -210,7 +216,7 @@ contract Router is Ownable, ReentrancyGuard, IRouter {
 
     function processMarketOrders() external nonReentrant {
         IPoolLogic(poolStates.POOL_LOGIC()).processMarketOrders();
-    }   
+    }
 
     function updatePoolAddress(address newPoolAddress) external override onlyOwner {
         emit PoolAddressUpdated(POOL_ADDRESS, newPoolAddress);
