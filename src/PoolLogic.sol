@@ -976,7 +976,6 @@ contract PoolLogic is Ownable, IPoolLogic {
                 _insertInOrderBook(pairId, currentSwap, executionPriceKey, true);
             }
         }
-        // }
     }
 
     function processLimitOrders(address tokenIn, address tokenOut) external onlyRouter {
@@ -1017,7 +1016,7 @@ contract PoolLogic is Ownable, IPoolLogic {
             );
             if (currentSwap.completed) {
                 // if the swap is completed, we keep looping to consume the opposite swaps
-                IPoolActions(POOL_ADDRESS).dequeueSwap_pairStreamQueue(pairId, executionPriceKey, 0);
+                IPoolActions(POOL_ADDRESS).dequeueSwap_pairStreamQueue(pairId, executionPriceKey, i, true);
                 IPoolActions(POOL_ADDRESS).transferTokens(currentSwap.tokenOut, currentSwap.user, currentSwap.amountOut);
                 swapRemoved++;
                 uint256 lastIndex = swaps.length - swapRemoved;
@@ -1053,7 +1052,7 @@ contract PoolLogic is Ownable, IPoolLogic {
             currentSwap = _settleCurrentSwapAgainstPool(currentSwap, currentSwap.executionPrice);
             if (currentSwap.completed) {
                 swapRemoved++;
-                IPoolActions(POOL_ADDRESS).dequeueSwap_pairStreamQueue(pairId, executionPriceKey, i);
+                IPoolActions(POOL_ADDRESS).dequeueSwap_pairStreamQueue(pairId, executionPriceKey, i, true);
                 IPoolActions(POOL_ADDRESS).transferTokens(currentSwap.tokenOut, currentSwap.user, currentSwap.amountOut);
                 uint256 lastIndex = swaps.length - swapRemoved;
                 swaps[i] = swaps[lastIndex];
@@ -1074,7 +1073,7 @@ contract PoolLogic is Ownable, IPoolLogic {
                     currentSwap.dustTokenAmount
                 );
 
-                IPoolActions(POOL_ADDRESS).updatePairStreamQueueSwap(updatedSwapData, executionPriceKey, i);
+                IPoolActions(POOL_ADDRESS).updatePairStreamQueueSwap(updatedSwapData, executionPriceKey, i, true);
                 unchecked {
                     ++i;
                 }
@@ -1298,7 +1297,7 @@ contract PoolLogic is Ownable, IPoolLogic {
                     oppositeSwap.tokenOut, oppositeSwap.user, tokenInAmountOut + oppositeSwap.amountOut
                 );
 
-                IPoolActions(POOL_ADDRESS).dequeueSwap_pairStreamQueue(oppositePairId, executionPriceOppositeKey, i);
+                IPoolActions(POOL_ADDRESS).dequeueSwap_pairStreamQueue(oppositePairId, executionPriceOppositeKey, i, true);
 
                 uint256 newTokenInAmountIn = tokenInAmountIn - tokenInAmountOut;
 
@@ -1325,7 +1324,7 @@ contract PoolLogic is Ownable, IPoolLogic {
 
                 //both swaps consuming each other
                 if (tokenInAmountIn == tokenInAmountOut) {
-                    IPoolActions(POOL_ADDRESS).dequeueSwap_pairStreamQueue(oppositePairId, executionPriceOppositeKey, i);
+                    IPoolActions(POOL_ADDRESS).dequeueSwap_pairStreamQueue(oppositePairId, executionPriceOppositeKey, i, true);
 
                     IPoolActions(POOL_ADDRESS).transferTokens(
                         oppositeSwap.tokenOut, oppositeSwap.user, tokenInAmountOut + oppositeSwap.amountOut
@@ -1354,7 +1353,7 @@ contract PoolLogic is Ownable, IPoolLogic {
                     );
 
                     IPoolActions(POOL_ADDRESS).updatePairStreamQueueSwap(
-                        updatedSwapData_opposite, executionPriceOppositeKey, i
+                        updatedSwapData_opposite, executionPriceOppositeKey, i, true
                     );
                 }
                 // 3. we terminate the loop as we have completed the frontSwap

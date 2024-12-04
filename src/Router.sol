@@ -211,11 +211,11 @@ contract Router is Ownable, ReentrancyGuard, IRouter {
     function processPair(address tokenIn, address tokenOut) external nonReentrant {
         if (tokenIn == tokenOut) revert SamePool();
         if (!poolExist(tokenIn) || !poolExist(tokenOut)) revert InvalidPool();
-        IPoolLogic(poolStates.POOL_LOGIC()).processPairLimitOrders(tokenIn, tokenOut);
+        IPoolLogic(poolStates.POOL_LOGIC()).processLimitOrders(tokenIn, tokenOut);
     }
 
     function processMarketOrders() external nonReentrant {
-        IPoolLogic(poolStates.POOL_LOGIC()).processMarketOrders();
+        IPoolLogic(poolStates.POOL_LOGIC()).processMarketAndTriggerOrders();
     }
 
     function updatePoolAddress(address newPoolAddress) external override onlyOwner {
