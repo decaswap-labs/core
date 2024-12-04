@@ -44,7 +44,7 @@ interface IPoolLogicActions {
         uint256 triggerExecutionPrice
     ) external;
     function swapMarketOrder(address user, address tokenIn, address tokenOut, uint256 amountIn) external;
-    function processPair(address tokenIn, address tokenOut) external;
+    function processLimitOrders(address tokenIn, address tokenOut) external;
     function calculateLpUnitsToMint(uint256, uint256, uint256, uint256, uint256) external pure returns (uint256);
 
     function getStreamCount(address tokenIn, address tokenOut, uint256 amountIn) external view returns (uint256);
