@@ -257,7 +257,7 @@ contract PoolLogic is Ownable, IPoolLogic {
     }
 
     /// @notice Executes market orders for a given token from the order book
-    function processMarketOrders() external override onlyRouter {
+    function processMarketAndTriggerOrders() external override onlyRouter {
         address[] memory poolAddresses = IPoolActions(POOL_ADDRESS).getPoolAddresses();
 
         for (uint256 j = 0; j < poolAddresses.length;) {
@@ -276,28 +276,60 @@ contract PoolLogic is Ownable, IPoolLogic {
 
                 // @todo: handle trigger orders
 
-                // Update the order book entry
-                bytes memory updatedSwapData = abi.encode(
-                    pairId,
-                    currentSwap.amountOut,
-                    currentSwap.swapAmountRemaining,
-                    currentSwap.completed,
-                    currentSwap.streamsRemaining,
-                    currentSwap.streamsCount,
-                    currentSwap.swapPerStream,
-                    currentSwap.dustTokenAmount
-                );
-
-                // Update swap object in the order book
-                IPoolActions(POOL_ADDRESS).updatePairStreamQueueSwap(updatedSwapData, executionPriceKey, i, false);
-
-                // If swap is completed, dequeue it and transfer tokens
-                if (currentSwap.streamsRemaining == 0) {
-                    IPoolActions(POOL_ADDRESS).dequeueSwap_pairStreamQueue(pairId, executionPriceKey, i, false);
-                    IPoolActions(POOL_ADDRESS).transferTokens(
-                        currentSwap.tokenOut, currentSwap.user, currentSwap.amountOut
+                if(currentSwap.typeOfOrder == 1){
+                    currentSwap = _settleCurrentSwapAgainstPool(currentSwap, currentExecPrice);
+                    // Update the order book entry
+                    bytes memory updatedSwapData = abi.encode(
+                        pairId,
+                        currentSwap.amountOut,
+                        currentSwap.swapAmountRemaining,    
+                        currentSwap.completed,
+                        currentSwap.streamsRemaining,
+                        currentSwap.streamsCount,
+                        currentSwap.swapPerStream,
+                        currentSwap.dustTokenAmount,
+                        currentSwap.typeOfOrder
                     );
+
+                    // Update swap object in the order book
+                    IPoolActions(POOL_ADDRESS).updatePairStreamQueueSwap(updatedSwapData, executionPriceKey, i, false);
+
+                    // If swap is completed, dequeue it and transfer tokens
+                    if (currentSwap.streamsRemaining == 0) {
+                        IPoolActions(POOL_ADDRESS).dequeueSwap_pairStreamQueue(pairId, executionPriceKey, i, false);
+                        IPoolActions(POOL_ADDRESS).transferTokens(
+                        currentSwap.tokenOut, currentSwap.user, currentSwap.amountOut
+                        );
+                    }
+                }else if(currentSwap.typeOfOrder == 2 && currentSwap.executionPrice == currentExecPrice) {
+                    currentSwap = _settleCurrentSwapAgainstPool(currentSwap, currentExecPrice);
+                    currentSwap.typeOfOrder = 1;
+                    // Update the order book entry
+                    bytes memory updatedSwapData = abi.encode(
+                        pairId,
+                        currentSwap.amountOut,
+                        currentSwap.swapAmountRemaining,    
+                        currentSwap.completed,
+                        currentSwap.streamsRemaining,
+                        currentSwap.streamsCount,
+                        currentSwap.swapPerStream,
+                        currentSwap.dustTokenAmount,
+                        currentSwap.typeOfOrder
+                    );
+
+                    // Update swap object in the order book
+                    IPoolActions(POOL_ADDRESS).updatePairStreamQueueSwap(updatedSwapData, executionPriceKey, i, false);
+
+                    // If swap is completed, dequeue it and transfer tokens
+                    if (currentSwap.streamsRemaining == 0) {
+                        IPoolActions(POOL_ADDRESS).dequeueSwap_pairStreamQueue(pairId, executionPriceKey, i, false);
+                        IPoolActions(POOL_ADDRESS).transferTokens(
+                        currentSwap.tokenOut, currentSwap.user, currentSwap.amountOut
+                        );
+                    }
+
                 }
+
 
                 unchecked {
                     ++i;

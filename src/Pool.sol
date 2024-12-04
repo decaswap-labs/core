@@ -302,8 +302,9 @@ contract Pool is IPool, Ownable {
             uint256 streamsRemaining,
             uint256 streamCount,
             uint256 swapPerStream,
-            uint256 dustTokenAmount
-        ) = abi.decode(updatedSwapData, (bytes32, uint256, uint256, bool, uint256, uint256, uint256, uint256));
+            uint256 dustTokenAmount,
+            uint8 typeOfOrder
+        ) = abi.decode(updatedSwapData, (bytes32, uint256, uint256, bool, uint256, uint256, uint256, uint256, uint8));
         Swap storage swap;
         if (isLimitOrder) {
             swap = limitOrderBook[pairId][executionPriceKey][index];
@@ -317,6 +318,7 @@ contract Pool is IPool, Ownable {
         swap.streamsCount = streamCount;
         swap.swapPerStream = swapPerStream;
         swap.dustTokenAmount = dustTokenAmount;
+        swap.typeOfOrder = typeOfOrder;
     }
 
     // updatedStreamData encoding format => (bytes32 pairId, uint256 amountAToDeduct, uint256 amountBToDeduct, uint256 poolAStreamsRemaining,uint256 poolBStreamsRemaining, uint dAmountOut)
