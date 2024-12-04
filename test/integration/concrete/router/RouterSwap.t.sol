@@ -106,7 +106,7 @@ contract RouterTest_Swap is RouterTest {
         assertEq(swap.tokenOut, address(tokenB));
         assertEq(swap.completed, false);
         assertEq(swap.dustTokenAmount, dust);
-        assertEq(swap.typeOfOrder, 1);
+        assertEq(swap.typeOfOrder, 2);
     }
 
     function test_swapMarketOrder_invalidAmount() public {
@@ -171,7 +171,7 @@ contract RouterTest_Swap is RouterTest {
         assertEq(swap.tokenOut, address(tokenB));
         assertEq(swap.completed, false);
         assertEq(swap.dustTokenAmount, dust);
-        assertEq(swap.typeOfOrder, 2);
+        assertEq(swap.typeOfOrder, 1);
     }
 
     function test_swapTriggerOrder_invalidExecutionPrice() public {

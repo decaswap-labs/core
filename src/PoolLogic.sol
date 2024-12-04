@@ -276,7 +276,7 @@ contract PoolLogic is Ownable, IPoolLogic {
 
                 // @todo: handle trigger orders
 
-                if(currentSwap.typeOfOrder == 1){
+                if(currentSwap.typeOfOrder == 2){
                     currentSwap = _settleCurrentSwapAgainstPool(currentSwap, currentExecPrice);
                     // Update the order book entry
                     bytes memory updatedSwapData = abi.encode(
@@ -301,9 +301,9 @@ contract PoolLogic is Ownable, IPoolLogic {
                         currentSwap.tokenOut, currentSwap.user, currentSwap.amountOut
                         );
                     }
-                }else if(currentSwap.typeOfOrder == 2 && currentSwap.executionPrice == currentExecPrice) {
+                }else if(currentSwap.typeOfOrder == 1 && currentSwap.executionPrice == currentExecPrice) {
                     currentSwap = _settleCurrentSwapAgainstPool(currentSwap, currentExecPrice);
-                    currentSwap.typeOfOrder = 1;
+                    currentSwap.typeOfOrder++;
                     // Update the order book entry
                     bytes memory updatedSwapData = abi.encode(
                         pairId,
@@ -818,7 +818,7 @@ contract PoolLogic is Ownable, IPoolLogic {
             amountOut: 0,
             user: user,
             dustTokenAmount: 0,
-            typeOfOrder: 1
+            typeOfOrder: 2
         });
 
         bytes32 pairId = bytes32(abi.encodePacked(tokenIn, tokenOut)); // for one direction
@@ -866,7 +866,7 @@ contract PoolLogic is Ownable, IPoolLogic {
             amountOut: 0,
             user: user,
             dustTokenAmount: 0,
-            typeOfOrder: 2
+            typeOfOrder: 1
         });
 
         bytes32 pairId = bytes32(abi.encodePacked(tokenIn, tokenOut)); // for one direction
