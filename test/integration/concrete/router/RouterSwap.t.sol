@@ -20,22 +20,22 @@ contract RouterTest_Swap is RouterTest {
         oppositePairId = bytes32(abi.encodePacked(address(tokenB), address(tokenA)));
     }
 
-    function testRevert_router_swap_whenAmountInIsZero() public {
+    function test_swapLimitOrder_whenAmountInIsZero() public {
         vm.prank(owner);
         vm.expectRevert(IRouterErrors.InvalidAmount.selector);
-        router.swap(address(tokenA), address(tokenB), 0, 1 ether);
+        router.swapLimitOrder(address(tokenA), address(tokenB), 0, 1 ether);
     }
 
-    function testRevert_router_swap_whenExecutionPriceIsZero() public {
+    function test_swapLimitOrder_whenExecutionPriceIsZero() public {
         vm.prank(owner);
         vm.expectRevert(IRouterErrors.InvalidExecutionPrice.selector);
-        router.swap(address(tokenA), address(tokenB), 1 ether, 0);
+        router.swapLimitOrder(address(tokenA), address(tokenB), 1 ether, 0);
     }
 
-    function testRevert_router_swap_whenInvalidPool() public {
+    function test_swapLimitOrder_whenInvalidPool() public {
         vm.prank(owner);
         vm.expectRevert(IRouterErrors.InvalidPool.selector);
-        router.swap(address(tokenA), address(tokenC), 1 ether, 1 ether);
+        router.swapLimitOrder(address(tokenA), address(tokenC), 1 ether, 1 ether);
     }
 
     function test_swapMarketOrder_success() public {

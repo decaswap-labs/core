@@ -1016,7 +1016,7 @@ contract PoolLogic is Ownable, IPoolLogic {
             );
             if (currentSwap.completed) {
                 // if the swap is completed, we keep looping to consume the opposite swaps
-                IPoolActions(POOL_ADDRESS).dequeueSwap_pairStreamQueue(pairId, executionPriceKey, i, true);
+                IPoolActions(POOL_ADDRESS).dequeueSwap_pairStreamQueue(pairId, executionPriceKey, 0, true);
                 IPoolActions(POOL_ADDRESS).transferTokens(currentSwap.tokenOut, currentSwap.user, currentSwap.amountOut);
                 swapRemoved++;
                 uint256 lastIndex = swaps.length - swapRemoved;
@@ -1208,7 +1208,8 @@ contract PoolLogic is Ownable, IPoolLogic {
                         streamCount,
                         streamCount,
                         swapPerStream,
-                        dustTokenAmount
+                        dustTokenAmount,
+                        2
                     );
 
                     IPoolActions(POOL_ADDRESS).updatePairStreamQueueSwap(

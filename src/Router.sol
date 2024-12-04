@@ -156,7 +156,7 @@ contract Router is Ownable, ReentrancyGuard, IRouter {
         uint256 currentExecutionPrice = IPoolLogic(poolStates.POOL_LOGIC()).getExecutionPrice(
             pool.getReserveA(address(tokenIn)), pool.getReserveA(address(tokenOut))
         );
-        if (currentExecutionPrice == executionPrice) revert InvalidExecutionPrice();
+        if (currentExecutionPrice == executionPrice || executionPrice == 0) revert InvalidExecutionPrice();
 
         IERC20(tokenIn).safeTransferFrom(msg.sender, POOL_ADDRESS, amountIn);
         IPoolLogic(poolStates.POOL_LOGIC()).swapTriggerOrder(msg.sender, tokenIn, tokenOut, amountIn, executionPrice);
@@ -171,7 +171,7 @@ contract Router is Ownable, ReentrancyGuard, IRouter {
         uint256 currentExecutionPrice = IPoolLogic(poolStates.POOL_LOGIC()).getExecutionPrice(
             pool.getReserveA(address(tokenIn)), pool.getReserveA(address(tokenOut))
         );
-        if (currentExecutionPrice == executionPrice) revert InvalidExecutionPrice();
+        if (currentExecutionPrice == executionPrice || executionPrice == 0) revert InvalidExecutionPrice();
         IERC20(tokenIn).safeTransferFrom(msg.sender, POOL_ADDRESS, amountIn);
         IPoolLogic(poolStates.POOL_LOGIC()).swapLimitOrder(msg.sender, tokenIn, tokenOut, amountIn, executionPrice);
     }
