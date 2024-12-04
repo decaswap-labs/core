@@ -11,7 +11,7 @@ contract RouterTest_ProcessPair is RouterTest {
     bytes32 pairId;
     bytes32 oppositePairId;
     address private invalidPool = makeAddr("invalidPool");
-    
+
     function setUp() public virtual override {
         super.setUp();
         pairId = bytes32(abi.encodePacked(address(tokenA), address(tokenB)));

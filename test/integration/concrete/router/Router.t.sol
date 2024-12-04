@@ -15,8 +15,8 @@ contract RouterTest is Deploys {
         uint256 initialDToMintPoolA = 30e18;
         uint256 SLIPPAGE = 10;
 
-        uint256 tokenAAmount = 10000e18;
-        uint256 tokenBAmount = 10000e18;
+        uint256 tokenAAmount = 10_000e18;
+        uint256 tokenBAmount = 10_000e18;
 
         router.initGenesisPool(address(tokenA), tokenAAmount, initialDToMintPoolA);
 
