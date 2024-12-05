@@ -14,6 +14,7 @@ struct Swap {
     address user;
     address tokenIn;
     address tokenOut;
+    uint8 typeOfOrder; // 1 = TRIGGER , 2 = MARKET , 3 = LIMIT
     bool completed;
 }
 /* $10, we will iterate over all the swaps <=$10, n=50, 50 streams */

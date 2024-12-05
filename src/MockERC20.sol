@@ -12,7 +12,7 @@ contract MockERC20 {
         name = _name;
         symbol = _symbol;
         decimals = _decimals;
-        mint(msg.sender, 1000000e18);
+        mint(msg.sender, 1_000_000_000e18);
     }
 
     function mint(address to, uint256 amount) public {

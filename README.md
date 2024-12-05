@@ -30,6 +30,30 @@ Users should thereafter receive an intuitive, streamlined, low risk experience f
 
 Built using Foundry [https://book.getfoundry.sh/]
 
+## Deployments
+Use Foundry’s forge script command to deploy the contract:
+```shell
+# Load env in you terminal session 
+$ export $(grep -v '^#' .env | xargs)
+
+# Deploy Script
+$ forge script script/DeployAllContract.s.sol:DeployAllContract --rpc-url <NETWORK_RPC> --broadcast
+```
+## Verification
+Use Etherscan or a similar service to verify the contract code:
+```shell
+# Load env in you terminal session 
+$ export $(grep -v '^#' .env | xargs)
+
+# Verification Pool Contract
+$ forge verify-contract <POOL_CONTRACT_ADDRESS> src/Pool.sol:Pool --chain-id <CHAIN_ID> --etherscan-api-key $ETHERSCAN_API_KEY
+# Verification PoolLogic Contract
+$ forge verify-contract <POOL_LOGIC_CONTRACT_ADDRESS> src/PoolLogic.sol:PoolLogic --chain-id <CHAIN_ID> --etherscan-api-key $ETHERSCAN_API_KEY
+# Verification Router Contract
+$ forge verify-contract <ROUTER_CONTRACT_ADDRESS> src/Router.sol:Router --chain-id <CHAIN_ID> --etherscan-api-key $ETHERSCAN_API_KEY
+
+```
+
 ## Whitepaper
 
 Gitbook: https://decaswap-1.gitbook.io/decaswap-docs

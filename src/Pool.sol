@@ -15,7 +15,7 @@ contract Pool is IPool, Ownable {
     using SafeERC20 for IERC20;
 
     using Queue for Queue.QueueStruct;
-    
+
     address public override VAULT_ADDRESS = address(0);
     address public override ROUTER_ADDRESS = address(0);
     // address internal D_TOKEN = address(0xD);
@@ -84,7 +84,9 @@ contract Pool is IPool, Ownable {
     mapping(address => mapping(address => uint256)) public override userGlobalPoolInfo;
     mapping(address => uint256) public override globalPoolDBalance;
 
-    mapping(bytes32 => mapping(uint256 => Swap[])) public orderBookQueue;
+    mapping(bytes32 => mapping(uint256 => Swap[])) public triggerAndMarketOrderBook;
+    mapping(bytes32 => mapping(uint256 => Swap[])) public limitOrderBook;
+
     mapping(bytes32 => uint256) public override highestPriceMarker;
 
     address[] public poolAddress;
@@ -134,13 +136,20 @@ contract Pool is IPool, Ownable {
         _initPool(tokenAddress, 0);
     }
 
-    function dequeueSwap_pairStreamQueue(bytes32 pairId, uint256 executionPriceKey, uint256 index)
+    function dequeueSwap_pairStreamQueue(bytes32 pairId, uint256 executionPriceKey, uint256 index, bool isLimitOrder)
         external
         onlyPoolLogic
     {
-        uint256 lastIndex = orderBookQueue[pairId][executionPriceKey].length - 1;
-        orderBookQueue[pairId][executionPriceKey][index] = orderBookQueue[pairId][executionPriceKey][lastIndex];
-        orderBookQueue[pairId][executionPriceKey].pop();
+        if (isLimitOrder) {
+            uint256 lastIndex = limitOrderBook[pairId][executionPriceKey].length - 1;
+            limitOrderBook[pairId][executionPriceKey][index] = limitOrderBook[pairId][executionPriceKey][lastIndex];
+            limitOrderBook[pairId][executionPriceKey].pop();
+        } else {
+            uint256 lastIndex = triggerAndMarketOrderBook[pairId][executionPriceKey].length - 1;
+            triggerAndMarketOrderBook[pairId][executionPriceKey][index] =
+                triggerAndMarketOrderBook[pairId][executionPriceKey][lastIndex];
+            triggerAndMarketOrderBook[pairId][executionPriceKey].pop();
+        }
     }
 
     function dequeueSwap_pairPendingQueue(bytes32 pairId) external onlyPoolLogic {
@@ -279,10 +288,12 @@ contract Pool is IPool, Ownable {
     }
 
     // updatedSwapData encoding format => (bytes32 pairId, uint256 amountOut, uint256 swapAmountRemaining, bool completed, uint256 streamsRemaining, uint256 streamCount, uint256 swapPerStream)
-    function updatePairStreamQueueSwap(bytes memory updatedSwapData, uint256 executionPriceKey, uint256 index)
-        external
-        onlyPoolLogic
-    {
+    function updatePairStreamQueueSwap(
+        bytes memory updatedSwapData,
+        uint256 executionPriceKey,
+        uint256 index,
+        bool isLimitOrder
+    ) external onlyPoolLogic {
         (
             bytes32 pairId,
             uint256 amountOut,
@@ -291,9 +302,15 @@ contract Pool is IPool, Ownable {
             uint256 streamsRemaining,
             uint256 streamCount,
             uint256 swapPerStream,
-            uint256 dustTokenAmount
-        ) = abi.decode(updatedSwapData, (bytes32, uint256, uint256, bool, uint256, uint256, uint256, uint256));
-        Swap storage swap = orderBookQueue[pairId][executionPriceKey][index];
+            uint256 dustTokenAmount,
+            uint8 typeOfOrder
+        ) = abi.decode(updatedSwapData, (bytes32, uint256, uint256, bool, uint256, uint256, uint256, uint256, uint8));
+        Swap storage swap;
+        if (isLimitOrder) {
+            swap = limitOrderBook[pairId][executionPriceKey][index];
+        } else {
+            swap = triggerAndMarketOrderBook[pairId][executionPriceKey][index];
+        }
         swap.amountOut += amountOut;
         swap.swapAmountRemaining = swapAmountRemaining;
         swap.completed = completed;
@@ -301,6 +318,7 @@ contract Pool is IPool, Ownable {
         swap.streamsCount = streamCount;
         swap.swapPerStream = swapPerStream;
         swap.dustTokenAmount = dustTokenAmount;
+        swap.typeOfOrder = typeOfOrder;
     }
 
     // updatedStreamData encoding format => (bytes32 pairId, uint256 amountAToDeduct, uint256 amountBToDeduct, uint256 poolAStreamsRemaining,uint256 poolBStreamsRemaining, uint dAmountOut)
@@ -353,8 +371,17 @@ contract Pool is IPool, Ownable {
         }
     }
 
-    function updateOrderBook(bytes32 pairId, Swap memory swap, uint256 key) external override onlyPoolLogic {
-        orderBookQueue[pairId][key].push(swap);
+    function updateOrderBook(bytes32 pairId, Swap memory swap, uint256 key, bool isLimitOrder)
+        external
+        override
+        onlyPoolLogic
+    {
+        if (isLimitOrder) {
+            console.log("swap.swapID", swap.swapID);
+            limitOrderBook[pairId][key].push(swap);
+        } else {
+            triggerAndMarketOrderBook[pairId][key].push(swap);
+        }
     }
 
     function updateGlobalPoolUserBalance(bytes memory userBalance) external override onlyPoolLogic {
@@ -465,7 +492,6 @@ contract Pool is IPool, Ownable {
         // emit LiquidityRemoved(user, token, lpUnits, assetToTransfer, dAmountToDeduct);
     }
 
-
     function poolInfo(address tokenAddress)
         external
         view
@@ -489,14 +515,12 @@ contract Pool is IPool, Ownable {
         );
     }
 
-    function getReserveA(address pool) external override view returns (uint256){
-        return  mapToken_reserveA[pool];
-
+    function getReserveA(address pool) external view override returns (uint256) {
+        return mapToken_reserveA[pool];
     }
 
-    function getReserveD(address pool) external override view returns (uint256){
-        return  mapToken_reserveD[pool];
-
+    function getReserveD(address pool) external view override returns (uint256) {
+        return mapToken_reserveD[pool];
     }
 
     function pairStreamQueue(bytes32 pairId) external view returns (Swap[] memory swaps, uint256 front, uint256 back) {
@@ -572,12 +596,16 @@ contract Pool is IPool, Ownable {
         highestPriceMarker[pairId] = value;
     }
 
-    function orderBook(bytes32 pairId, uint256 priceKey) external view override returns (Swap[] memory) {
-        return orderBookQueue[pairId][priceKey];
+    function orderBook(bytes32 pairId, uint256 priceKey, bool isLimitOrder)
+        external
+        view
+        override
+        returns (Swap[] memory)
+    {
+        return isLimitOrder ? limitOrderBook[pairId][priceKey] : triggerAndMarketOrderBook[pairId][priceKey];
     }
 
-    function getPoolAddresses() external override view returns (address[] memory){
+    function getPoolAddresses() external view override returns (address[] memory) {
         return poolAddress;
     }
 }
-

@@ -34,7 +34,17 @@ interface IPoolLogicActions {
     ) external;
     function withdrawFromGlobalPool(address user, address token, uint256 amount) external;
     function swap(address user, address tokenIn, address tokenOut, uint256 amountIn, uint256 executionPrice) external;
-    function processPair(address tokenIn, address tokenOut) external;
+    function swapLimitOrder(address user, address tokenIn, address tokenOut, uint256 amountIn, uint256 limitOrderPrice)
+        external;
+    function swapTriggerOrder(
+        address user,
+        address tokenIn,
+        address tokenOut,
+        uint256 amountIn,
+        uint256 triggerExecutionPrice
+    ) external;
+    function swapMarketOrder(address user, address tokenIn, address tokenOut, uint256 amountIn) external;
+    function processLimitOrders(address tokenIn, address tokenOut) external;
     function calculateLpUnitsToMint(uint256, uint256, uint256, uint256, uint256) external pure returns (uint256);
 
     function getStreamCount(address tokenIn, address tokenOut, uint256 amountIn) external view returns (uint256);
@@ -52,4 +62,5 @@ interface IPoolLogicActions {
     function getDOut(uint256, uint256, uint256) external pure returns (uint256);
     function processGlobalStreamPairDeposit() external;
     function processGlobalStreamPairWithdraw() external;
+    function processMarketAndTriggerOrders() external;
 }

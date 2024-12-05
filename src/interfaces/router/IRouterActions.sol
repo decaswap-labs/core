@@ -8,4 +8,8 @@ interface IRouterActions {
     function withdrawFromGlobalPool(address pool, uint256 dAmount) external;
     function processGlobalStreamPairDeposit() external;
     function processGlobalStreamPairWithdraw() external;
+    function processMarketOrders() external;
+    function swapMarketOrder(address tokenIn, address tokenOut, uint256 amountIn) external;
+    function swapTriggerOrder(address tokenIn, address tokenOut, uint256 amountIn, uint256 executionPrice) external;
+    function swapLimitOrder(address tokenIn, address tokenOut, uint256 amountIn, uint256 executionPrice) external;
 }
