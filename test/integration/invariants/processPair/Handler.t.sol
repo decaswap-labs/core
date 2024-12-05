@@ -16,6 +16,9 @@ contract Handler is Test {
     MockERC20 public tokenB;
     address public owner;
 
+    // hidden variables
+    uint8 private swapCount = 0;
+
     uint96 public constant MAX_DEPOSIT_SIZE = 10_000 ether;
 
     constructor(Router _router, MockERC20 _tokenA, MockERC20 _tokenB, address _owner) {
@@ -62,6 +65,17 @@ contract Handler is Test {
         router.swap(address(tokenIn), address(tokenOut), amountIn, executionPrice);
 
         vm.stopPrank();
+        swapCount++;
+    }
+
+    function processPair(uint256 seed) public {
+        if (swapCount < 10) return;
+        MockERC20 tokenIn = _getTokenFromSeed(seed);
+        MockERC20 tokenOut = tokenIn == tokenA ? tokenB : tokenA;
+
+        vm.prank(msg.sender);
+        router.processPair(address(tokenIn), address(tokenOut));
+        swapCount = 0;
     }
 
     function _getTokenFromSeed(uint256 collateralSeed) private view returns (MockERC20) {

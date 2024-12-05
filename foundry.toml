@@ -2,6 +2,8 @@
 src = "src"
 test = "test"
 via-ir = true
+optimizer = true
+optimizer_runs = 1000
 
 [profile.test]
 via-ir = false

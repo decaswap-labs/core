@@ -662,6 +662,7 @@ contract PoolLogic is Ownable, IPoolLogic {
             currentSwap.streamsRemaining = streamCount;
             currentSwap.swapPerStream = swapPerStream;
 
+            console.log("inserted", currentSwap.swapID);
             _insertInOrderBook(pairId, currentSwap, executionPriceKey);
         } else {
             if (executionPrice > pool.highestPriceMarker(pairId)) {
@@ -716,19 +717,35 @@ contract PoolLogic is Ownable, IPoolLogic {
         (,, uint256 reserveA_Out,,,) = pool.poolInfo(address(tokenOut));
         uint256 poolReservesPriceKey = getExecutionPriceLower(getExecutionPrice(reserveA_In, reserveA_Out));
 
+        uint256 gasAtStart = gasleft();
+        uint256 loopCount;
         while (priceKey > poolReservesPriceKey) {
             _executeStream(currentPairId, priceKey); // Appelle la fonction pour ce priceKey.
+
+            // !! uint8 to know if we got through the pools !!
+            // get the info of price in a dedicated function
             (,, reserveA_In,,,) = pool.poolInfo(address(tokenIn));
             (,, reserveA_Out,,,) = pool.poolInfo(address(tokenOut));
             poolReservesPriceKey = getExecutionPriceLower(getExecutionPrice(reserveA_In, reserveA_Out));
+
             priceKey -= PRICE_PRECISION; // 1 Gwei ou autre précision utilisée.
-                // need get reserve price for the next priceKey
+            console.log("poolReservesPriceKey", poolReservesPriceKey);
+            console.log("priceKey", priceKey);
+            loopCount++;
+            // need get reserve price for the next priceKey
+            if (gasAtStart - gasleft() > 1_000_000) {
+                console.log("gasUsed", gasAtStart - gasleft());
+
+                break;
+            }
         }
+        console.log("broke the while", loopCount);
     }
 
     function _executeStream(bytes32 pairId, uint256 executionPriceKey) internal {
         Swap[] memory swaps = pool.orderBook(pairId, executionPriceKey);
         if (swaps.length == 0) {
+            console.log("No swaps found for priceKey", executionPriceKey);
             return;
         }
         uint256 swapRemoved;
@@ -739,6 +756,7 @@ contract PoolLogic is Ownable, IPoolLogic {
             (,, uint256 reserveA_In,,,) = pool.poolInfo(address(currentSwap.tokenIn));
             uint256 executionPriceReciprocal = getReciprocalOppositePrice(swapExecutionPrice, reserveA_In);
             uint256 oppPriceKey = getExecutionPriceLower(executionPriceReciprocal);
+            console.log("oppPriceKey", oppPriceKey);
 
             currentSwap = _settleCurrentSwapAgainstOpposite(
                 currentSwap, oppPriceKey, swapExecutionPrice, executionPriceReciprocal
@@ -758,7 +776,9 @@ contract PoolLogic is Ownable, IPoolLogic {
                 }
             } else {
                 // we recalculate the streams for the current swap
-                // I don't think we need to save it now
+                // !! need to save it back to the storage !!
+                console.log("not completed");
+                console.log("swapAmountRemaining", currentSwap.swapAmountRemaining);
                 uint256 streamCount =
                     getStreamCount(currentSwap.tokenIn, currentSwap.tokenOut, currentSwap.swapAmountRemaining);
                 uint256 swapPerStream = currentSwap.swapAmountRemaining / streamCount;
@@ -777,19 +797,25 @@ contract PoolLogic is Ownable, IPoolLogic {
         uint256 count;
         for (uint256 i; i < swaps.length - 1;) {
             // settle against pool;
+            uint256 gasAtStartAgainstPool = gasleft();
             Swap memory currentSwap = swaps[i];
+            console.log("AgainstPool for swap count", count);
             currentSwap = _settleCurrentSwapAgainstPool(currentSwap, currentSwap.executionPrice);
+            console.log("gasUsedAgainstPool for swap", gasAtStartAgainstPool - gasleft());
             if (currentSwap.completed) {
+                uint256 gasAtSwapAgainstPoolCompleted = gasleft();
                 swapRemoved++;
                 IPoolActions(POOL_ADDRESS).dequeueSwap_pairStreamQueue(pairId, executionPriceKey, i);
                 IPoolActions(POOL_ADDRESS).transferTokens(currentSwap.tokenOut, currentSwap.user, currentSwap.amountOut);
                 uint256 lastIndex = swaps.length - swapRemoved;
                 swaps[i] = swaps[lastIndex];
                 delete swaps[lastIndex];
+                console.log("gasUsedAgainstPool for swapCompleted", gasAtSwapAgainstPoolCompleted - gasleft());
                 if (lastIndex == 0) {
                     break;
                 }
             } else {
+                uint256 gasAtSwapAgainstPoolNotCompleted = gasleft();
                 // update the swap
                 bytes memory updatedSwapData = abi.encode(
                     pairId,
@@ -806,6 +832,7 @@ contract PoolLogic is Ownable, IPoolLogic {
                 unchecked {
                     ++i;
                 }
+                console.log("gasUsedAgainstPool for swapNotCompleted", gasAtSwapAgainstPoolNotCompleted - gasleft());
             }
             if (count == swaps.length - 1) {
                 break;
@@ -834,6 +861,7 @@ contract PoolLogic is Ownable, IPoolLogic {
         Swap[] memory oppositeSwaps = pool.orderBook(oppositePairId, executionPriceOppositeKey);
 
         if (oppositeSwaps.length == 0) {
+            console.log("No opposite swaps found");
             return currentSwap; // will call pool handling function
         }
         /* 
