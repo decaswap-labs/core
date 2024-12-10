@@ -85,7 +85,7 @@ contract Router is Ownable, ReentrancyGuard, IRouter {
         IPoolLogic(poolStates.POOL_LOGIC()).addLiqDualToken(tokenA, tokenB, msg.sender, amountA, amountB);
     }
 
-    function streamDToPool(address tokenA, address tokenB, uint256 amountB) external {
+    function addOnlyDLiquidity(address tokenA, address tokenB, uint256 amountB) external {
         if (tokenA == tokenB) revert SamePool();
         if (!poolExist(tokenA)) revert InvalidPool();
         if (!poolExist(tokenB)) revert InvalidPool();
@@ -93,16 +93,16 @@ contract Router is Ownable, ReentrancyGuard, IRouter {
 
         IERC20(tokenB).safeTransferFrom(msg.sender, POOL_ADDRESS, amountB);
 
-        IPoolLogic(poolStates.POOL_LOGIC()).streamDToPool(tokenA, tokenB, msg.sender, amountB);
+        IPoolLogic(poolStates.POOL_LOGIC()).addOnlyDLiquidity(tokenA, tokenB, msg.sender, amountB);
     }
 
-    function addToPoolSingle(address token, uint256 amount) external {
+    function addOnlyTokenLiquidity(address token, uint256 amount) external {
         if (!poolExist(token)) revert InvalidPool();
         if (amount == 0) revert InvalidAmount();
 
         IERC20(token).safeTransferFrom(msg.sender, POOL_ADDRESS, amount);
 
-        IPoolLogic(poolStates.POOL_LOGIC()).addToPoolSingle(token, msg.sender, amount);
+        IPoolLogic(poolStates.POOL_LOGIC()).addOnlyTokenLiquidity(token, msg.sender, amount);
     }
 
     function processLiqStream(address poolA, address poolB) external {

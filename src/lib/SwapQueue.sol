@@ -24,7 +24,6 @@ struct LiquidityStream {
     StreamDetails poolAStream;
     StreamDetails poolBStream;
     uint256 dAmountOut; // how much D has been taken out from poolB
-    TYPE_OF_LP typeofLp;
 }
 
 struct StreamDetails {
@@ -46,11 +45,6 @@ struct RemoveLiquidityStream {
     uint256 conversionRemaining;
 }
 
-enum TYPE_OF_LP {
-    SINGLE_TOKEN,
-    DUAL_TOKEN
-}
-
 struct PoolSwapData {
     uint256 poolSwapIdLatest;
     uint256 totalSwapsPool;
@@ -66,12 +60,4 @@ struct GlobalPoolStream {
     uint256 swapAmountRemaining;
     uint256 amountOut;
     bool deposit;
-}
-
-library Queue {
-    struct QueueStruct {
-        Swap[] data;
-        uint256 front;
-        uint256 back;
-    }
 }
