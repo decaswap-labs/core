@@ -50,8 +50,9 @@ contract RouterTest_ProcessPair is RouterTest {
 
         console.log("executionPriceBeforeSwap", marketPriceBeforeSwap);
 
-        // 2. create swaps above the current price
-        uint256 executionPrice = marketPriceBeforeSwap + (marketPriceBeforeSwap * 30) / 100;
+        // 2. create swaps above the current price but not more than 50 * PRICE_PRECISION
+
+        uint256 executionPrice = marketPriceBeforeSwap + 30 * poolLogic.PRICE_PRECISION();
         uint256 executionPriceStart = executionPrice;
 
         for (uint256 j = 0; j < orderBookCount; j++) {
@@ -60,7 +61,7 @@ contract RouterTest_ProcessPair is RouterTest {
                 vm.startPrank(user);
                 tokenA.mint(user, TOKEN_A_SWAP_AMOUNT * 2);
                 tokenA.approve(address(router), TOKEN_A_SWAP_AMOUNT * 2);
-                router.swap(address(tokenA), address(tokenB), TOKEN_A_SWAP_AMOUNT, executionPrice);
+                router.swapLimitOrder(address(tokenA), address(tokenB), TOKEN_A_SWAP_AMOUNT, executionPrice);
                 vm.stopPrank();
             }
             executionPrice -= deltaCount * poolLogic.PRICE_PRECISION();
@@ -76,7 +77,7 @@ contract RouterTest_ProcessPair is RouterTest {
 
         // 3. we get the actual order book for the price key to get the swap details
         uint256 priceKey = poolLogic.getExecutionPriceLower(executionPriceStart);
-        Swap[] memory swaps = pool.orderBook(pairId, priceKey);
+        Swap[] memory swaps = pool.orderBook(pairId, priceKey, true);
         Swap memory swap = swaps[0];
         uint256 streamsRemainingBF = swap.streamsRemaining;
         uint256 swapIdBF = swap.swapID;
@@ -85,7 +86,7 @@ contract RouterTest_ProcessPair is RouterTest {
         router.processPair(address(tokenA), address(tokenB));
 
         // 5. get the actual order book for the price key to get the swap details
-        swaps = pool.orderBook(pairId, priceKey);
+        swaps = pool.orderBook(pairId, priceKey, true);
         swap = swaps[0];
         uint256 streamsRemainingAF = swap.streamsRemaining;
         uint256 swapIdAF = swap.swapID;
@@ -125,7 +126,7 @@ contract RouterTest_ProcessPair is RouterTest {
         vm.startPrank(swaper);
         tokenA.mint(swaper, TOKEN_A_SWAP_AMOUNT);
         tokenA.approve(address(router), TOKEN_A_SWAP_AMOUNT);
-        router.swap(address(tokenA), address(tokenB), TOKEN_A_SWAP_AMOUNT, executionPriceAtoB);
+        router.swapLimitOrder(address(tokenA), address(tokenB), TOKEN_A_SWAP_AMOUNT, executionPriceAtoB);
         vm.stopPrank();
 
         for (uint256 i = 0; i < 5; i++) {
@@ -133,7 +134,7 @@ contract RouterTest_ProcessPair is RouterTest {
             vm.startPrank(user);
             tokenB.mint(user, TOKEN_B_SWAP_AMOUNT * 100);
             tokenB.approve(address(router), TOKEN_B_SWAP_AMOUNT * 100);
-            router.swap(address(tokenB), address(tokenA), TOKEN_B_SWAP_AMOUNT * 100, executionPriceBtoA);
+            router.swapLimitOrder(address(tokenB), address(tokenA), TOKEN_B_SWAP_AMOUNT * 100, executionPriceBtoA);
             vm.stopPrank();
         }
 
@@ -143,8 +144,8 @@ contract RouterTest_ProcessPair is RouterTest {
         router.processPair(address(tokenA), address(tokenB));
 
         uint256 priceKey = poolLogic.getExecutionPriceLower(executionPriceAtoB);
-        Swap[] memory swaps = pool.orderBook(pairId, priceKey);
-        Swap[] memory oppSwaps = pool.orderBook(oppositePairId, oppPriceKey);
+        Swap[] memory swaps = pool.orderBook(pairId, priceKey, true);
+        Swap[] memory oppSwaps = pool.orderBook(oppositePairId, oppPriceKey, true);
 
         assertTrue(swaps.length == 0, "swaps.length != 0");
         assertTrue(oppSwaps.length > 0, "oppSwaps.length == 0");
@@ -177,7 +178,7 @@ contract RouterTest_ProcessPair is RouterTest {
         vm.startPrank(swaper);
         tokenA.mint(swaper, TOKEN_A_SWAP_AMOUNT * 1000);
         tokenA.approve(address(router), TOKEN_A_SWAP_AMOUNT * 1000);
-        router.swap(address(tokenA), address(tokenB), TOKEN_A_SWAP_AMOUNT * 1000, executionPriceAtoB);
+        router.swapLimitOrder(address(tokenA), address(tokenB), TOKEN_A_SWAP_AMOUNT * 1000, executionPriceAtoB);
         vm.stopPrank();
 
         for (uint256 i = 0; i < 5; i++) {
@@ -185,7 +186,7 @@ contract RouterTest_ProcessPair is RouterTest {
             vm.startPrank(user);
             tokenB.mint(user, TOKEN_A_SWAP_AMOUNT);
             tokenB.approve(address(router), TOKEN_A_SWAP_AMOUNT);
-            router.swap(address(tokenB), address(tokenA), TOKEN_A_SWAP_AMOUNT, executionPriceBtoA);
+            router.swapLimitOrder(address(tokenB), address(tokenA), TOKEN_A_SWAP_AMOUNT, executionPriceBtoA);
             vm.stopPrank();
         }
 
@@ -195,8 +196,8 @@ contract RouterTest_ProcessPair is RouterTest {
         router.processPair(address(tokenA), address(tokenB));
 
         uint256 priceKey = poolLogic.getExecutionPriceLower(executionPriceAtoB);
-        Swap[] memory swaps = pool.orderBook(pairId, priceKey);
-        Swap[] memory oppSwaps = pool.orderBook(oppositePairId, oppPriceKey);
+        Swap[] memory swaps = pool.orderBook(pairId, priceKey, true);
+        Swap[] memory oppSwaps = pool.orderBook(oppositePairId, oppPriceKey, true);
 
         assertTrue(swaps.length > 0, "swaps.length == 0");
         assertTrue(oppSwaps.length == 0, "oppSwaps.length >= 0");

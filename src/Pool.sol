@@ -311,7 +311,7 @@ contract Pool is IPool, Ownable {
         } else {
             swap = triggerAndMarketOrderBook[pairId][executionPriceKey][index];
         }
-        swap.amountOut += amountOut;
+        swap.amountOut = amountOut;
         swap.swapAmountRemaining = swapAmountRemaining;
         swap.completed = completed;
         swap.streamsRemaining = streamsRemaining;
