@@ -906,6 +906,10 @@ contract PoolLogic is Ownable, IPoolLogic {
 
         // check if the limitOrderPriceKey is higher than the current price key by MAX_LIMIT * times the PRICE_PRECISION
         if (limitOrderPriceKey > executionPriceKey + MAX_LIMIT_TICKS * PRICE_PRECISION) {
+            console.log("SENDING TO MARKET ORDER");
+
+            console.log("limitOrderPriceKey", limitOrderPriceKey);
+            console.log("executionPriceKey", executionPriceKey);
             // if yes, then we need to process the limit order as a market order
             swapMarketOrder(user, tokenIn, tokenOut, amountIn);
         }
@@ -956,10 +960,7 @@ contract PoolLogic is Ownable, IPoolLogic {
             currentSwap, executionPriceKeyOpp, limitOrderPrice, executionPriceReciprocal
         );
 
-        console.log("currentSwap.swapID BEFORE SETTLEMENT", currentSwap.swapID);
-
         if (currentSwap.completed) {
-            console.log("currentSwap.swapID", currentSwap.swapID);
             IPoolActions(POOL_ADDRESS).transferTokens(tokenOut, user, currentSwap.amountOut);
         } else {
             /*
@@ -1006,8 +1007,9 @@ contract PoolLogic is Ownable, IPoolLogic {
         uint256 loopCount;
 
         // while the priceKey is higher than the poolReservesPriceKey we continue to executeStream
+        console.log("poolReservesPriceKey", poolReservesPriceKey);
+        console.log("priceKey", priceKey);
         while (priceKey > poolReservesPriceKey) {
-            console.log("priceKey", priceKey);
             uint8 execStreamRes = _executeStream(currentPairId, priceKey);
 
             // !! uint8 to know if we got through the pools !!
@@ -1038,7 +1040,6 @@ contract PoolLogic is Ownable, IPoolLogic {
 
         Swap[] memory swaps = pool.orderBook(pairId, executionPriceKey, true);
         if (swaps.length == 0) {
-            console.log("No swaps found for priceKey", executionPriceKey);
             return 1;
         }
         uint256 swapRemoved;
@@ -1049,7 +1050,6 @@ contract PoolLogic is Ownable, IPoolLogic {
             (,, uint256 reserveA_In,,,) = pool.poolInfo(address(currentSwap.tokenIn));
             uint256 executionPriceReciprocal = getReciprocalOppositePrice(swapExecutionPrice, reserveA_In);
             uint256 oppPriceKey = getExecutionPriceLower(executionPriceReciprocal);
-            console.log("oppPriceKey", oppPriceKey);
 
             currentSwap = _settleCurrentSwapAgainstOpposite(
                 currentSwap, oppPriceKey, swapExecutionPrice, executionPriceReciprocal
@@ -1069,8 +1069,6 @@ contract PoolLogic is Ownable, IPoolLogic {
                 }
             } else {
                 // we recalculate the streams for the current swap
-                console.log("not completed");
-                console.log("swapAmountRemaining", currentSwap.swapAmountRemaining);
 
                 uint256 streamCount =
                     getStreamCount(currentSwap.tokenIn, currentSwap.tokenOut, currentSwap.swapAmountRemaining);
@@ -1171,7 +1169,6 @@ contract PoolLogic is Ownable, IPoolLogic {
         Swap[] memory oppositeSwaps = pool.orderBook(oppositePairId, executionPriceOppositeKey, true);
 
         if (oppositeSwaps.length == 0) {
-            console.log("No opposite swaps found");
             return currentSwap; // will call pool handling function
         }
         /* 
@@ -1451,9 +1448,6 @@ contract PoolLogic is Ownable, IPoolLogic {
         if (currentSwap.streamsRemaining == 1) {
             swapAmountIn += currentSwap.dustTokenAmount;
         }
-
-        console.log("swapAmountIn", swapAmountIn);
-        console.log("reserveA_In", reserveA_In);
 
         (uint256 dToUpdate, uint256 amountOut) =
             getSwapAmountOut(swapAmountIn, reserveA_In, reserveAOutFromPrice, reserveD_In, reserveDOutFromPrice);
