@@ -33,6 +33,7 @@ struct StreamDetails {
     uint256 streamsRemaining;
     uint256 swapPerStream;
     uint256 swapAmountRemaining;
+    uint256 dustTokenAmount;
 }
 
 struct RemoveLiquidityStream {

@@ -10,6 +10,7 @@ import {IRouter} from "./interfaces/IRouter.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import {console} from "forge-std/console.sol";
+import {PoolLogicLib} from "./lib/PoolLogicLib.sol";
 
 // @todo decide where to keep events. Router/Pool?
 // @todo remove unused errors
@@ -114,7 +115,7 @@ contract Router is Ownable, ReentrancyGuard, IRouter {
         if (!poolExist(token)) revert InvalidPool();
         if (lpUnits == 0 || lpUnits > poolStates.userLpUnitInfo(msg.sender, token)) revert InvalidAmount();
         (uint256 reserveD,,,,,) = poolStates.poolInfo(address(token));
-        uint256 streamCount = IPoolLogicActions(poolStates.POOL_LOGIC()).calculateStreamCount(
+        uint256 streamCount = PoolLogicLib.calculateStreamCount(
             lpUnits, poolStates.globalSlippage(), reserveD
         );
         if (lpUnits % streamCount != 0) {
@@ -153,7 +154,7 @@ contract Router is Ownable, ReentrancyGuard, IRouter {
     {
         if (amountIn == 0) revert InvalidAmount();
         if (!poolExist(tokenIn) || !poolExist(tokenOut)) revert InvalidPool();
-        uint256 currentExecutionPrice = IPoolLogic(poolStates.POOL_LOGIC()).getExecutionPrice(
+        uint256 currentExecutionPrice = PoolLogicLib.getExecutionPrice(
             pool.getReserveA(address(tokenIn)), pool.getReserveA(address(tokenOut))
         );
         if (currentExecutionPrice == executionPrice || executionPrice == 0) revert InvalidExecutionPrice();
@@ -168,7 +169,7 @@ contract Router is Ownable, ReentrancyGuard, IRouter {
     {
         if (amountIn == 0) revert InvalidAmount();
         if (!poolExist(tokenIn) || !poolExist(tokenOut)) revert InvalidPool();
-        uint256 currentExecutionPrice = IPoolLogic(poolStates.POOL_LOGIC()).getExecutionPrice(
+        uint256 currentExecutionPrice = PoolLogicLib.getExecutionPrice(
             pool.getReserveA(address(tokenIn)), pool.getReserveA(address(tokenOut))
         );
         if (currentExecutionPrice == executionPrice || executionPrice == 0) revert InvalidExecutionPrice();

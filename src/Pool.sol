@@ -5,7 +5,6 @@ import {IPool} from "./interfaces/IPool.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 import {IPoolLogicActions} from "./interfaces/pool-logic/IPoolLogicActions.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import {Queue} from "./lib/SwapQueue.sol";
 import {Swap, LiquidityStream, RemoveLiquidityStream, GlobalPoolStream} from "./lib/SwapQueue.sol"; // @todo keep structs in a different place
 import {PoolSwapData} from "./lib/SwapQueue.sol";
 import {SwapSorter} from "./lib/QuickSort.sol";
@@ -13,8 +12,6 @@ import {console} from "forge-std/console.sol";
 
 contract Pool is IPool, Ownable {
     using SafeERC20 for IERC20;
-
-    using Queue for Queue.QueueStruct;
 
     address public override VAULT_ADDRESS = address(0);
     address public override ROUTER_ADDRESS = address(0);
@@ -180,7 +177,7 @@ contract Pool is IPool, Ownable {
 
     function enqueueLiquidityStream(bytes32 pairId, LiquidityStream memory liquidityStream) external onlyPoolLogic {
         mapPairId_streamQueue_liquidityStream[pairId].push(liquidityStream);
-        mapPairId_streamQueue_back[pairId]++;
+        // mapPairId_streamQueue_back[pairId]++;
     }
 
     function enqueueRemoveLiquidityStream(address token, RemoveLiquidityStream memory removeLiquidityStream)
