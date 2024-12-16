@@ -35,6 +35,7 @@ contract PoolLogic is Ownable, IPoolLogic {
         _;
     }
 
+
     constructor(address ownerAddress, address poolAddress) Ownable(ownerAddress) {
         POOL_ADDRESS = poolAddress;
         pool = IPoolStates(POOL_ADDRESS);
@@ -302,7 +303,7 @@ contract PoolLogic is Ownable, IPoolLogic {
                         );
                     }
                     //todo emit swap updated here
-                    emitSwapUpdated(currentSwap.swapID, currentSwap.streamsRemaining, currentSwap.swapPerStream);
+                    emit SwapUpdated(currentSwap.swapID, currentSwap.streamsRemaining, currentSwap.swapPerStream);
                 } else if (currentSwap.typeOfOrder == 1 && currentSwap.executionPrice == currentExecPrice) {
                     currentSwap = _settleCurrentSwapAgainstPool(currentSwap, currentExecPrice);
                     currentSwap.typeOfOrder++;
@@ -330,7 +331,7 @@ contract PoolLogic is Ownable, IPoolLogic {
                         );
                     }
                     //todo emit swap updated here
-                    emitSwapUpdated(currentSwap.swapID, currentSwap.streamsRemaining, currentSwap.swapPerStream);
+                    emit SwapUpdated(currentSwap.swapID, currentSwap.streamsRemaining, currentSwap.swapPerStream);
                 }
 
 
@@ -827,7 +828,7 @@ contract PoolLogic is Ownable, IPoolLogic {
         bytes32 pairId = bytes32(abi.encodePacked(tokenIn, tokenOut)); // for one direction
 
 
-        emitSwapEntered(
+        emit SwapEntered(
             currentSwap.swapID,
             pairId,
             currentSwap.swapAmount,
@@ -886,7 +887,7 @@ contract PoolLogic is Ownable, IPoolLogic {
 
         bytes32 pairId = bytes32(abi.encodePacked(tokenIn, tokenOut)); // for one direction
 
-        emitSwapEntered(
+        emit SwapEntered(
             currentSwap.swapID,
             pairId,
             currentSwap.swapAmount,
@@ -944,7 +945,7 @@ contract PoolLogic is Ownable, IPoolLogic {
         // uint256 currentExecPrice = getExecutionPrice(reserveA_In, reserveA_Out);
         bytes32 pairId = bytes32(abi.encodePacked(tokenIn, tokenOut)); // for one direction
 
-        emitSwapEntered(
+        emit SwapEntered(
             currentSwap.swapID,
             pairId,
             currentSwap.swapAmount,
@@ -1078,7 +1079,7 @@ contract PoolLogic is Ownable, IPoolLogic {
                 swaps[i] = currentSwap;
 
                 //todo call this method to update the swap in new implementation
-                emitSwapUpdated(currentSwap.swapID, currentSwap.streamsRemaining, currentSwap.swapPerStream);
+                emit SwapUpdated(currentSwap.swapID, currentSwap.streamsRemaining, currentSwap.swapPerStream);
                 break;
             }
         }
@@ -1113,7 +1114,7 @@ contract PoolLogic is Ownable, IPoolLogic {
 
                 IPoolActions(POOL_ADDRESS).updatePairStreamQueueSwap(updatedSwapData, executionPriceKey, i, true);
                 //todo call this method to update the swap in new implementation
-                emitSwapUpdated(currentSwap.swapID, currentSwap.streamsRemaining, currentSwap.swapPerStream);
+                emit SwapUpdated(currentSwap.swapID, currentSwap.streamsRemaining, currentSwap.swapPerStream);
                 unchecked {
                     ++i;
                 }
@@ -1210,7 +1211,7 @@ contract PoolLogic is Ownable, IPoolLogic {
                 uint256 lastIndex = oppositeSwaps.length - swapRemoved;
                 oppositeSwaps[i] = oppositeSwaps[lastIndex];
                 //todo call this method to update the swap in new implementation
-                emitSwapAgainstOrderBook(
+                emit SwapAgainstOrderBook(
                     currentSwap.swapID,
                     oppositeSwap.swapID,
                     tokenInAmountOut,
@@ -1263,12 +1264,12 @@ contract PoolLogic is Ownable, IPoolLogic {
                         updatedSwapData_opposite, executionPriceOppositeKey, i, true
                     );
                     //todo call this method to update the swap in new implementation
-                    emitSwapUpdated(currentSwap.swapID, streamCount, swapPerStream);
+                    emit SwapUpdated(currentSwap.swapID, streamCount, swapPerStream);
 
                 }
                 // 3. we terminate the loop as we have completed the frontSwap
                 //todo call this method  in new implementation
-                emitSwapAgainstOrderBook(
+                emit SwapAgainstOrderBook(
                     currentSwap.swapID,
                     oppositeSwap.swapID,
                     tokenInAmountIn,
@@ -1457,7 +1458,7 @@ contract PoolLogic is Ownable, IPoolLogic {
         }
         currentSwap.amountOut += amountOut;
 
-        emitSwapAgainstPool(
+        emit SwapAgainstPool(
             currentSwap.swapID,
             swapAmountIn,
             amountOut
@@ -1684,39 +1685,4 @@ contract PoolLogic is Ownable, IPoolLogic {
     }
 
 
-    function emitSwapEntered(
-        uint256 swapID,
-        bytes32 pairId,
-        uint256 swapAmount,
-        uint256 executionPrice,
-        address user,
-        uint8 typeOfOrder
-    ) external {
-        emit SwapEntered(swapID, pairId, swapAmount, executionPrice, user, typeOfOrder);
-    }
-
-    function emitSwapUpdated(
-        uint256 swapId,
-        uint256 streamCountRemaining,
-        uint256 swapPerStream
-    ) external {
-        emit SwapUpdated(swapId, streamCountRemaining, swapPerStream);
-    }
-
-    function emitSwapAgainstOrderBook(
-        uint256 swapIdIncoming,
-        uint256 swapIdOpposite,
-        uint256 settledAmountIn,
-        uint256 settledAmountOut
-    ) external {
-        emit SwapAgainstOrderBook(swapIdIncoming, swapIdOpposite, settledAmountIn, settledAmountOut);
-    }
-
-    function emitSwapAgainstPool(
-        uint256 swapId,
-        uint256 amountOut,
-        uint256 amountIn
-    ) external {
-        emit SwapAgainstPool(swapId, amountOut, amountIn);
-    }
 }
