@@ -34,7 +34,7 @@ contract RouterTest is Deploys {
             uint256 reserveA,
             uint256 initialDToMint,
             uint256 poolFeeCollected,
-            bool initialized
+            bool initialized,
         ) = pool.poolInfo(address(tokenA));
 
         uint256 userLpUnits = pool.userLpUnitInfo(owner, address(tokenA));
@@ -68,7 +68,7 @@ contract RouterTest is Deploys {
             uint256 reserveA_After,
             uint256 initialDToMint_After,
             uint256 poolFeeCollected_After,
-            bool initialized_After
+            bool initialized_After,
         ) = pool.poolInfo(address(tokenA));
 
         assertEq(reserveDA_After, reserveD);
@@ -95,7 +95,7 @@ contract RouterTest is Deploys {
             uint256 reserveA,
             uint256 initialDToMint,
             uint256 poolFeeCollected,
-            bool initialized
+            bool initialized,
         ) = pool.poolInfo(address(tokenA));
 
         uint256 userLpUnits = pool.userLpUnitInfo(owner, address(tokenA));
@@ -137,7 +137,7 @@ contract RouterTest is Deploys {
             uint256 reserveA_After,
             uint256 initialDToMint_After,
             uint256 poolFeeCollected_After,
-            bool initialized_After
+            bool initialized_After,
         ) = pool.poolInfo(address(tokenA));
 
         assertEq(reserveDA_After, reserveD);
@@ -180,7 +180,7 @@ contract RouterTest is Deploys {
             uint256 reserveA,
             uint256 initialDToMint,
             uint256 poolFeeCollected,
-            bool initialized
+            bool initialized,
         ) = pool.poolInfo(address(tokenB));
 
         uint256 userLpUnits_poolB = pool.userLpUnitInfo(owner, address(tokenB));
@@ -217,7 +217,7 @@ contract RouterTest is Deploys {
             uint256 reserveA_After,
             uint256 initialDToMint_After,
             uint256 poolFeeCollected_After,
-            bool initialized_After
+            bool initialized_After,
         ) = pool.poolInfo(address(tokenB));
 
         assertEq(reserveDA_After, reserveD);
@@ -258,7 +258,7 @@ contract RouterTest is Deploys {
             uint256 reserveA,
             uint256 initialDToMint,
             uint256 poolFeeCollected,
-            bool initialized
+            bool initialized,
         ) = pool.poolInfo(address(tokenB));
 
         uint256 userLpUnits_poolB = pool.userLpUnitInfo(owner, address(tokenB));
@@ -307,7 +307,7 @@ contract RouterTest is Deploys {
                 uint256 reserveA_After,
                 uint256 initialDToMint_After,
                 uint256 poolFeeCollected_After,
-                bool initialized_After
+                bool initialized_After,
             ) = pool.poolInfo(address(tokenB));
 
             assertEq(reserveDA_After, reserveD);

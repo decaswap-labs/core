@@ -28,7 +28,7 @@ contract RouterTest is Deploys {
 
         uint256 depositAmount = 200e18;
 
-        (uint256 reserveDBefore,, uint256 reserveABefore,,,) = pool.poolInfo(address(tokenA));
+        (uint256 reserveDBefore,, uint256 reserveABefore,,,,) = pool.poolInfo(address(tokenA));
 
         uint256 dGlobalBalanceBefore = pool.globalPoolDBalance(pool.GLOBAL_POOL());
         uint256 userDPoolBalanceBefore = pool.userGlobalPoolInfo(owner, address(tokenA));
@@ -53,7 +53,7 @@ contract RouterTest is Deploys {
 
         bytes32 pairId = bytes32(abi.encodePacked(tokenA, tokenA));
         GlobalPoolStream[] memory globalPoolStream = pool.globalStreamQueueDeposit(pairId);
-        (uint256 reserveDAfter,, uint256 reserveAAfter,,,) = pool.poolInfo(address(tokenA));
+        (uint256 reserveDAfter,, uint256 reserveAAfter,,,,) = pool.poolInfo(address(tokenA));
 
         GlobalPoolStream memory globalStream = globalPoolStream[0];
 
@@ -78,7 +78,7 @@ contract RouterTest is Deploys {
 
         uint256 depositAmount = 100e18; // for 1 stream
 
-        (uint256 reserveDBefore,, uint256 reserveABefore,,,) = pool.poolInfo(address(tokenA));
+        (uint256 reserveDBefore,, uint256 reserveABefore,,,,) = pool.poolInfo(address(tokenA));
 
         uint256 dGlobalBalanceBefore = pool.globalPoolDBalance(pool.GLOBAL_POOL());
         uint256 userDPoolBalanceBefore = pool.userGlobalPoolInfo(owner, address(tokenA));
@@ -103,7 +103,7 @@ contract RouterTest is Deploys {
 
         bytes32 pairId = bytes32(abi.encodePacked(tokenA, tokenA));
         GlobalPoolStream[] memory globalPoolStream = pool.globalStreamQueueDeposit(pairId);
-        (uint256 reserveDAfter,, uint256 reserveAAfter,,,) = pool.poolInfo(address(tokenA));
+        (uint256 reserveDAfter,, uint256 reserveAAfter,,,,) = pool.poolInfo(address(tokenA));
 
         assertEq(userBalanceAfter, userBalanceBefore - depositAmount);
         assertEq(reserveDAfter, reserveDBefore - dOutPerStream);
@@ -142,7 +142,7 @@ contract RouterTest is Deploys {
 
         uint256 dToWtihdraw = pool.userGlobalPoolInfo(owner, address(tokenA));
 
-        (uint256 reserveDBefore,, uint256 reserveABefore,,,) = pool.poolInfo(address(tokenA));
+        (uint256 reserveDBefore,, uint256 reserveABefore,,,,) = pool.poolInfo(address(tokenA));
 
         uint256 dGlobalBalanceBefore = pool.globalPoolDBalance(pool.GLOBAL_POOL());
         uint256 userDPoolBalanceBefore = pool.userGlobalPoolInfo(owner, address(tokenA));
@@ -163,7 +163,7 @@ contract RouterTest is Deploys {
         uint256 dGlobalBalanceAfter = pool.globalPoolDBalance(pool.GLOBAL_POOL());
         uint256 userDPoolBalanceAfter = pool.userGlobalPoolInfo(owner, address(tokenA));
 
-        (uint256 reserveDAfter,, uint256 reserveAAfter,,,) = pool.poolInfo(address(tokenA));
+        (uint256 reserveDAfter,, uint256 reserveAAfter,,,,) = pool.poolInfo(address(tokenA));
 
         GlobalPoolStream memory globalStream = globalPoolStream[0];
 
@@ -190,7 +190,7 @@ contract RouterTest is Deploys {
 
         uint256 dToWtihdraw = pool.userGlobalPoolInfo(owner, address(tokenA));
 
-        (uint256 reserveDBefore,, uint256 reserveABefore,,,) = pool.poolInfo(address(tokenA));
+        (uint256 reserveDBefore,, uint256 reserveABefore,,,,) = pool.poolInfo(address(tokenA));
 
         uint256 dGlobalBalanceBefore = pool.globalPoolDBalance(pool.GLOBAL_POOL());
         uint256 userDPoolBalanceBefore = pool.userGlobalPoolInfo(owner, address(tokenA));
@@ -209,7 +209,7 @@ contract RouterTest is Deploys {
         uint256 dGlobalBalanceAfter = pool.globalPoolDBalance(pool.GLOBAL_POOL());
         uint256 userDPoolBalanceAfter = pool.userGlobalPoolInfo(owner, address(tokenA));
 
-        (uint256 reserveDAfter,, uint256 reserveAAfter,,,) = pool.poolInfo(address(tokenA));
+        (uint256 reserveDAfter,, uint256 reserveAAfter,,,,) = pool.poolInfo(address(tokenA));
 
         assertEq(reserveDAfter, reserveDBefore + swapPerStream);
         assertEq(reserveAAfter, reserveABefore - amountOutPerStream);

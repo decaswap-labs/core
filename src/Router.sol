@@ -1,15 +1,18 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.13;
 
-import "@openzeppelin/contracts/access/Ownable.sol";
+import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
+import {SafeERC20, IERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import {IERC20Metadata} from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
+import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
+
 import {IPoolActions} from "./interfaces/pool/IPoolActions.sol";
 import {IPoolLogicActions} from "./interfaces/pool-logic/IPoolLogicActions.sol";
 import {IPoolStates} from "./interfaces/pool/IPoolStates.sol";
 import {IPoolLogic} from "./interfaces/IPoolLogic.sol";
 import {IRouter} from "./interfaces/IRouter.sol";
-import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
-import {console} from "forge-std/console.sol";
+
+import {console} from "forge-std/console.sol"; // debug
 
 // @todo decide where to keep events. Router/Pool?
 // @todo remove unused errors
@@ -46,16 +49,19 @@ contract Router is Ownable, ReentrancyGuard, IRouter {
     //     );
     // }
 
+    // decimals
     function initGenesisPool(address token, uint256 tokenAmount, uint256 dToMint) external onlyOwner {
         if (poolExist(token)) revert DuplicatePool();
         if (tokenAmount == 0) revert InvalidAmount();
         if (dToMint == 0) revert InvalidInitialDAmount();
 
         IERC20(token).safeTransferFrom(msg.sender, POOL_ADDRESS, tokenAmount);
+        uint8 decimals = IERC20Metadata(token).decimals();
 
-        IPoolLogic(poolStates.POOL_LOGIC()).initGenesisPool(token, msg.sender, tokenAmount, dToMint);
+        IPoolLogic(poolStates.POOL_LOGIC()).initGenesisPool(token, decimals, msg.sender, tokenAmount, dToMint);
     }
 
+    // decimals
     function initPool(address token, address liquidityToken, uint256 tokenAmount, uint256 liquidityTokenAmount)
         external
         returns (bool success)
@@ -67,9 +73,13 @@ contract Router is Ownable, ReentrancyGuard, IRouter {
 
         IERC20(token).safeTransferFrom(msg.sender, POOL_ADDRESS, tokenAmount);
         IERC20(liquidityToken).safeTransferFrom(msg.sender, POOL_ADDRESS, liquidityTokenAmount);
+        uint8 decimals = IERC20Metadata(token).decimals();
+
         IPoolLogic(poolStates.POOL_LOGIC()).initPool(
-            token, liquidityToken, msg.sender, tokenAmount, liquidityTokenAmount
+            token, decimals, liquidityToken, msg.sender, tokenAmount, liquidityTokenAmount
         );
+
+        return true;
     }
 
     function addLiqDualToken(address tokenA, address tokenB, uint256 amountA, uint256 amountB) external {
@@ -113,7 +123,7 @@ contract Router is Ownable, ReentrancyGuard, IRouter {
     function removeLiquidity(address token, uint256 lpUnits) external override nonReentrant {
         if (!poolExist(token)) revert InvalidPool();
         if (lpUnits == 0 || lpUnits > poolStates.userLpUnitInfo(msg.sender, token)) revert InvalidAmount();
-        (uint256 reserveD,,,,,) = poolStates.poolInfo(address(token));
+        (uint256 reserveD,,,,,,) = poolStates.poolInfo(address(token));
         uint256 streamCount = IPoolLogicActions(poolStates.POOL_LOGIC()).calculateStreamCount(
             lpUnits, poolStates.globalSlippage(), reserveD
         );
@@ -168,10 +178,11 @@ contract Router is Ownable, ReentrancyGuard, IRouter {
     {
         if (amountIn == 0) revert InvalidAmount();
         if (!poolExist(tokenIn) || !poolExist(tokenOut)) revert InvalidPool();
-        uint256 currentExecutionPrice = IPoolLogic(poolStates.POOL_LOGIC()).getExecutionPrice(
-            pool.getReserveA(address(tokenIn)), pool.getReserveA(address(tokenOut))
-        );
+        (uint256 currentExecutionPrice,,) =
+            IPoolLogic(poolStates.POOL_LOGIC()).getCurrentPrice(address(tokenIn), address(tokenOut));
+
         if (currentExecutionPrice == executionPrice || executionPrice == 0) revert InvalidExecutionPrice();
+
         IERC20(tokenIn).safeTransferFrom(msg.sender, POOL_ADDRESS, amountIn);
         IPoolLogic(poolStates.POOL_LOGIC()).swapLimitOrder(msg.sender, tokenIn, tokenOut, amountIn, executionPrice);
     }
@@ -227,7 +238,7 @@ contract Router is Ownable, ReentrancyGuard, IRouter {
 
     function poolExist(address tokenAddress) internal view returns (bool) {
         if (tokenAddress == address(0)) revert InvalidToken();
-        (,,,,, bool initialized) = poolStates.poolInfo(tokenAddress);
+        (,,,,, bool initialized,) = poolStates.poolInfo(tokenAddress);
         return initialized;
     }
 }

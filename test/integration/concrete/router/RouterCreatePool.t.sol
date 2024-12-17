@@ -24,7 +24,7 @@ contract RouterTest is Deploys {
         router.initGenesisPool(address(tokenA), addLiquidityTokenAmount, dToMint);
         uint256 lpUnitsAfter = pool.userLpUnitInfo(owner, address(tokenA));
 
-        (uint256 reserveD, uint256 poolOwnershipUnitsTotal, uint256 reserveA, uint256 initialDToMint,, bool initialized)
+        (uint256 reserveD, uint256 poolOwnershipUnitsTotal, uint256 reserveA, uint256 initialDToMint,, bool initialized,)
         = pool.poolInfo(address(tokenA));
         uint256 poolBalanceAfter = tokenA.balanceOf(address(pool));
 
@@ -87,9 +87,9 @@ contract RouterTest is Deploys {
 
         uint256 swapPerStreamInputToken = streamTokenAmount / streamToDTokenStreamCount;
 
-        (uint256 reserveDBeforeA,, uint256 reserveABeforeA,,,) = pool.poolInfo(address(tokenA));
+        (uint256 reserveDBeforeA,, uint256 reserveABeforeA,,,,) = pool.poolInfo(address(tokenA));
 
-        (uint256 reserveDBeforeB, uint256 poolOwnershipUnitsTotalBeforeB, uint256 reserveABeforeB,,,) =
+        (uint256 reserveDBeforeB, uint256 poolOwnershipUnitsTotalBeforeB, uint256 reserveABeforeB,,,,) =
             pool.poolInfo(address(tokenB));
 
         (uint256 dToTransfer,) =

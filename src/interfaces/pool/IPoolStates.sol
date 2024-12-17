@@ -13,7 +13,8 @@ interface IPoolStates {
             uint256 reserveA,
             uint256 initialDToMint,
             uint256 poolFeeCollected,
-            bool initialized
+            bool initialized,
+            uint8 decimals
         );
     function userLpUnitInfo(address, address) external view returns (uint256);
     function userGlobalPoolInfo(address, address) external view returns (uint256);

@@ -8,7 +8,7 @@ interface IPoolActions {
     // function createPool(bytes calldata creatPoolParams) external;
     // initGenesisPool encoding format => (address token, address user, uint256 amount, uint256 initialDToMint, uint newLpUnits, uint newDUnits, uint256 poolFeeCollected)
     function initGenesisPool(bytes calldata initPoolParams) external;
-    function initPool(address tokenAddress) external;
+    function initPool(address tokenAddress, uint8 decimals) external;
     // updatedLpUnits encoding format => (address token, address user, uint lpUnits)
     function updateUserLpUnits(bytes memory updatedLpUnits) external;
     // updatedReservesAndRemoveLiqData encoding format => (address token, uint256 reservesToRemove, uint conversionRemaining, uint streamCountRemaining)

@@ -10,9 +10,11 @@ interface IPoolLogicActions {
     //     uint256 minLaunchReserveD,
     //     uint256 initialDToMint
     // ) external;
-    function initGenesisPool(address token, address user, uint256 tokenAmount, uint256 initialDToMint) external;
+    function initGenesisPool(address token, uint8 decimals, address user, uint256 tokenAmount, uint256 initialDToMint)
+        external;
     function initPool(
         address token,
+        uint8 decimals,
         address liquidityToken,
         address user,
         uint256 tokenAmount,
@@ -63,4 +65,8 @@ interface IPoolLogicActions {
     function processGlobalStreamPairDeposit() external;
     function processGlobalStreamPairWithdraw() external;
     function processMarketAndTriggerOrders() external;
+    function getCurrentPrice(address tokenIn, address tokenOut)
+        external
+        view
+        returns (uint256 currentPrice, uint256 reserveA_In, uint256 reserveA_Out);
 }

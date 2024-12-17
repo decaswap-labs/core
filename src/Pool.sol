@@ -46,6 +46,7 @@ contract Pool is IPool, Ownable {
     mapping(address token => uint256 initialDToMint) private mapToken_initialDToMint;
     mapping(address token => uint256 poolFeeCollected) private mapToken_poolFeeCollected;
     mapping(address token => bool initialized) private mapToken_initialized;
+    mapping(address token => uint8 decimals) private mapToken_decimals;
 
     mapping(address => mapping(address => uint256)) public override userLpUnitInfo;
     mapping(address => mapping(address => VaultDepositInfo)) public userVaultInfo;
@@ -119,21 +120,22 @@ contract Pool is IPool, Ownable {
     function initGenesisPool(bytes calldata initPoolParams) external onlyPoolLogic {
         (
             address token,
+            uint8 decimals,
             address user,
             uint256 amount,
             uint256 initialDToMint,
             uint256 newLpUnits,
             uint256 newDUnits,
             uint256 poolFeeCollected
-        ) = abi.decode(initPoolParams, (address, address, uint256, uint256, uint256, uint256, uint256));
-        _initPool(token, initialDToMint);
+        ) = abi.decode(initPoolParams, (address, uint8, address, uint256, uint256, uint256, uint256, uint256));
+        _initPool(token, decimals, initialDToMint);
         bytes memory addLiqParam = abi.encode(token, user, amount, newLpUnits, newDUnits, poolFeeCollected);
         mapToken_reserveD[token] += newDUnits;
         _addLiquidity(addLiqParam);
     }
 
-    function initPool(address tokenAddress) external onlyPoolLogic {
-        _initPool(tokenAddress, 0);
+    function initPool(address tokenAddress, uint8 decimals) external onlyPoolLogic {
+        _initPool(tokenAddress, decimals, 0);
     }
 
     function dequeueSwap_pairStreamQueue(bytes32 pairId, uint256 executionPriceKey, uint256 index, bool isLimitOrder)
@@ -311,7 +313,7 @@ contract Pool is IPool, Ownable {
         } else {
             swap = triggerAndMarketOrderBook[pairId][executionPriceKey][index];
         }
-        swap.amountOut += amountOut;
+        swap.amountOut = amountOut;
         swap.swapAmountRemaining = swapAmountRemaining;
         swap.completed = completed;
         swap.streamsRemaining = streamsRemaining;
@@ -441,10 +443,11 @@ contract Pool is IPool, Ownable {
         globalSlippage = newGlobalSlippage;
     }
 
-    function _initPool(address token, uint256 initialDToMint) internal {
+    function _initPool(address token, uint8 decimals, uint256 initialDToMint) internal {
         if (mapToken_initialized[token]) revert DuplicatePool();
 
         mapToken_initialized[token] = true;
+        mapToken_decimals[token] = decimals;
         // @todo need confirmation on that. hardcoded?
         mapToken_initialDToMint[token] = initialDToMint;
 
@@ -501,17 +504,18 @@ contract Pool is IPool, Ownable {
             uint256 reserveA,
             uint256 initialDToMint,
             uint256 poolFeeCollected,
-            bool initialized
+            bool initialized,
+            uint8 decimals
         )
     {
-        address token = tokenAddress;
         return (
             mapToken_reserveD[tokenAddress],
             mapToken_poolOwnershipUnitsTotal[tokenAddress],
             mapToken_reserveA[tokenAddress],
             mapToken_initialDToMint[tokenAddress],
             mapToken_poolFeeCollected[tokenAddress],
-            mapToken_initialized[tokenAddress]
+            mapToken_initialized[tokenAddress],
+            mapToken_decimals[tokenAddress]
         );
     }
 

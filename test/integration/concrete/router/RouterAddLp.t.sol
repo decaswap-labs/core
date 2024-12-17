@@ -54,10 +54,10 @@ contract RouterTest is Deploys {
         tokenB.approve(address(router), tokenAmountSingle);
         tokenA.approve(address(router), dToTokenAmountSingle);
 
-        (uint256 reserveDBeforeB, uint256 poolOwnershipUnitsTotalBeforeB, uint256 reserveABeforeB,,,) =
+        (uint256 reserveDBeforeB, uint256 poolOwnershipUnitsTotalBeforeB, uint256 reserveABeforeB,,,,) =
             pool.poolInfo(address(tokenB));
 
-        (uint256 reserveDBeforeA,, uint256 reserveABeforeA,,,) = pool.poolInfo(address(tokenA));
+        (uint256 reserveDBeforeA,, uint256 reserveABeforeA,,,,) = pool.poolInfo(address(tokenA));
 
         uint256 tokenStreamCount =
             poolLogic.calculateStreamCount(tokenAmountSingle, pool.globalSlippage(), reserveDBeforeB);
@@ -108,10 +108,10 @@ contract RouterTest is Deploys {
         assertLt(tokenABalanceAfter, tokenABalanceBefore);
         assertEq(tokenABalanceAfter, tokenABalanceBefore - dToTokenAmountSingle);
 
-        (uint256 reserveDAfterB, uint256 poolOwnershipUnitsTotalAfterB, uint256 reserveAAfterB,,,) =
+        (uint256 reserveDAfterB, uint256 poolOwnershipUnitsTotalAfterB, uint256 reserveAAfterB,,,,) =
             pool.poolInfo(address(tokenB));
 
-        (uint256 reserveDAfterA,, uint256 reserveAAfterA,,,) = pool.poolInfo(address(tokenA));
+        (uint256 reserveDAfterA,, uint256 reserveAAfterA,,,,) = pool.poolInfo(address(tokenA));
 
         assertEq(reserveDAfterA, reserveDBeforeA - dToTransfer);
         assertEq(reserveAAfterA, reserveABeforeA + swapPerStreamDToToken);
@@ -155,7 +155,7 @@ contract RouterTest is Deploys {
 
         tokenB.approve(address(router), tokenAmountSingle);
 
-        (uint256 reserveDBeforeB, uint256 poolOwnershipUnitsTotalBeforeB, uint256 reserveABeforeB,,,) =
+        (uint256 reserveDBeforeB, uint256 poolOwnershipUnitsTotalBeforeB, uint256 reserveABeforeB,,,,) =
             pool.poolInfo(address(tokenB));
         uint256 tokenStreamCount =
             poolLogic.calculateStreamCount(tokenAmountSingle, pool.globalSlippage(), reserveDBeforeB);
@@ -184,7 +184,7 @@ contract RouterTest is Deploys {
         assertLt(tokenBBalanceAfter, tokenBBalanceBefore);
         assertEq(tokenBBalanceAfter, tokenBBalanceBefore - tokenAmountSingle);
 
-        (, uint256 poolOwnershipUnitsTotalAfterB, uint256 reserveAAfterB,,,) = pool.poolInfo(address(tokenB));
+        (, uint256 poolOwnershipUnitsTotalAfterB, uint256 reserveAAfterB,,,,) = pool.poolInfo(address(tokenB));
 
         assertEq(poolOwnershipUnitsTotalAfterB, poolOwnershipUnitsTotalBeforeB + lpUnitsBeforeFromToken);
         assertEq(reserveAAfterB, reserveABeforeB + swapPerStreamInputToken);
@@ -222,10 +222,10 @@ contract RouterTest is Deploys {
 
         tokenA.approve(address(router), dToTokenAmountSingle);
 
-        (uint256 reserveDBeforeB, uint256 poolOwnershipUnitsTotalBeforeB, uint256 reserveABeforeB,,,) =
+        (uint256 reserveDBeforeB, uint256 poolOwnershipUnitsTotalBeforeB, uint256 reserveABeforeB,,,,) =
             pool.poolInfo(address(tokenB));
 
-        (uint256 reserveDBeforeA,, uint256 reserveABeforeA,,,) = pool.poolInfo(address(tokenA));
+        (uint256 reserveDBeforeA,, uint256 reserveABeforeA,,,,) = pool.poolInfo(address(tokenA));
 
         uint256 dStreamCount =
             poolLogic.calculateStreamCount(dToTokenAmountSingle, pool.globalSlippage(), reserveDBeforeA);
@@ -254,9 +254,9 @@ contract RouterTest is Deploys {
         assertLt(tokenABalanceAfter, tokenABalanceBefore);
         assertEq(tokenABalanceAfter, tokenABalanceBefore - dToTokenAmountSingle);
 
-        (uint256 reserveDAfterB, uint256 poolOwnershipUnitsTotalAfterB,,,,) = pool.poolInfo(address(tokenB));
+        (uint256 reserveDAfterB, uint256 poolOwnershipUnitsTotalAfterB,,,,,) = pool.poolInfo(address(tokenB));
 
-        (uint256 reserveDAfterA,, uint256 reserveAAfterA,,,) = pool.poolInfo(address(tokenA));
+        (uint256 reserveDAfterA,, uint256 reserveAAfterA,,,,) = pool.poolInfo(address(tokenA));
 
         assertEq(reserveDAfterA, reserveDBeforeA - dToTransfer);
         assertEq(reserveAAfterA, reserveABeforeA + swapPerStreamDToToken);

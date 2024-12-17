@@ -68,8 +68,8 @@ contract Handler is Test {
         MockERC20 tokenIn = _getTokenFromSeed(seed);
         MockERC20 tokenOut = tokenIn == tokenA ? tokenB : tokenA;
         amountIn = bound(amountIn, 1, MAX_DEPOSIT_SIZE);
-        (,, uint256 reserveA_tokenIn,,,) = pool.poolInfo(address(tokenIn));
-        (,, uint256 reserveA_tokenOut,,,) = pool.poolInfo(address(tokenOut));
+        (,, uint256 reserveA_tokenIn,,,,) = pool.poolInfo(address(tokenIn));
+        (,, uint256 reserveA_tokenOut,,,,) = pool.poolInfo(address(tokenOut));
         uint256 executionPrice = poolLogic.getExecutionPrice(reserveA_tokenIn, reserveA_tokenOut);
         uint256 executionpriceDelta = bound(seed, 0, executionPrice / 10);
         bool addDelta = _getBoolFromSeed(seed);
