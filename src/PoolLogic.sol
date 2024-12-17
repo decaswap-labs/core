@@ -303,7 +303,11 @@ contract PoolLogic is Ownable, IPoolLogic {
                         );
                     }
                     //todo emit swap updated here
-                    emit SwapUpdated(currentSwap.swapID, currentSwap.streamsRemaining, currentSwap.swapPerStream);
+                    emitSwapUpdated(
+                        currentSwap.swapID,
+                        currentSwap.streamsRemaining,
+                        currentSwap.swapPerStream
+                    );
                 } else if (currentSwap.typeOfOrder == 1 && currentSwap.executionPrice == currentExecPrice) {
                     currentSwap = _settleCurrentSwapAgainstPool(currentSwap, currentExecPrice);
                     currentSwap.typeOfOrder++;
@@ -331,7 +335,11 @@ contract PoolLogic is Ownable, IPoolLogic {
                         );
                     }
                     //todo emit swap updated here
-                    emit SwapUpdated(currentSwap.swapID, currentSwap.streamsRemaining, currentSwap.swapPerStream);
+                    emitSwapUpdated(
+                        currentSwap.swapID,
+                        currentSwap.streamsRemaining,
+                        currentSwap.swapPerStream
+                    );
                 }
 
 
@@ -828,7 +836,7 @@ contract PoolLogic is Ownable, IPoolLogic {
         bytes32 pairId = bytes32(abi.encodePacked(tokenIn, tokenOut)); // for one direction
 
 
-        emit SwapEntered(
+        emitSwapEntered(
             currentSwap.swapID,
             pairId,
             currentSwap.swapAmount,
@@ -887,7 +895,7 @@ contract PoolLogic is Ownable, IPoolLogic {
 
         bytes32 pairId = bytes32(abi.encodePacked(tokenIn, tokenOut)); // for one direction
 
-        emit SwapEntered(
+        emitSwapEntered(
             currentSwap.swapID,
             pairId,
             currentSwap.swapAmount,
@@ -945,7 +953,7 @@ contract PoolLogic is Ownable, IPoolLogic {
         // uint256 currentExecPrice = getExecutionPrice(reserveA_In, reserveA_Out);
         bytes32 pairId = bytes32(abi.encodePacked(tokenIn, tokenOut)); // for one direction
 
-        emit SwapEntered(
+        emitSwapEntered(
             currentSwap.swapID,
             pairId,
             currentSwap.swapAmount,
@@ -1079,7 +1087,11 @@ contract PoolLogic is Ownable, IPoolLogic {
                 swaps[i] = currentSwap;
 
                 //todo call this method to update the swap in new implementation
-                emit SwapUpdated(currentSwap.swapID, currentSwap.streamsRemaining, currentSwap.swapPerStream);
+                emitSwapUpdated(
+                    currentSwap.swapID,
+                    currentSwap.streamsRemaining,
+                    currentSwap.swapPerStream
+                );
                 break;
             }
         }
@@ -1114,7 +1126,11 @@ contract PoolLogic is Ownable, IPoolLogic {
 
                 IPoolActions(POOL_ADDRESS).updatePairStreamQueueSwap(updatedSwapData, executionPriceKey, i, true);
                 //todo call this method to update the swap in new implementation
-                emit SwapUpdated(currentSwap.swapID, currentSwap.streamsRemaining, currentSwap.swapPerStream);
+                emitSwapUpdated(
+                    currentSwap.swapID,
+                    currentSwap.streamsRemaining,
+                    currentSwap.swapPerStream
+                );
                 unchecked {
                     ++i;
                 }
@@ -1211,7 +1227,7 @@ contract PoolLogic is Ownable, IPoolLogic {
                 uint256 lastIndex = oppositeSwaps.length - swapRemoved;
                 oppositeSwaps[i] = oppositeSwaps[lastIndex];
                 //todo call this method to update the swap in new implementation
-                emit SwapAgainstOrderBook(
+                emitSwapAgainstOrderBook(
                     currentSwap.swapID,
                     oppositeSwap.swapID,
                     tokenInAmountOut,
@@ -1264,12 +1280,16 @@ contract PoolLogic is Ownable, IPoolLogic {
                         updatedSwapData_opposite, executionPriceOppositeKey, i, true
                     );
                     //todo call this method to update the swap in new implementation
-                    emit SwapUpdated(currentSwap.swapID, streamCount, swapPerStream);
+                    emitSwapUpdated(
+                        currentSwap.swapID,
+                        streamCount,
+                        swapPerStream
+                    );
 
                 }
                 // 3. we terminate the loop as we have completed the frontSwap
                 //todo call this method  in new implementation
-                emit SwapAgainstOrderBook(
+                emitSwapAgainstOrderBook(
                     currentSwap.swapID,
                     oppositeSwap.swapID,
                     tokenInAmountIn,
@@ -1458,7 +1478,7 @@ contract PoolLogic is Ownable, IPoolLogic {
         }
         currentSwap.amountOut += amountOut;
 
-        emit SwapAgainstPool(
+        emitSwapAgainstPool(
             currentSwap.swapID,
             swapAmountIn,
             amountOut
@@ -1682,6 +1702,43 @@ contract PoolLogic is Ownable, IPoolLogic {
     function poolExist(address tokenAddress) private view returns (bool) {
         (,,,,, bool initialized) = pool.poolInfo(tokenAddress);
         return initialized;
+    }
+
+    function emitSwapEntered(
+        uint256 swapID,
+        bytes32 pairId,
+        uint256 swapAmount,
+        uint256 executionPrice,
+        address user,
+        uint8 typeOfOrder
+    ) internal {
+        emit SwapEntered(swapID, pairId, swapAmount, executionPrice, user, typeOfOrder);
+    }
+
+    function emitSwapAgainstOrderBook(
+        uint256 swapIdIncoming,
+        uint256 swapIdOpposite,
+        uint256 settledAmountIn,
+        uint256 settledAmountOut
+    ) internal {
+        emit SwapAgainstOrderBook(swapIdIncoming, swapIdOpposite, settledAmountIn, settledAmountOut);
+    }
+
+    function emitSwapUpdated(
+        uint256 swapId,
+        uint256 streamCountRemaining,
+        uint256 swapPerStream
+    ) internal {
+        emit SwapUpdated(swapId, streamCountRemaining, swapPerStream);
+    }
+
+
+    function emitSwapAgainstPool(
+        uint256 swapId,
+        uint256 amountIn,
+        uint256 amountOut
+    ) internal {
+        emit SwapAgainstPool(swapId, amountIn, amountOut);
     }
 
 
