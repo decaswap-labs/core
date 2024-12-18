@@ -23,7 +23,6 @@ interface IPoolLogicActions {
     function addOnlyTokenLiquidity(address token, address user, uint256 amount) external;
     function addOnlyDLiquidity(address tokenA, address tokenB, address user, uint256 amountB) external;
     function processLiqStream(address tokenA, address tokenB) external;
-    function processRemoveLiquidity(address token) external;
     function removeLiquidity(address token, address user, uint256 lpUnits) external;
     function depositToGlobalPool(
         address user,
@@ -50,10 +49,12 @@ interface IPoolLogicActions {
     function getStreamCountForDPool(address tokenIn, uint256 amountIn) external view returns (uint256);
     function updatePoolAddress(address) external;
 
-
-    function processGlobalStreamPairDeposit() external;
-    function processGlobalStreamPairWithdraw() external;
+    function processGlobalStreamPairDeposit(address token) external;
+    function processGlobalStreamPairWithdraw(address token) external;
     function processMarketAndTriggerOrders() external;
+
+    function processAddLiquidity(address poolA, address poolB) external;
+    function processRemoveLiquidity(address token) external;
 
     function updateOwner(address ownerAddress) external;
 }

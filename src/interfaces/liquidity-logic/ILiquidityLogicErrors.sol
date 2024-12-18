@@ -2,5 +2,5 @@
 pragma solidity ^0.8.20;
 
 interface ILiquidityLogicErrors {
-    error NotPoolLogic(address sender); 
+    error NotPoolLogic(address sender);
 }

@@ -4,24 +4,17 @@ pragma solidity ^0.8.0;
 
 import {IPoolStates} from "./interfaces/pool/IPoolStates.sol";
 import {IPoolActions} from "./interfaces/pool/IPoolActions.sol";
-import {
-    Swap,
-    LiquidityStream,
-    StreamDetails,
-    RemoveLiquidityStream,
-    GlobalPoolStream
-} from "src/lib/SwapQueue.sol";
+import {Swap, LiquidityStream, StreamDetails, RemoveLiquidityStream, GlobalPoolStream} from "src/lib/SwapQueue.sol";
 import {DSMath} from "src/lib/DSMath.sol";
 import {PoolLogicLib} from "src/lib/PoolLogicLib.sol";
 import {ILiquidityLogic} from "src/interfaces/ILiquidityLogic.sol";
 
-contract LiquidityLogic is ILiquidityLogic{
-
+contract LiquidityLogic is ILiquidityLogic {
     using DSMath for uint256;
 
-    address public  POOL_ADDRESS;
-    address public  POOL_LOGIC_ADDRESS;
-    address public  owner;
+    address public POOL_ADDRESS;
+    address public POOL_LOGIC_ADDRESS;
+    address public owner;
     IPoolStates public poolStates;
     IPoolActions public poolActions;
 
@@ -30,7 +23,7 @@ contract LiquidityLogic is ILiquidityLogic{
         _;
     }
 
-    constructor(address ownerAddress, address poolAddress, address poolLogicAddress){
+    constructor(address ownerAddress, address poolAddress, address poolLogicAddress) {
         POOL_ADDRESS = poolAddress;
         POOL_LOGIC_ADDRESS = poolLogicAddress;
         poolStates = IPoolStates(POOL_ADDRESS);
@@ -49,16 +42,22 @@ contract LiquidityLogic is ILiquidityLogic{
             0
         );
         IPoolActions(POOL_ADDRESS).initGenesisPool(initPoolParams);
-    }   
+    }
 
-    function initPool(address token, address liquidityToken, address user, uint256 tokenAmount, uint256 liquidityTokenAmount) external {
+    function initPool(
+        address token,
+        address liquidityToken,
+        address user,
+        uint256 tokenAmount,
+        uint256 liquidityTokenAmount
+    ) external {
         bytes32 pairId = keccak256(abi.encodePacked(token, liquidityToken));
-        // create liquidity stream for liquidityToken which is used to swap D  
+        // create liquidity stream for liquidityToken which is used to swap D
         StreamDetails memory poolBStream = _createLiquidityStream(liquidityToken, liquidityTokenAmount);
         // streamCount of `token` == streamCount of `liquidityToken`, because reservesD of `token` are 0 at this point
         uint256 swapPerStream = tokenAmount / poolBStream.streamCount;
         uint256 dustTokenAmount;
-        if(tokenAmount % poolBStream.streamCount != 0){
+        if (tokenAmount % poolBStream.streamCount != 0) {
             dustTokenAmount = tokenAmount - (poolBStream.streamCount * swapPerStream);
         }
         StreamDetails memory poolAStream = StreamDetails({
@@ -71,84 +70,70 @@ contract LiquidityLogic is ILiquidityLogic{
             dustTokenAmount: dustTokenAmount
         });
 
-        LiquidityStream memory currentLiquidityStream = LiquidityStream({
-            user: user,
-            poolAStream: poolAStream,
-            poolBStream: poolBStream,
-            dAmountOut: 0
-        });
-        
-        _settleCurrentAddLiquidity(currentLiquidityStream);
-        
-        if(currentLiquidityStream.poolAStream.streamsRemaining != 0 || currentLiquidityStream.poolBStream.streamsRemaining != 0){
-            poolActions.enqueueLiquidityStream(
-                pairId,
-                currentLiquidityStream
-            );
-        }
-    } 
+        LiquidityStream memory currentLiquidityStream =
+            LiquidityStream({user: user, poolAStream: poolAStream, poolBStream: poolBStream, dAmountOut: 0});
 
-    function addLiqDualToken(address token, address liquidityToken, address user, uint256 tokenAmount, uint256 liquidityTokenAmount) external {
-        bytes32 pairId = keccak256(abi.encodePacked(token, liquidityToken));
-        StreamDetails memory poolAStream = _createLiquidityStream(token, tokenAmount);
-        StreamDetails memory poolBStream = _createLiquidityStream(liquidityToken, liquidityTokenAmount);
-        
-        LiquidityStream memory currentLiquidityStream = LiquidityStream({
-            user: user,
-            poolAStream: poolAStream,
-            poolBStream: poolBStream,
-            dAmountOut: 0
-        });
         _settleCurrentAddLiquidity(currentLiquidityStream);
-        if(currentLiquidityStream.poolAStream.streamsRemaining != 0 || currentLiquidityStream.poolBStream.streamsRemaining != 0){
-            poolActions.enqueueLiquidityStream(
-                pairId,
-                currentLiquidityStream
-            );
+
+        if (
+            currentLiquidityStream.poolAStream.streamsRemaining != 0
+                || currentLiquidityStream.poolBStream.streamsRemaining != 0
+        ) {
+            poolActions.enqueueLiquidityStream(pairId, currentLiquidityStream);
         }
     }
 
-    function addOnlyDLiquidity(address token, address liquidityToken, address user, uint256 liquidityTokenAmount) external {    
+    function addLiqDualToken(
+        address token,
+        address liquidityToken,
+        address user,
+        uint256 tokenAmount,
+        uint256 liquidityTokenAmount
+    ) external {
+        bytes32 pairId = keccak256(abi.encodePacked(token, liquidityToken));
+        StreamDetails memory poolAStream = _createLiquidityStream(token, tokenAmount);
+        StreamDetails memory poolBStream = _createLiquidityStream(liquidityToken, liquidityTokenAmount);
+
+        LiquidityStream memory currentLiquidityStream =
+            LiquidityStream({user: user, poolAStream: poolAStream, poolBStream: poolBStream, dAmountOut: 0});
+        _settleCurrentAddLiquidity(currentLiquidityStream);
+        if (
+            currentLiquidityStream.poolAStream.streamsRemaining != 0
+                || currentLiquidityStream.poolBStream.streamsRemaining != 0
+        ) {
+            poolActions.enqueueLiquidityStream(pairId, currentLiquidityStream);
+        }
+    }
+
+    function addOnlyDLiquidity(address token, address liquidityToken, address user, uint256 liquidityTokenAmount)
+        external
+    {
         bytes32 pairId = keccak256(abi.encodePacked(token, liquidityToken));
         // poolAStream will be empty as tokens are added to poolB and D is streamed from B -> A
         StreamDetails memory poolBStream = _createLiquidityStream(liquidityToken, liquidityTokenAmount);
         StreamDetails memory poolAStream;
-        LiquidityStream memory currentLiquidityStream = LiquidityStream({
-            user: user,
-            poolAStream: poolAStream,
-            poolBStream: poolBStream,
-            dAmountOut: 0
-        });
+        LiquidityStream memory currentLiquidityStream =
+            LiquidityStream({user: user, poolAStream: poolAStream, poolBStream: poolBStream, dAmountOut: 0});
         _settleCurrentAddLiquidity(currentLiquidityStream);
-        if(currentLiquidityStream.poolBStream.streamsRemaining != 0){
-            poolActions.enqueueLiquidityStream(
-                pairId,
-                currentLiquidityStream
-            );
+        if (currentLiquidityStream.poolBStream.streamsRemaining != 0) {
+            poolActions.enqueueLiquidityStream(pairId, currentLiquidityStream);
         }
     }
 
-    function addOnlyTokenLiquidity(address token, address user, uint256 amount) external {                
+    function addOnlyTokenLiquidity(address token, address user, uint256 amount) external {
         // encoding address with itself so pairId is same here and in _streamLiquidity()
         bytes32 pairId = keccak256(abi.encodePacked(token, token));
         StreamDetails memory poolAStream = _createLiquidityStream(token, amount);
         StreamDetails memory poolBStream;
-        LiquidityStream memory currentLiquidityStream = LiquidityStream({
-            user: user,
-            poolAStream: poolAStream,
-            poolBStream: poolBStream,
-            dAmountOut: 0
-        });
+        LiquidityStream memory currentLiquidityStream =
+            LiquidityStream({user: user, poolAStream: poolAStream, poolBStream: poolBStream, dAmountOut: 0});
         _settleCurrentAddLiquidity(currentLiquidityStream);
-        if(currentLiquidityStream.poolAStream.streamsRemaining != 0){
-            poolActions.enqueueLiquidityStream(
-                pairId,
-                currentLiquidityStream
-            );
+        if (currentLiquidityStream.poolAStream.streamsRemaining != 0) {
+            poolActions.enqueueLiquidityStream(pairId, currentLiquidityStream);
         }
     }
 
-    function removeLiquidity(address token,  address user, uint256 lpUnits) external {
+    function removeLiquidity(address token, address user, uint256 lpUnits) external {
         (uint256 reserveD,,,,,) = poolStates.poolInfo(address(token));
         uint256 streamCount = PoolLogicLib.calculateStreamCount(lpUnits, poolStates.globalSlippage(), reserveD);
         uint256 lpUnitsPerStream = lpUnits / streamCount;
@@ -162,16 +147,24 @@ contract LiquidityLogic is ILiquidityLogic{
             conversionRemaining: lpUnits
         });
 
-        RemoveLiquidityStream memory updatedRemoveLiqStream = _settleCurrentRemoveLiquidity(removeLiqStream);
+        RemoveLiquidityStream memory updatedRemoveLiqStream = _settleCurrentRemoveLiquidity(removeLiqStream, token);
 
-        if(updatedRemoveLiqStream.streamCountRemaining != 0){
-            poolActions.transferTokens(updatedRemoveLiqStream.token, updatedRemoveLiqStream.user, updatedRemoveLiqStream.tokenAmountOut);
-        }else{
+        if (updatedRemoveLiqStream.streamCountRemaining != 0) {
+            poolActions.transferTokens(
+                token, user, updatedRemoveLiqStream.tokenAmountOut
+            );
+        } else {
             poolActions.enqueueRemoveLiquidityStream(token, removeLiqStream);
         }
     }
 
-    function depositToGlobalPool(address token, address user, uint256 amount, uint256 streamCount, uint256 swapPerStream) external {
+    function depositToGlobalPool(
+        address token,
+        address user,
+        uint256 amount,
+        uint256 streamCount,
+        uint256 swapPerStream
+    ) external {
         bytes32 pairId = bytes32(abi.encodePacked(token, token));
 
         GlobalPoolStream memory localStream = GlobalPoolStream({
@@ -211,26 +204,23 @@ contract LiquidityLogic is ILiquidityLogic{
         _handleDPoolObject(localStream);
     }
 
-    // TODO: NEED TO WORK ON THESE METHODS THEN MAKE PR
-    function processAddLiquidity(address poolA, address poolB) external onlyRouter {
-        // _streamAddLiquidity(poolA, poolB);
+    function processAddLiquidity(address poolA, address poolB) external onlyPoolLogic {
+        _streamAddLiquidity(poolA, poolB);
     }
 
-    function processRemoveLiquidity(address token) external onlyRouter {
-        // _streamRemoveLiquidity(token);
+    function processRemoveLiquidity(address token) external onlyPoolLogic {
+        _streamRemoveLiquidity(token);
     }
 
-    function processDepositToGlobalPool(address token) external onlyRouter {
-        // _streamDPoolDeposit(token);
+    function processDepositToGlobalPool(address token) external onlyPoolLogic {
+        _streamDPoolDeposit(token);
     }
 
-    function processWithdrawFromGlobalPool(address token) external onlyRouter {
-        // _streamDPoolWithdraw(token);
+    function processWithdrawFromGlobalPool(address token) external onlyPoolLogic {
+        _streamDPoolWithdraw(token);
     }
 
-    function _handleDPoolObject(
-        GlobalPoolStream memory stream
-    ) internal {
+    function _handleDPoolObject(GlobalPoolStream memory stream) internal {
         bytes32 pairId = bytes32(abi.encodePacked(stream.tokenIn, stream.tokenIn));
         GlobalPoolStream memory updatedStream = _streamDPoolOnlyOneObject(stream);
         if (updatedStream.streamsRemaining != 0) {
@@ -243,41 +233,40 @@ contract LiquidityLogic is ILiquidityLogic{
             }
         } else {
             if (!updatedStream.deposit) {
-                IPoolActions(POOL_ADDRESS).transferTokens(updatedStream.tokenIn, updatedStream.user, updatedStream.amountOut);
+                IPoolActions(POOL_ADDRESS).transferTokens(
+                    updatedStream.tokenIn, updatedStream.user, updatedStream.amountOut
+                );
             }
         }
     }
 
-    function _settleCurrentAddLiquidity(LiquidityStream memory liquidityStream) internal returns (LiquidityStream memory) {
-        (uint256 reserveD_A, uint256 poolOwnershipUnitsTotal_A, uint256 reserveA_A,,,) = poolStates.poolInfo(liquidityStream.poolAStream.token);
+    function _settleCurrentAddLiquidity(LiquidityStream memory liquidityStream)
+        internal
+        returns (LiquidityStream memory)
+    {
+        (uint256 reserveD_A, uint256 poolOwnershipUnitsTotal_A, uint256 reserveA_A,,,) =
+            poolStates.poolInfo(liquidityStream.poolAStream.token);
         (uint256 poolANewStreamsRemaining, uint256 poolAReservesToAdd, uint256 lpUnitsAToMint) =
             _streamToken(liquidityStream);
-        (uint256 poolBNewStreamsRemaining, uint256 poolBReservesToAdd, uint256 changeInD) =
-            _streamD(liquidityStream);
+        (uint256 poolBNewStreamsRemaining, uint256 poolBReservesToAdd, uint256 changeInD) = _streamD(liquidityStream);
 
         uint256 lpUnitsFromStreamD;
         if (changeInD > 0) {
             // calc lpUnits user will receive adding D to poolA
             lpUnitsFromStreamD = PoolLogicLib.calculateLpUnitsToMint(
-                poolOwnershipUnitsTotal_A + lpUnitsAToMint,
-                0,
-                poolAReservesToAdd + reserveA_A,
-                changeInD,
-                reserveD_A
+                poolOwnershipUnitsTotal_A + lpUnitsAToMint, 0, poolAReservesToAdd + reserveA_A, changeInD, reserveD_A
             );
         }
         // update reserves
-        bytes memory updatedReserves = abi.encode(poolA, poolB, poolAReservesToAdd, poolBReservesToAdd, changeInD);
+        bytes memory updatedReserves = abi.encode(liquidityStream.poolAStream.token, liquidityStream.poolBStream.token, poolAReservesToAdd, poolBReservesToAdd, changeInD);
         poolActions.updateReservesWhenStreamingLiq(updatedReserves);
 
         // updating lpUnits
-        bytes memory updatedLpUnitsInfo =
-            abi.encode(poolA, liquidityStream.user, lpUnitsAToMint + lpUnitsFromStreamD);
+        bytes memory updatedLpUnitsInfo = abi.encode(liquidityStream.poolAStream.token, liquidityStream.user, lpUnitsAToMint + lpUnitsFromStreamD);
         poolActions.updateUserLpUnits(updatedLpUnitsInfo);
 
         return liquidityStream;
-
-    }   
+    }
 
     function _streamDPoolOnlyOneObject(GlobalPoolStream memory stream) internal returns (GlobalPoolStream memory) {
         uint256 poolNewStreamRemaining;
@@ -325,7 +314,7 @@ contract LiquidityLogic is ILiquidityLogic{
         uint256 streamCount = PoolLogicLib.calculateStreamCount(amount, poolStates.globalSlippage(), reserveD);
         uint256 swapPerStream = amount / streamCount;
         uint256 dustTokenAmount;
-        if(amount % streamCount != 0){  
+        if (amount % streamCount != 0) {
             dustTokenAmount = amount - (streamCount * swapPerStream);
         }
         streamDetails = StreamDetails({
@@ -341,13 +330,17 @@ contract LiquidityLogic is ILiquidityLogic{
 
     function _streamAddLiquidity(address poolA, address poolB) internal {
         bytes32 pairId = keccak256(abi.encodePacked(poolA, poolB));
-        (LiquidityStream[] memory liquidityStreams, uint256 front, uint256 back) = poolStates.liquidityStreamQueue(pairId);
-        // true = there are streams pending
-        if (back - front != 0) {
+        LiquidityStream[] memory liquidityStreams = poolStates.liquidityStreamQueue(pairId);
+        if (liquidityStreams.length == 0) {
+            return;
+        }
+        uint256 streamRemoved;
+        uint256 count;
+        for (uint256 i = 0; i < liquidityStreams.length;) {
+            // true = there are streams pending
             (uint256 reserveD_A, uint256 poolOwnershipUnitsTotal_A, uint256 reserveA_A,,,) = poolStates.poolInfo(poolA);
 
-            // get the front stream
-            LiquidityStream memory liquidityStream = liquidityStreams[front];
+            LiquidityStream memory liquidityStream = liquidityStreams[i];
 
             (uint256 poolANewStreamsRemaining, uint256 poolAReservesToAdd, uint256 lpUnitsAToMint) =
                 _streamToken(liquidityStream);
@@ -374,20 +367,35 @@ contract LiquidityLogic is ILiquidityLogic{
                 abi.encode(poolA, liquidityStream.user, lpUnitsAToMint + lpUnitsFromStreamD);
             poolActions.updateUserLpUnits(updatedLpUnitsInfo);
 
-            // update stream struct
-            bytes memory updatedStreamData = abi.encode(
-                pairId,
-                poolAReservesToAdd,
-                poolBReservesToAdd,
-                poolANewStreamsRemaining,
-                poolBNewStreamsRemaining,
-                changeInD
-            );
-            poolActions.updateStreamQueueLiqStream(updatedStreamData);
-
             if (poolANewStreamsRemaining == 0 && poolBNewStreamsRemaining == 0) {
-                poolActions.dequeueLiquidityStream_streamQueue(pairId);
+                streamRemoved++;
+                poolActions.dequeueLiquidityStream_streamQueue(pairId, i);
+                uint256 lastIndex = liquidityStreams.length - streamRemoved;
+                liquidityStreams[i] = liquidityStreams[lastIndex];
+                delete liquidityStreams[lastIndex];
+                if (lastIndex == 0) {
+                    break;
+                }
+            } else {
+                // update stream struct
+                bytes memory updatedStreamData = abi.encode(
+                    pairId,
+                    poolAReservesToAdd,
+                    poolBReservesToAdd,
+                    poolANewStreamsRemaining,
+                    poolBNewStreamsRemaining,
+                    changeInD
+                );
+                poolActions.updateStreamQueueLiqStream(updatedStreamData);
             }
+
+            unchecked {
+                i++;
+            }
+            if (count == liquidityStreams.length - 1) {
+                break;
+            }
+            count++;
         }
     }
 
@@ -402,7 +410,8 @@ contract LiquidityLogic is ILiquidityLogic{
         if (liqStream.poolBStream.swapAmountRemaining != 0) {
             poolBNewStreamsRemaining--;
             poolBReservesToAdd = liqStream.poolBStream.swapPerStream;
-            (changeInD,) = PoolLogicLib.getSwapAmountOut(liqStream.poolBStream.swapPerStream, reserveA_B, 0, reserveD_B, 0);
+            (changeInD,) =
+                PoolLogicLib.getSwapAmountOut(liqStream.poolBStream.swapPerStream, reserveA_B, 0, reserveD_B, 0);
         }
     }
 
@@ -425,7 +434,11 @@ contract LiquidityLogic is ILiquidityLogic{
         }
     }
 
-    function _streamDPoolCalculation(GlobalPoolStream memory stream) internal view returns (uint256 poolNewStreamsRemaining, uint256 poolReservesToAdd, uint256 amountOut) {
+    function _streamDPoolCalculation(GlobalPoolStream memory stream)
+        internal
+        view
+        returns (uint256 poolNewStreamsRemaining, uint256 poolReservesToAdd, uint256 amountOut)
+    {
         // both poolStreamA and poolStreamB tokens should be same in case of single sided liquidity
         (uint256 reserveD,, uint256 reserveA,,,) = poolStates.poolInfo(stream.tokenIn);
         poolNewStreamsRemaining = stream.streamsRemaining;
@@ -439,34 +452,64 @@ contract LiquidityLogic is ILiquidityLogic{
     }
 
     function _streamRemoveLiquidity(address token) internal {
-        (RemoveLiquidityStream[] memory removeLiqStreams, uint256 front, uint256 back) =
-            poolStates.removeLiquidityStreamQueue(token);
-        if (front == back) {
+        RemoveLiquidityStream[] memory removeLiqStreams = poolStates.removeLiquidityStreamQueue(token);
+        if (removeLiqStreams.length == 0) {
             return;
         }
 
-        (, uint256 poolOwnershipUnitsTotal, uint256 reserveA,,,) = poolStates.poolInfo(address(token));
+        uint256 streamRemoved;
+        uint256 count;
+        for (uint256 i = 0; i < removeLiqStreams.length;) {
+            (, uint256 poolOwnershipUnitsTotal, uint256 reserveA,,,) = poolStates.poolInfo(address(token));
 
-        RemoveLiquidityStream memory frontStream = removeLiqStreams[front];
+            RemoveLiquidityStream memory frontStream = removeLiqStreams[i];
 
-        uint256 assetToTransfer =
-            PoolLogicLib.calculateAssetTransfer(frontStream.conversionPerStream, reserveA, poolOwnershipUnitsTotal);
-        frontStream.conversionRemaining -= frontStream.conversionPerStream;
-        frontStream.streamCountRemaining--;
-        frontStream.tokenAmountOut += assetToTransfer;
+            uint256 assetToTransfer =
+                PoolLogicLib.calculateAssetTransfer(frontStream.conversionPerStream, reserveA, poolOwnershipUnitsTotal);
+            frontStream.conversionRemaining -= frontStream.conversionPerStream;
+            frontStream.streamCountRemaining--;
+            frontStream.tokenAmountOut += assetToTransfer;
 
-        bytes memory updatedRemoveLiqData =
-            abi.encode(token, assetToTransfer, frontStream.conversionRemaining, frontStream.streamCountRemaining);
-        IPoolActions(POOL_ADDRESS).updateReservesAndRemoveLiqStream(updatedRemoveLiqData);
+            bytes memory updatedRemoveLiqData =
+                abi.encode(token, assetToTransfer, frontStream.conversionRemaining, frontStream.streamCountRemaining);
+            IPoolActions(POOL_ADDRESS).updateRemoveLiqStream(updatedRemoveLiqData, i);
 
-        if (frontStream.streamCountRemaining == 0) {
-            IPoolActions(POOL_ADDRESS).transferTokens(token, frontStream.user, frontStream.tokenAmountOut);
-            IPoolActions(POOL_ADDRESS).dequeueRemoveLiquidity_streamQueue(token);
+            bytes memory updatedPoolOwnershipUnitsTotalRemoveLiqData =
+                abi.encode(token, frontStream.conversionPerStream);
+            IPoolActions(POOL_ADDRESS).updatePoolOwnershipUnitsTotalRemoveLiqStream(
+                updatedPoolOwnershipUnitsTotalRemoveLiqData
+            );
+
+            bytes memory updatedReservesRemoveLiqData = abi.encode(token, assetToTransfer);
+            IPoolActions(POOL_ADDRESS).updateReservesRemoveLiqStream(updatedReservesRemoveLiqData);
+
+            if (frontStream.streamCountRemaining == 0) {
+                streamRemoved++;
+                IPoolActions(POOL_ADDRESS).transferTokens(token, frontStream.user, frontStream.tokenAmountOut);
+                IPoolActions(POOL_ADDRESS).dequeueRemoveLiquidity_streamQueue(token, i);
+                uint256 lastIndex = removeLiqStreams.length - streamRemoved;
+                removeLiqStreams[i] = removeLiqStreams[lastIndex];
+                delete removeLiqStreams[lastIndex];
+                if (lastIndex == 0) {
+                    break;
+                }
+            }
+
+            unchecked {
+                i++;
+            }
+            if (count == removeLiqStreams.length - 1) {
+                break;
+            }
+            count++;
         }
     }
 
-    function _settleCurrentRemoveLiquidity(RemoveLiquidityStream memory removeLiqStream) internal returns (RemoveLiquidityStream memory) {
-        (, uint256 poolOwnershipUnitsTotal, uint256 reserveA,,,) = poolStates.poolInfo(address(removeLiqStream.token));
+    function _settleCurrentRemoveLiquidity(RemoveLiquidityStream memory removeLiqStream, address token)
+        internal
+        returns (RemoveLiquidityStream memory)
+    {
+        (, uint256 poolOwnershipUnitsTotal, uint256 reserveA,,,) = poolStates.poolInfo(token);
 
         uint256 assetToTransfer =
             PoolLogicLib.calculateAssetTransfer(removeLiqStream.conversionPerStream, reserveA, poolOwnershipUnitsTotal);
@@ -474,20 +517,33 @@ contract LiquidityLogic is ILiquidityLogic{
         removeLiqStream.streamCountRemaining--;
         removeLiqStream.tokenAmountOut += assetToTransfer;
 
-        bytes memory updatedRemoveLiqData =
-            abi.encode(removeLiqStream.token, assetToTransfer, removeLiqStream.conversionRemaining, removeLiqStream.streamCountRemaining);
-        IPoolActions(POOL_ADDRESS).updateReservesAndRemoveLiqStream(updatedRemoveLiqData);
+        bytes memory updatedRemoveLiqData = abi.encode(
+            token,
+            assetToTransfer,
+            removeLiqStream.conversionRemaining,
+            removeLiqStream.streamCountRemaining
+        );
+
+        // bytes memory updatedRemoveLiqData =
+        // abi.encode(token, assetToTransfer, removeLiqStream.conversionRemaining, removeLiqStream.streamCountRemaining);
+        // IPoolActions(POOL_ADDRESS).updateRemoveLiqStream(updatedRemoveLiqData);
+
+        bytes memory updatedPoolOwnershipUnitsTotalRemoveLiqData =
+            abi.encode(token, removeLiqStream.conversionPerStream);
+        IPoolActions(POOL_ADDRESS).updatePoolOwnershipUnitsTotalRemoveLiqStream(
+            updatedPoolOwnershipUnitsTotalRemoveLiqData
+        );
+
+        bytes memory updatedReservesRemoveLiqData = abi.encode(token, assetToTransfer);
+        IPoolActions(POOL_ADDRESS).updateReservesRemoveLiqStream(updatedReservesRemoveLiqData);
 
         return removeLiqStream;
     }
 
-    function _streamDPoolDeposit(address poolA) internal {
-        address[] memory poolAddresses = IPoolActions(POOL_ADDRESS).getPoolAddresses();
-        for (uint256 i = 0; i < poolAddresses.length; i++) {
-            address token = poolAddresses[i];
-            bytes32 pairId = bytes32(abi.encodePacked(token, token));
-            GlobalPoolStream[] memory globalPoolStream = IPoolActions(POOL_ADDRESS).globalStreamQueueDeposit(pairId);
-            if (globalPoolStream.length > 0) {
+    function _streamDPoolDeposit(address token) internal {
+        bytes32 pairId = bytes32(abi.encodePacked(token, token));
+        GlobalPoolStream[] memory globalPoolStream = IPoolActions(POOL_ADDRESS).globalStreamQueueDeposit(pairId);
+        if (globalPoolStream.length > 0) {
                 uint256 streamRemoved;
                 uint256 count;
 
@@ -507,19 +563,15 @@ contract LiquidityLogic is ILiquidityLogic{
                     }
                     if (count == globalPoolStream.length - 1) {
                         break;
-                    }
-                    count++;
                 }
+                count++;
             }
         }
     }
 
-    function _streamDPoolWithdraw(address poolA) internal {
-        address[] memory poolAddresses = IPoolActions(POOL_ADDRESS).getPoolAddresses();
-        for (uint256 i = 0; i < poolAddresses.length; i++) {
-            address token = poolAddresses[i];
-            bytes32 pairId = bytes32(abi.encodePacked(token, token));
-            GlobalPoolStream[] memory globalPoolStream = IPoolActions(POOL_ADDRESS).globalStreamQueueWithdraw(pairId);
+    function _streamDPoolWithdraw(address token) internal {
+        bytes32 pairId = bytes32(abi.encodePacked(token, token));
+        GlobalPoolStream[] memory globalPoolStream = IPoolActions(POOL_ADDRESS).globalStreamQueueWithdraw(pairId);
 
             if (globalPoolStream.length > 0) {
                 uint256 streamRemoved;
@@ -548,8 +600,6 @@ contract LiquidityLogic is ILiquidityLogic{
                     }
                     count++;
                 }
-            }
         }
     }
-
-}   
+}

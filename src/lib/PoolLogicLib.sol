@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
+
 import {DSMath} from "./DSMath.sol";
 
 library PoolLogicLib {
@@ -8,7 +9,7 @@ library PoolLogicLib {
     uint256 public constant PRICE_PRECISION = 1_000_000_000;
     uint256 public constant STREAM_COUNT_PRECISION = 10_000;
 
-    function getExecutionPrice(uint256 reserveA1, uint256 reserveA2) public pure  returns (uint256) {
+    function getExecutionPrice(uint256 reserveA1, uint256 reserveA2) public pure returns (uint256) {
         return reserveA1.wdiv(reserveA2);
     }
 
@@ -38,23 +39,15 @@ library PoolLogicLib {
         return ((dIn * reserveA) / (dIn + reserveD));
     }
 
-    function getTokenOut(uint256 dAmount, uint256 reserveA, uint256 reserveD)
-        external
-        pure
-        returns (uint256)
-    {
+    function getTokenOut(uint256 dAmount, uint256 reserveA, uint256 reserveD) external pure returns (uint256) {
         return (dAmount.wmul(reserveA)).wdiv(dAmount + reserveD);
     }
 
-    function getDOut(uint256 tokenAmount, uint256 reserveA, uint256 reserveD)
-        external
-        pure
-        returns (uint256)
-    {
+    function getDOut(uint256 tokenAmount, uint256 reserveA, uint256 reserveD) external pure returns (uint256) {
         return (tokenAmount.wmul(reserveD)).wdiv(tokenAmount + reserveA);
     }
 
-      // 0.15% will be 15 poolSlippage. 100% is 100000 units
+    // 0.15% will be 15 poolSlippage. 100% is 100000 units
     function calculateStreamCount(uint256 amount, uint256 poolSlippage, uint256 reserveD)
         public
         pure
@@ -136,6 +129,4 @@ library PoolLogicLib {
     function getOtherReserveFromPrice(uint256 executionPrice, uint256 reserveA) public pure returns (uint256) {
         return reserveA.wdiv(executionPrice); // @audit confirm scaling
     }
-
-
 }
