@@ -30,7 +30,7 @@ contract PoolLogic is Ownable, IPoolLogic {
     // have setters for these values
     uint256 public constant PRICE_PRECISION = 1_000_000_000;
     uint256 public constant STREAM_COUNT_PRECISION = 10_000;
-    uint256 public constant MAX_LIMIT_TICKS = 10;
+    uint8 public MAX_LIMIT_TICKS = 10;
 
     struct Payout {
         address swapUser;
@@ -1736,5 +1736,9 @@ contract PoolLogic is Ownable, IPoolLogic {
         _swap.swapPerStream = swapPerStream;
 
         return _swap;
+    }
+
+    function updateMaxLimitTicks(uint8 _maxLimitTicks) external onlyOwner {
+        MAX_LIMIT_TICKS = _maxLimitTicks;
     }
 }
