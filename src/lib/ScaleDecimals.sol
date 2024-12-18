@@ -6,7 +6,11 @@ library ScaleDecimals {
     /// @param amount The amount to scale.
     /// @param fromDecimals The decimals of the amount.
     /// @param toDecimals The target decimals.
-    function scaleAmountToDecimals(uint256 amount, uint8 fromDecimals, uint8 toDecimals)
+    function scaleAmountToDecimals(
+        uint256 amount,
+        uint8 fromDecimals,
+        uint8 toDecimals
+    )
         internal
         pure
         returns (uint256)

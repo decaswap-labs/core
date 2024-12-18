@@ -1,11 +1,11 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.13;
 
-import {RouterTest} from "./Router.t.sol";
-import {IRouterErrors} from "src/interfaces/router/IRouterErrors.sol";
-import {Swap, LiquidityStream} from "src/lib/SwapQueue.sol";
-import {console} from "forge-std/console.sol";
-import {DSMath} from "src/lib/DSMath.sol";
+import { RouterTest } from "./Router.t.sol";
+import { IRouterErrors } from "src/interfaces/router/IRouterErrors.sol";
+import { Swap, LiquidityStream } from "src/lib/SwapQueue.sol";
+import { console } from "forge-std/console.sol";
+import { DSMath } from "src/lib/DSMath.sol";
 
 contract Router_SwapLimit is RouterTest {
     using DSMath for uint256;
@@ -210,7 +210,8 @@ contract Router_SwapLimit is RouterTest {
         }
 
         // we need to add swaps to the opposite pair to be able to fully execute the swap
-        // let's make sure that the opposite swaps have streamCount > 1 to have them ready to be consumed in the streameQueue
+        // let's make sure that the opposite swaps have streamCount > 1 to have them ready to be consumed in the
+        // streameQueue
         uint256 tokenBSwapAmount = 150 ether;
 
         uint256 streamCount = poolLogic.getStreamCount(address(tokenB), address(tokenA), tokenBSwapAmount);
@@ -264,7 +265,8 @@ contract Router_SwapLimit is RouterTest {
         if (swapTokenAAmountIn % _streamCount != 0) dust = (swapTokenAAmountIn - (_streamCount * _swapPerStream));
 
         uint256 swapTokenBAmountOut;
-        // we loop through the opposite swaps to get the expected amount of tokenB we will receive, after fully execute our frontSwap swap
+        // we loop through the opposite swaps to get the expected amount of tokenB we will receive, after fully execute
+        // our frontSwap swap
         uint256 swapTokenAAmountInForCalculation = swapTokenAAmountIn;
         for (uint256 i = 0; i < oppositeSwaps.length; i++) {
             Swap memory oppositeSwap = oppositeSwaps[i];
@@ -316,7 +318,8 @@ contract Router_SwapLimit is RouterTest {
 
         assertTrue(swaps.length == 0);
         assertEq(swaperTokenABalance_afterSwap, swaperTokenABalance_beforeSwap - swapTokenAAmountIn);
-        assertGt(swaperTokenBBalance_afterSwap, swaperTokenBBalance_beforeSwap); // @audit there's mismatch between the expected amount of tokenB received and the actual amount very minute
+        assertGt(swaperTokenBBalance_afterSwap, swaperTokenBBalance_beforeSwap); // @audit there's mismatch between the
+            // expected amount of tokenB received and the actual amount very minute
     }
 
     function test_swapLimitOrder_fullyExecuteSwapWithBothOppositeSwapsAndReserves() public {
@@ -366,7 +369,8 @@ contract Router_SwapLimit is RouterTest {
         assertEq(oppositeSwaps.length, oppositeSwapsCount);
 
         // we calculate the amount of tokenA we need to fully execute the opposite swaps
-        uint256 reserveAInFromPrice = poolLogic.getOtherReserveFromPrice(executionPriceOppositeSwap, reserveA_tokenB, decimalsB, decimalsA);
+        uint256 reserveAInFromPrice =
+            poolLogic.getOtherReserveFromPrice(executionPriceOppositeSwap, reserveA_tokenB, decimalsB, decimalsA);
         uint256 tokenBInOppSwaps = oppSwapAmount * oppositeSwapsCount; // oppSwapAmount contains the oppDustToken amount
 
         uint256 tokenAOutOppSwaps;
@@ -375,7 +379,8 @@ contract Router_SwapLimit is RouterTest {
         }
 
         // we get the price of our swap based on the inversed price of opposite swaps
-        uint256 swapExecutionPrice = poolLogic.getReciprocalOppositePrice(executionPriceOppositeSwap, reserveA_tokenB, decimalsB, decimalsA);
+        uint256 swapExecutionPrice =
+            poolLogic.getReciprocalOppositePrice(executionPriceOppositeSwap, reserveA_tokenB, decimalsB, decimalsA);
 
         uint256 tokenAForPoolReserveSwap = 0.0001 ether;
         uint256 swapAmount = tokenAOutOppSwaps + tokenAForPoolReserveSwap;
@@ -393,8 +398,7 @@ contract Router_SwapLimit is RouterTest {
         uint256 expectedAmountOut =
             _calculateAmountOutFromPrice(swapPerStream, swapExecutionPrice, decimalsA, decimalsB);
         // now we get the expected amount in to get the expectedAmountOut at the pool price
-        uint256 expectedAmountIn =
-            _calculateAmountInFromPrice(expectedAmountOut, currentPrice, decimalsA, decimalsB);
+        uint256 expectedAmountIn = _calculateAmountInFromPrice(expectedAmountOut, currentPrice, decimalsA, decimalsB);
 
         uint256 extraToThePool = swapPerStream - expectedAmountIn;
         console.log("extraToThePool", extraToThePool);
@@ -425,6 +429,7 @@ contract Router_SwapLimit is RouterTest {
         assertTrue(_oppositeSwaps.length == 0);
         assertTrue(swaps.length == 0);
         assertEq(swapperTokenABalance_afterSwap, swapperTokenABalance_beforeSwap - swapAmount);
-        assertGt(swapperTokenBBalance_afterSwap, swapperTokenBBalance_beforeSwap); // @audit there's mismatch between the expected amount of tokenB received and the actual amount very minute
+        assertGt(swapperTokenBBalance_afterSwap, swapperTokenBBalance_beforeSwap); // @audit there's mismatch between
+            // the expected amount of tokenB received and the actual amount very minute
     }
 }

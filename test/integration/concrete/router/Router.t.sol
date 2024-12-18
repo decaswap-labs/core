@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.13;
 
-import {DSMath} from "src/lib/DSMath.sol";
-import {ScaleDecimals} from "src/lib/ScaleDecimals.sol";
+import { DSMath } from "src/lib/DSMath.sol";
+import { ScaleDecimals } from "src/lib/ScaleDecimals.sol";
 
-import {Deploys} from "test/shared/Deploys.t.sol";
+import { Deploys } from "test/shared/Deploys.t.sol";
 
 contract RouterTest is Deploys {
     using DSMath for uint256;
@@ -34,7 +34,12 @@ contract RouterTest is Deploys {
         vm.stopPrank();
     }
 
-    function _calculateAmountOutFromPrice(uint256 amountIn, uint256 price, uint8 decimalsIn, uint8 decimalsOut)
+    function _calculateAmountOutFromPrice(
+        uint256 amountIn,
+        uint256 price,
+        uint8 decimalsIn,
+        uint8 decimalsOut
+    )
         internal
         pure
         returns (uint256)
@@ -57,7 +62,12 @@ contract RouterTest is Deploys {
     /// @param decimalsIn Decimals of TokenA.
     /// @param decimalsOut Decimals of TokenB.
     /// @return tokenAmountIn The equivalent amount of TokenA.
-    function _calculateAmountInFromPrice(uint256 tokenAmountOut, uint256 price, uint8 decimalsIn, uint8 decimalsOut)
+    function _calculateAmountInFromPrice(
+        uint256 tokenAmountOut,
+        uint256 price,
+        uint8 decimalsIn,
+        uint8 decimalsOut
+    )
         internal
         pure
         returns (uint256)

@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.13;
 
-import {Deploys} from "test/shared/Deploys.t.sol";
-import {Handler} from "test/integration/invariants/Handler.t.sol";
-import {console} from "forge-std/Test.sol";
+import { Deploys } from "test/shared/Deploys.t.sol";
+import { Handler } from "test/integration/invariants/Handler.t.sol";
+import { console } from "forge-std/Test.sol";
 
 contract SwapBalanceAndReservesInvariantsTest is Deploys {
     Handler public handler;

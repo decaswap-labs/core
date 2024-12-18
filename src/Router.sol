@@ -1,18 +1,18 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.13;
 
-import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
-import {SafeERC20, IERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import {IERC20Metadata} from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
-import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
+import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
+import { SafeERC20, IERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import { IERC20Metadata } from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
+import { ReentrancyGuard } from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 
-import {IPoolActions} from "./interfaces/pool/IPoolActions.sol";
-import {IPoolLogicActions} from "./interfaces/pool-logic/IPoolLogicActions.sol";
-import {IPoolStates} from "./interfaces/pool/IPoolStates.sol";
-import {IPoolLogic} from "./interfaces/IPoolLogic.sol";
-import {IRouter} from "./interfaces/IRouter.sol";
+import { IPoolActions } from "./interfaces/pool/IPoolActions.sol";
+import { IPoolLogicActions } from "./interfaces/pool-logic/IPoolLogicActions.sol";
+import { IPoolStates } from "./interfaces/pool/IPoolStates.sol";
+import { IPoolLogic } from "./interfaces/IPoolLogic.sol";
+import { IRouter } from "./interfaces/IRouter.sol";
 
-import {console} from "forge-std/console.sol"; // debug
+import { console } from "forge-std/console.sol"; // debug
 
 // @todo decide where to keep events. Router/Pool?
 // @todo remove unused errors
@@ -62,7 +62,12 @@ contract Router is Ownable, ReentrancyGuard, IRouter {
     }
 
     // decimals
-    function initPool(address token, address liquidityToken, uint256 tokenAmount, uint256 liquidityTokenAmount)
+    function initPool(
+        address token,
+        address liquidityToken,
+        uint256 tokenAmount,
+        uint256 liquidityTokenAmount
+    )
         external
         returns (bool success)
     {
@@ -157,7 +162,12 @@ contract Router is Ownable, ReentrancyGuard, IRouter {
         IPoolLogic(poolStates.POOL_LOGIC()).swapMarketOrder(msg.sender, tokenIn, tokenOut, amountIn);
     }
 
-    function swapTriggerOrder(address tokenIn, address tokenOut, uint256 amountIn, uint256 executionPrice)
+    function swapTriggerOrder(
+        address tokenIn,
+        address tokenOut,
+        uint256 amountIn,
+        uint256 executionPrice
+    )
         external
         nonReentrant
     {
@@ -171,7 +181,12 @@ contract Router is Ownable, ReentrancyGuard, IRouter {
         IPoolLogic(poolStates.POOL_LOGIC()).swapTriggerOrder(msg.sender, tokenIn, tokenOut, amountIn, executionPrice);
     }
 
-    function swapLimitOrder(address tokenIn, address tokenOut, uint256 amountIn, uint256 executionPrice)
+    function swapLimitOrder(
+        address tokenIn,
+        address tokenOut,
+        uint256 amountIn,
+        uint256 executionPrice
+    )
         external
         nonReentrant
     {

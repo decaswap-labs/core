@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
-import {Swap} from "./SwapQueue.sol";
+import { Swap } from "./SwapQueue.sol";
 
 library SwapSorter {
     // Function to sort an array of Swaps based on swapAmount using iterative QuickSort

@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.13;
 
-import {Deploys} from "test/shared/DeploysForRouter.t.sol";
-import {IRouterErrors} from "src/interfaces/router/IRouterErrors.sol";
-import {LiquidityStream} from "src/lib/SwapQueue.sol";
+import { Deploys } from "test/shared/DeploysForRouter.t.sol";
+import { IRouterErrors } from "src/interfaces/router/IRouterErrors.sol";
+import { LiquidityStream } from "src/lib/SwapQueue.sol";
 import "forge-std/Test.sol";
 
 contract RouterTest is Deploys {
@@ -24,8 +24,14 @@ contract RouterTest is Deploys {
         router.initGenesisPool(address(tokenA), addLiquidityTokenAmount, dToMint);
         uint256 lpUnitsAfter = pool.userLpUnitInfo(owner, address(tokenA));
 
-        (uint256 reserveD, uint256 poolOwnershipUnitsTotal, uint256 reserveA, uint256 initialDToMint,, bool initialized,)
-        = pool.poolInfo(address(tokenA));
+        (
+            uint256 reserveD,
+            uint256 poolOwnershipUnitsTotal,
+            uint256 reserveA,
+            uint256 initialDToMint,
+            ,
+            bool initialized,
+        ) = pool.poolInfo(address(tokenA));
         uint256 poolBalanceAfter = tokenA.balanceOf(address(pool));
 
         assertEq(reserveD, dToMint);
@@ -134,7 +140,8 @@ contract RouterTest is Deploys {
         // assertEq(reserveAAfterA, reserveABeforeA + swapPerStreamToDToken);
 
         // assertEq(
-        //     poolOwnershipUnitsTotalAfterB, poolOwnershipUnitsTotalBeforeB + lpUnitsBeforeFromToken + lpUnitsBeforeFromD
+        //     poolOwnershipUnitsTotalAfterB, poolOwnershipUnitsTotalBeforeB + lpUnitsBeforeFromToken +
+        // lpUnitsBeforeFromD
         // );
         // assertEq(reserveDAfterB, reserveDBeforeB + dToTransfer);
         // assertEq(reserveAAfterB, reserveABeforeB + swapPerStreamInputToken);
