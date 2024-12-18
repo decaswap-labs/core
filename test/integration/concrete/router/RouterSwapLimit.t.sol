@@ -130,15 +130,16 @@ contract Router_SwapLimit is RouterTest {
     }
 
     function test_swapLimitOrder_totallyExecuteSwapFromReserves() public {
-        (uint256 reserveD_tokenA_beforeSwap,, uint256 reserveA_tokenA_beforeSwap,,,,) = pool.poolInfo(address(tokenA));
-        (uint256 reserveD_tokenB_beforeSwap,, uint256 reserveA_tokenB_beforeSwap,,,,) = pool.poolInfo(address(tokenB));
+        (uint256 reserveD_tokenA_beforeSwap,, uint256 reserveA_tokenA_beforeSwap,,,, uint8 tokenADecimals) =
+            pool.poolInfo(address(tokenA));
+        (uint256 reserveD_tokenB_beforeSwap,, uint256 reserveA_tokenB_beforeSwap,,,, uint8 tokenBDecimals) =
+            pool.poolInfo(address(tokenB));
 
         (uint256 marketPriceBeforeSwap,,) = poolLogic.getCurrentPrice(address(tokenA), address(tokenB));
 
-        // to add the swap in the straming queue we need to have a swap price execution lower or equal to the current price
-        uint256 executionPrice = marketPriceBeforeSwap - (marketPriceBeforeSwap * 10) / 100;
+        uint256 limitOrderPrice = marketPriceBeforeSwap + 9 * poolLogic.PRICE_PRECISION();
 
-        uint256 tokenASwapAmount = 0.125 ether; // low amount to get consumed by the reserves in one stream
+        uint256 tokenASwapAmount = 0.0001 ether; // low amount to get consumed by the reserves in one stream
         uint256 streamCount = poolLogic.getStreamCount(address(tokenA), address(tokenB), tokenASwapAmount);
 
         uint256 dust;
@@ -150,48 +151,38 @@ contract Router_SwapLimit is RouterTest {
         uint256 poolTokenABalance_beforeSwap = tokenA.balanceOf(address(pool));
         uint256 poolTokenBBalance_beforeSwap = tokenB.balanceOf(address(pool));
 
-        (uint256 _dToUpdate, uint256 _tokenBAmountOut) = poolLogic.getSwapAmountOut(
-            swapPerStream,
+        uint256 expectedAmountOut =
+            _calculateAmountOutFromPrice(swapPerStream, limitOrderPrice, tokenADecimals, tokenBDecimals);
+        // now we get the expected amount in to get the expectedAmountOut at the pool price
+        uint256 expectedAmountIn =
+            _calculateAmountInFromPrice(expectedAmountOut, marketPriceBeforeSwap, tokenADecimals, tokenBDecimals);
+
+        uint256 extraToThePool = swapPerStream - expectedAmountIn;
+        console.log("extraToThePool", extraToThePool);
+
+        (uint256 dToUpdate, uint256 tokenBAmountOut) = poolLogic.getSwapAmountOut(
+            expectedAmountIn,
             reserveA_tokenA_beforeSwap,
             reserveA_tokenB_beforeSwap,
             reserveD_tokenA_beforeSwap,
             reserveD_tokenB_beforeSwap
         );
-        console.log("reserveA_tokenB_beforeSwap", reserveA_tokenB_beforeSwap);
-        console.log("reserveD_tokenB_beforeSwap", reserveD_tokenB_beforeSwap);
-        console.log("_tokenBAmountOut", _tokenBAmountOut);
-
-        uint256 reserveA_tokenB_FromPrice =
-            poolLogic.getOtherReserveFromPrice(executionPrice, reserveA_tokenA_beforeSwap);
-        uint256 reserveD_tokenB_FromPrice =
-            poolLogic.getOtherReserveFromPrice(executionPrice, reserveD_tokenA_beforeSwap);
-
-        (uint256 dToUpdate, uint256 tokenBAmountOut) = poolLogic.getSwapAmountOut(
-            swapPerStream,
-            reserveA_tokenA_beforeSwap,
-            reserveA_tokenB_FromPrice,
-            reserveD_tokenA_beforeSwap,
-            reserveD_tokenB_FromPrice
-        );
-
-        console.log("reserveA_tokenB_FromPrice", reserveA_tokenB_FromPrice);
-        console.log("reserveD_tokenB_FromPrice", reserveD_tokenB_FromPrice);
-        console.log("tokenBAmountOut", tokenBAmountOut);
 
         vm.startPrank(owner);
         tokenA.approve(address(router), tokenASwapAmount);
-        router.swapLimitOrder(address(tokenA), address(tokenB), tokenASwapAmount, executionPrice);
+        router.swapLimitOrder(address(tokenA), address(tokenB), tokenASwapAmount, limitOrderPrice);
         vm.stopPrank();
 
         uint256 swapperTokenABalance_afterSwap = tokenA.balanceOf(owner);
         uint256 poolTokenABalance_afterSwap = tokenA.balanceOf(address(pool));
         uint256 poolTokenBBalance_afterSwap = tokenB.balanceOf(address(pool));
 
-        (uint256 reserveD_tokenA_afterSwap,, uint256 reserveA_tokenA_afterSwap,,,,) = pool.poolInfo(address(tokenA));
-        (uint256 reserveD_tokenB_afterSwap,, uint256 reserveA_tokenB_afterSwap,,,,) = pool.poolInfo(address(tokenB));
+        (uint256 reserveD_tokenA_afterSwap,,,,,,) = pool.poolInfo(address(tokenA));
+        (uint256 reserveD_tokenB_afterSwap,,,,,,) = pool.poolInfo(address(tokenB));
 
-        uint256 marketPriceAfterSwap = poolLogic.getExecutionPrice(reserveA_tokenA_afterSwap, reserveA_tokenB_afterSwap);
-        uint256 executionPriceKey = poolLogic.getExecutionPriceLower(executionPrice);
+        (uint256 marketPriceAfterSwap, uint256 reserveA_tokenA_afterSwap, uint256 reserveA_tokenB_afterSwap) =
+            poolLogic.getCurrentPrice(address(tokenA), address(tokenB));
+        uint256 executionPriceKey = poolLogic.getExecutionPriceLower(limitOrderPrice);
         Swap[] memory swaps = pool.orderBook(pairId, executionPriceKey, true);
 
         assertEq(swaps.length, 0);
@@ -232,11 +223,10 @@ contract Router_SwapLimit is RouterTest {
         assertGt(streamCount, 1);
 
         // now let's add the opposite swap to the streaming queue
-        (uint256 reserveD_tokenA,, uint256 reserveA_tokenA,,,,) = pool.poolInfo(address(tokenA));
-        (uint256 reserveD_tokenB,, uint256 reserveA_tokenB,,,,) = pool.poolInfo(address(tokenB));
-        uint256 executionPriceOppositeSwap = poolLogic.getExecutionPrice(reserveA_tokenB, reserveA_tokenA);
+        (uint256 executionPriceOppositeSwap, uint256 reserveA_tokenB, uint256 reserveA_tokenA) =
+            poolLogic.getCurrentPrice(address(tokenB), address(tokenA));
         // we sub the price by 10% less
-        executionPriceOppositeSwap -= (executionPriceOppositeSwap * 10) / 100;
+        executionPriceOppositeSwap -= 3 * poolLogic.PRICE_PRECISION();
         for (uint256 i = 0; i < oppositeSwapsCount; i++) {
             vm.prank(oppositeSwapUsers[i]);
             router.swapLimitOrder(address(tokenB), address(tokenA), tokenBSwapAmount, executionPriceOppositeSwap);
@@ -247,7 +237,11 @@ contract Router_SwapLimit is RouterTest {
 
         assertTrue(oppositeSwaps.length > 0);
 
-        uint256 reserveAInFromPrice = poolLogic.getOtherReserveFromPrice(executionPriceOppositeSwap, reserveA_tokenB);
+        (,,,,,, uint8 tokenADecimals) = pool.poolInfo(address(tokenA));
+        (,,,,,, uint8 tokenBdecimals) = pool.poolInfo(address(tokenB));
+        uint256 reserveAInFromPrice = poolLogic.getOtherReserveFromPrice(
+            executionPriceOppositeSwap, reserveA_tokenB, tokenBdecimals, tokenADecimals
+        );
 
         // we want to know how many tokenAAmountOut is needed to fully execute the opposite swaps
         uint256 tokenOutAmountIn;
@@ -258,7 +252,9 @@ contract Router_SwapLimit is RouterTest {
             tokenInAmountOut +=
                 poolLogic.getAmountOut(oppositeSwap.swapAmountRemaining, reserveA_tokenB, reserveAInFromPrice);
         }
-        uint256 executionPrice = poolLogic.getReciprocalOppositePrice(executionPriceOppositeSwap, reserveA_tokenB);
+        uint256 executionPrice = poolLogic.getReciprocalOppositePrice(
+            executionPriceOppositeSwap, reserveA_tokenB, tokenBdecimals, tokenADecimals
+        );
 
         uint256 swapTokenAAmountIn = tokenInAmountOut - 1 ether;
 
@@ -272,9 +268,11 @@ contract Router_SwapLimit is RouterTest {
         uint256 swapTokenAAmountInForCalculation = swapTokenAAmountIn;
         for (uint256 i = 0; i < oppositeSwaps.length; i++) {
             Swap memory oppositeSwap = oppositeSwaps[i];
-            uint256 reserveAInFromPrice =
-                poolLogic.getOtherReserveFromPrice(executionPriceOppositeSwap, reserveA_tokenB);
-            uint256 reserveAOutFromPrice = poolLogic.getOtherReserveFromPrice(executionPrice, reserveA_tokenA);
+            uint256 reserveAInFromPrice = poolLogic.getOtherReserveFromPrice(
+                executionPriceOppositeSwap, reserveA_tokenB, tokenBdecimals, tokenADecimals
+            );
+            uint256 reserveAOutFromPrice =
+                poolLogic.getOtherReserveFromPrice(executionPrice, reserveA_tokenA, tokenADecimals, tokenBdecimals);
             uint256 oppSwapTokenAmount = oppositeSwap.swapAmountRemaining + oppositeSwap.dustTokenAmount;
 
             uint256 oppTokenInAmountOut =
@@ -299,6 +297,9 @@ contract Router_SwapLimit is RouterTest {
                 break;
             }
         }
+
+        (uint256 currentPrice,,) = poolLogic.getCurrentPrice(address(tokenA), address(tokenB));
+        console.log("diff", executionPrice - currentPrice);
 
         uint256 swaperTokenABalance_beforeSwap = tokenA.balanceOf(owner);
         uint256 swaperTokenBBalance_beforeSwap = tokenB.balanceOf(owner);
@@ -345,12 +346,12 @@ contract Router_SwapLimit is RouterTest {
         // 2. we create the swap with the inversed price order book to totally consume all the opposite swaps
 
         // oppExecution price is the price of the opposite swap
-        (uint256 reserveD_tokenA,, uint256 reserveA_tokenA,,,,) = pool.poolInfo(address(tokenA));
-        (uint256 reserveD_tokenB,, uint256 reserveA_tokenB,,,,) = pool.poolInfo(address(tokenB));
+        (uint256 reserveD_tokenA,, uint256 reserveA_tokenA,,,, uint8 decimalsA) = pool.poolInfo(address(tokenA));
+        (uint256 reserveD_tokenB,, uint256 reserveA_tokenB,,,, uint8 decimalsB) = pool.poolInfo(address(tokenB));
 
-        uint256 executionPriceOppositeSwap = poolLogic.getExecutionPrice(reserveA_tokenB, reserveA_tokenA);
+        (uint256 executionPriceOppositeSwap,,) = poolLogic.getCurrentPrice(address(tokenB), address(tokenA));
         // we sub the price by 10% less
-        executionPriceOppositeSwap -= (executionPriceOppositeSwap * 10) / 100;
+        executionPriceOppositeSwap -= 3 * poolLogic.PRICE_PRECISION();
 
         for (uint256 i = 0; i < oppositeSwapsCount; i++) {
             vm.prank(oppositeSwapUsers[i]);
@@ -365,7 +366,7 @@ contract Router_SwapLimit is RouterTest {
         assertEq(oppositeSwaps.length, oppositeSwapsCount);
 
         // we calculate the amount of tokenA we need to fully execute the opposite swaps
-        uint256 reserveAInFromPrice = poolLogic.getOtherReserveFromPrice(executionPriceOppositeSwap, reserveA_tokenB);
+        uint256 reserveAInFromPrice = poolLogic.getOtherReserveFromPrice(executionPriceOppositeSwap, reserveA_tokenB, decimalsB, decimalsA);
         uint256 tokenBInOppSwaps = oppSwapAmount * oppositeSwapsCount; // oppSwapAmount contains the oppDustToken amount
 
         uint256 tokenAOutOppSwaps;
@@ -374,9 +375,7 @@ contract Router_SwapLimit is RouterTest {
         }
 
         // we get the price of our swap based on the inversed price of opposite swaps
-        uint256 swapExecutionPrice = poolLogic.getReciprocalOppositePrice(executionPriceOppositeSwap, reserveA_tokenB);
-        uint256 reserveAOutnFromPrice = poolLogic.getOtherReserveFromPrice(swapExecutionPrice, reserveA_tokenA);
-        uint256 reserveDOutFromPrice = poolLogic.getOtherReserveFromPrice(swapExecutionPrice, reserveD_tokenA);
+        uint256 swapExecutionPrice = poolLogic.getReciprocalOppositePrice(executionPriceOppositeSwap, reserveA_tokenB, decimalsB, decimalsA);
 
         uint256 tokenAForPoolReserveSwap = 0.0001 ether;
         uint256 swapAmount = tokenAOutOppSwaps + tokenAForPoolReserveSwap;
@@ -389,8 +388,19 @@ contract Router_SwapLimit is RouterTest {
             tokenAForPoolReserveSwap = streamCount * swapPerStream;
         }
 
+        (uint256 currentPrice,,) = poolLogic.getCurrentPrice(address(tokenA), address(tokenB));
+
+        uint256 expectedAmountOut =
+            _calculateAmountOutFromPrice(swapPerStream, swapExecutionPrice, decimalsA, decimalsB);
+        // now we get the expected amount in to get the expectedAmountOut at the pool price
+        uint256 expectedAmountIn =
+            _calculateAmountInFromPrice(expectedAmountOut, currentPrice, decimalsA, decimalsB);
+
+        uint256 extraToThePool = swapPerStream - expectedAmountIn;
+        console.log("extraToThePool", extraToThePool);
+
         (uint256 dToUpdate, uint256 tokenBAmountOutFromReserves) = poolLogic.getSwapAmountOut(
-            tokenAForPoolReserveSwap, reserveA_tokenA, reserveAOutnFromPrice, reserveD_tokenA, reserveDOutFromPrice
+            expectedAmountIn, reserveA_tokenA, reserveA_tokenB, reserveD_tokenA, reserveD_tokenB
         );
 
         uint256 swapperTokenABalance_beforeSwap = tokenA.balanceOf(owner);

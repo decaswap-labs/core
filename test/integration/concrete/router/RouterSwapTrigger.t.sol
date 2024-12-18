@@ -23,14 +23,17 @@ contract RouterTest_Swap is RouterTest {
     function test_swapTriggerOrder_success() public {
         vm.startPrank(owner);
         // Get initial pool reserves
-        (uint256 reserveD_tokenA_before,, uint256 reserveA_tokenA_before,,,,) = pool.poolInfo(address(tokenA));
-        (uint256 reserveD_tokenB_before,, uint256 reserveA_tokenB_before,,,,) = pool.poolInfo(address(tokenB));
+        (uint256 reserveD_tokenA_before,, uint256 reserveA_tokenA_before,,,, uint8 decimals_A) =
+            pool.poolInfo(address(tokenA));
+        (uint256 reserveD_tokenB_before,, uint256 reserveA_tokenB_before,,,, uint8 decimals_B) =
+            pool.poolInfo(address(tokenB));
 
         // Setup initial conditions for the market order
         uint256 initialBalanceTokenA = tokenA.balanceOf(owner);
         uint256 initialBalanceTokenB = tokenB.balanceOf(owner);
         uint256 swapAmount = 10 ether;
-        uint256 currentExecutionPrice = poolLogic.getExecutionPrice(reserveA_tokenA_before, reserveA_tokenB_before);
+        uint256 currentExecutionPrice =
+            poolLogic.getExecutionPrice(reserveA_tokenA_before, reserveA_tokenB_before, decimals_A, decimals_B);
         uint256 expectedExecutionPrice = currentExecutionPrice * 2;
 
         // Calculate expected stream details

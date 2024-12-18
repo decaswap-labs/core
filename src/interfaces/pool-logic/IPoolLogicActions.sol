@@ -59,7 +59,10 @@ interface IPoolLogicActions {
     function calculateStreamCount(uint256, uint256, uint256) external pure returns (uint256);
     function getSwapAmountOut(uint256, uint256, uint256, uint256, uint256) external pure returns (uint256, uint256);
 
-    function getExecutionPrice(uint256, uint256) external pure returns (uint256);
+    function getExecutionPrice(uint256 reserveA_In, uint256 reserveA_Out, uint8 decimals_In, uint8 decimals_Out)
+        external
+        pure
+        returns (uint256);
     function getTokenOut(uint256, uint256, uint256) external pure returns (uint256);
     function getDOut(uint256, uint256, uint256) external pure returns (uint256);
     function processGlobalStreamPairDeposit() external;
