@@ -21,12 +21,12 @@ contract RouterTest is Deploys {
         uint256 initialDToMintPoolA = 30e18;
         uint256 SLIPPAGE = 10;
 
-        uint256 tokenAAmount = 10_000e18;
-        uint256 tokenBAmount = 10_000e18;
+        uint256 tokenAAmount = 10_000 * 10 ** tokenA.decimals();
+        uint256 tokenBAmount = 10_000 * 10 ** tokenB.decimals();
 
         router.initGenesisPool(address(tokenA), tokenAAmount, initialDToMintPoolA);
 
-        router.initPool(address(tokenB), address(tokenA), tokenBAmount, 10 ether);
+        router.initPool(address(tokenB), address(tokenA), tokenBAmount, 10 * 10 ** tokenA.decimals());
 
         // update pair slippage
         pool.updatePairSlippage(address(tokenA), address(tokenB), SLIPPAGE);

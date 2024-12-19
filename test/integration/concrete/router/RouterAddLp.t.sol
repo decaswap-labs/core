@@ -54,17 +54,17 @@ contract RouterTest is Deploys {
         tokenB.approve(address(router), tokenAmountSingle);
         tokenA.approve(address(router), dToTokenAmountSingle);
 
-        (uint256 reserveDBeforeB, uint256 poolOwnershipUnitsTotalBeforeB, uint256 reserveABeforeB,,,,) =
-            pool.poolInfo(address(tokenB));
+        (uint256 reserveDBeforeB, uint256 poolOwnershipUnitsTotalBeforeB, uint256 reserveABeforeB,,,, uint8 decimalsOut)
+        = pool.poolInfo(address(tokenB));
 
-        (uint256 reserveDBeforeA,, uint256 reserveABeforeA,,,,) = pool.poolInfo(address(tokenA));
+        (uint256 reserveDBeforeA,, uint256 reserveABeforeA,,,, uint8 decimalsIn) = pool.poolInfo(address(tokenA));
 
         uint256 tokenStreamCount =
-            poolLogic.calculateStreamCount(tokenAmountSingle, pool.globalSlippage(), reserveDBeforeB);
+            poolLogic.calculateStreamCount(tokenAmountSingle, pool.globalSlippage(), reserveDBeforeB, decimalsOut);
         uint256 swapPerStreamInputToken = tokenAmountSingle / tokenStreamCount;
 
         uint256 dStreamCount =
-            poolLogic.calculateStreamCount(dToTokenAmountSingle, pool.globalSlippage(), reserveDBeforeA);
+            poolLogic.calculateStreamCount(dToTokenAmountSingle, pool.globalSlippage(), reserveDBeforeA, decimalsIn);
         uint256 swapPerStreamDToToken = dToTokenAmountSingle / dStreamCount;
 
         (uint256 dToTransfer,) =
@@ -155,10 +155,10 @@ contract RouterTest is Deploys {
 
         tokenB.approve(address(router), tokenAmountSingle);
 
-        (uint256 reserveDBeforeB, uint256 poolOwnershipUnitsTotalBeforeB, uint256 reserveABeforeB,,,,) =
-            pool.poolInfo(address(tokenB));
+        (uint256 reserveDBeforeB, uint256 poolOwnershipUnitsTotalBeforeB, uint256 reserveABeforeB,,,, uint8 decimalsOut)
+        = pool.poolInfo(address(tokenB));
         uint256 tokenStreamCount =
-            poolLogic.calculateStreamCount(tokenAmountSingle, pool.globalSlippage(), reserveDBeforeB);
+            poolLogic.calculateStreamCount(tokenAmountSingle, pool.globalSlippage(), reserveDBeforeB, decimalsOut);
         uint256 swapPerStreamInputToken = tokenAmountSingle / tokenStreamCount;
 
         uint256 lpUnitsBeforeFromToken = poolLogic.calculateLpUnitsToMint(
@@ -225,10 +225,10 @@ contract RouterTest is Deploys {
         (uint256 reserveDBeforeB, uint256 poolOwnershipUnitsTotalBeforeB, uint256 reserveABeforeB,,,,) =
             pool.poolInfo(address(tokenB));
 
-        (uint256 reserveDBeforeA,, uint256 reserveABeforeA,,,,) = pool.poolInfo(address(tokenA));
+        (uint256 reserveDBeforeA,, uint256 reserveABeforeA,,,, uint8 decimalsIn) = pool.poolInfo(address(tokenA));
 
         uint256 dStreamCount =
-            poolLogic.calculateStreamCount(dToTokenAmountSingle, pool.globalSlippage(), reserveDBeforeA);
+            poolLogic.calculateStreamCount(dToTokenAmountSingle, pool.globalSlippage(), reserveDBeforeA, decimalsIn);
         uint256 swapPerStreamDToToken = dToTokenAmountSingle / dStreamCount;
 
         (uint256 dToTransfer,) =

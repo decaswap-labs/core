@@ -31,12 +31,13 @@ contract RouterTest_Swap is RouterTest {
         // Setup initial conditions for the market order
         uint256 initialBalanceTokenA = tokenA.balanceOf(owner);
         uint256 initialBalanceTokenB = tokenB.balanceOf(owner);
-        uint256 swapAmount = 10 ether;
+        uint256 swapAmount = 10 * 10 ** tokenA.decimals();
         uint256 expectedExecutionPrice =
             poolLogic.getExecutionPrice(reserveA_tokenA_before, reserveA_tokenB_before, decimals_A, decimals_B);
 
         // Calculate expected stream details
         uint256 streamCount = poolLogic.getStreamCount(address(tokenA), address(tokenB), swapAmount);
+        console.log("Stream count: %d", streamCount);
         uint256 swapPerStream = swapAmount / streamCount;
         uint256 dust = 0;
         if (swapAmount % streamCount != 0) {

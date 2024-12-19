@@ -191,8 +191,8 @@ contract PoolLogic is Ownable, IPoolLogic {
     function withdrawFromGlobalPool(address user, address token, uint256 amount) external override onlyRouter {
         bytes32 pairId = bytes32(abi.encodePacked(token, token));
 
-        (uint256 reserveD,,,,,,) = pool.poolInfo(address(token));
-        uint256 streamCount = calculateStreamCount(amount, pool.globalSlippage(), reserveD);
+        (uint256 reserveD,,,,,, uint8 decimals) = pool.poolInfo(address(token));
+        uint256 streamCount = calculateStreamCount(amount, pool.globalSlippage(), reserveD, decimals);
         uint256 swapPerStream = amount / streamCount;
 
         _settleDPoolStream(pairId, user, token, amount, streamCount, swapPerStream, false);
@@ -692,8 +692,8 @@ contract PoolLogic is Ownable, IPoolLogic {
     }
 
     function removeLiquidity(address token, address user, uint256 lpUnits) external onlyRouter {
-        (uint256 reserveD,,,,,,) = pool.poolInfo(address(token));
-        uint256 streamCount = calculateStreamCount(lpUnits, pool.globalSlippage(), reserveD);
+        (uint256 reserveD,,,,,, uint8 decimals) = pool.poolInfo(address(token));
+        uint256 streamCount = calculateStreamCount(lpUnits, pool.globalSlippage(), reserveD, decimals);
         uint256 lpUnitsPerStream = lpUnits / streamCount;
         RemoveLiquidityStream memory removeLiqStream = RemoveLiquidityStream({
             user: user,
@@ -858,7 +858,6 @@ contract PoolLogic is Ownable, IPoolLogic {
         });
 
         bytes32 pairId = bytes32(abi.encodePacked(tokenIn, tokenOut)); // for one direction
-        uint256 executionPriceKey = getExecutionPriceLower(currentExecPrice); //KEY
 
         // uint256 streamCount = getStreamCount(tokenIn, tokenOut, currentSwap.swapAmountRemaining);
         // uint256 swapPerStream = currentSwap.swapAmountRemaining / streamCount;
@@ -876,6 +875,7 @@ contract PoolLogic is Ownable, IPoolLogic {
         if (currentSwap.completed) {
             IPoolActions(POOL_ADDRESS).transferTokens(currentSwap.tokenOut, currentSwap.user, currentSwap.amountOut);
         } else {
+            uint256 executionPriceKey = getExecutionPriceLower(currentExecPrice); //KEY
             _insertInOrderBook(pairId, currentSwap, executionPriceKey, false);
         }
     }
@@ -1457,28 +1457,36 @@ contract PoolLogic is Ownable, IPoolLogic {
         returns (Swap memory)
     {
         uint256 swapAmountIn = currentSwap.swapPerStream;
+        uint256 amountIn;
 
-        (uint256 reserveD_In,, uint256 reserveA_In,,,, uint8 decimals_In) = pool.poolInfo(address(currentSwap.tokenIn));
-        (uint256 reserveD_Out,, uint256 reserveA_Out,,,, uint8 decimals_Out) =
-            pool.poolInfo(address(currentSwap.tokenOut));
-        uint256 currentExecPrice = getExecutionPrice(reserveA_In, reserveA_Out, decimals_In, decimals_Out);
+        (uint256 reserveD_In,, uint256 reserveA_In,,,,) = pool.poolInfo(address(currentSwap.tokenIn));
+        (uint256 reserveD_Out,, uint256 reserveA_Out,,,,) = pool.poolInfo(address(currentSwap.tokenOut));
 
-        uint256 expectedAmountOut =
-            _calculateAmountOutFromPrice(swapAmountIn, executionPriceCurrentSwap, decimals_In, decimals_Out);
-        // now we get the expected amount in to get the expectedAmountOut at the pool price
-        uint256 expectedAmountIn =
-            _calculateAmountInFromPrice(expectedAmountOut, currentExecPrice, decimals_In, decimals_Out);
+        // TODO we probably need to separate this limit order logic in a separate function
+        if (currentSwap.typeOfOrder == 2) {
+            amountIn = swapAmountIn;
+        } else {
+            (,,,,,, uint8 decimals_In) = pool.poolInfo(address(currentSwap.tokenIn));
+            (,,,,,, uint8 decimals_Out) = pool.poolInfo(address(currentSwap.tokenOut));
+            uint256 currentExecPrice = getExecutionPrice(reserveA_In, reserveA_Out, decimals_In, decimals_Out);
 
-        // uint256 extraToThePool = swapAmountIn - expectedAmountIn;
+            uint256 expectedAmountOut =
+                _calculateAmountOutFromPrice(swapAmountIn, executionPriceCurrentSwap, decimals_In, decimals_Out);
+            // now we get the expected amount in to get the expectedAmountOut at the pool price
+            amountIn =
+                _calculateAmountInFromPrice(expectedAmountOut, currentExecPrice, decimals_In, decimals_Out);
+
+            // uint256 extraToThePool = swapAmountIn - amountIn;
+        }
 
         // the logic here is that we add, if present, the dust token amount to the swapAmountRemaining on the last swap
         // (when streamsRemaining == 1)
         if (currentSwap.streamsRemaining == 1) {
-            expectedAmountIn += currentSwap.dustTokenAmount;
+            amountIn += currentSwap.dustTokenAmount;
         }
 
         (uint256 dToUpdate, uint256 amountOut) =
-            getSwapAmountOut(expectedAmountIn, reserveA_In, reserveA_Out, reserveD_In, reserveD_Out);
+            getSwapAmountOut(amountIn, reserveA_In, reserveA_Out, reserveD_In, reserveD_Out);
 
         bytes memory updateReservesParams =
             abi.encode(true, currentSwap.tokenIn, currentSwap.tokenOut, swapAmountIn, dToUpdate, amountOut, dToUpdate);
@@ -1539,17 +1547,17 @@ contract PoolLogic is Ownable, IPoolLogic {
     }
 
     function getStreamCount(address tokenIn, address tokenOut, uint256 amountIn) public view returns (uint256) {
-        (uint256 reserveD_In,,,,,,) = pool.poolInfo(address(tokenIn));
+        (uint256 reserveD_In,,,,,, uint8 decimalsIn) = pool.poolInfo(address(tokenIn));
         (uint256 reserveD_Out,,,,,,) = pool.poolInfo(address(tokenOut));
 
         uint256 minPoolDepth = reserveD_In <= reserveD_Out ? reserveD_In : reserveD_Out;
         bytes32 poolId = getPoolId(tokenIn, tokenOut); // for pair slippage only. Not an ID for pair direction queue
-        return calculateStreamCount(amountIn, pool.pairSlippage(poolId), minPoolDepth);
+        return calculateStreamCount(amountIn, pool.pairSlippage(poolId), minPoolDepth, decimalsIn);
     }
 
     function getStreamCountForDPool(address tokenIn, uint256 amountIn) external view override returns (uint256) {
-        (uint256 reserveD,,,,,,) = pool.poolInfo(address(tokenIn));
-        return calculateStreamCount(amountIn, pool.globalSlippage(), reserveD);
+        (uint256 reserveD,,,,,, uint8 decimalsIn) = pool.poolInfo(address(tokenIn));
+        return calculateStreamCount(amountIn, pool.globalSlippage(), reserveD, decimalsIn);
     }
 
     function getExecutionPriceLower(uint256 executionPrice) public pure returns (uint256) {
@@ -1598,9 +1606,9 @@ contract PoolLogic is Ownable, IPoolLogic {
         view
         returns (StreamDetails memory streamDetails)
     {
-        (uint256 reserveD,,,,,,) = pool.poolInfo(token);
+        (uint256 reserveD,,,,,, uint8 decimals) = pool.poolInfo(token);
 
-        uint256 streamCount = calculateStreamCount(amount, pool.globalSlippage(), reserveD);
+        uint256 streamCount = calculateStreamCount(amount, pool.globalSlippage(), reserveD, decimals);
         uint256 swapPerStream = amount / streamCount;
         streamDetails = StreamDetails({
             token: token,
@@ -1662,7 +1670,8 @@ contract PoolLogic is Ownable, IPoolLogic {
     function calculateStreamCount(
         uint256 amount,
         uint256 poolSlippage,
-        uint256 reserveD
+        uint256 reserveD,
+        uint8 decimalsIn
     )
         public
         pure
@@ -1674,7 +1683,10 @@ contract PoolLogic is Ownable, IPoolLogic {
 
         // (10e18 * 10000) / (10000-15 * 15e18)
 
-        uint256 result = ((amount * STREAM_COUNT_PRECISION) / (((STREAM_COUNT_PRECISION - poolSlippage) * reserveD)));
+        uint256 result = (
+            (amount.scaleAmountToDecimals(decimalsIn, 18) * STREAM_COUNT_PRECISION)
+                / (((STREAM_COUNT_PRECISION - poolSlippage) * reserveD))
+        );
         return result < 1 ? 1 : result;
     }
 
@@ -1724,7 +1736,7 @@ contract PoolLogic is Ownable, IPoolLogic {
         //         10 * 1e18
         //         100000000000000000000
         //         1000000000000000000
-        uint256 d1 = (amountIn.wmul(reserveD1)).wdiv(amountIn + reserveA);
+        uint256 d1 = (amountIn * reserveD1) / (amountIn + reserveA);
         return (d1, ((d1 * reserveB) / (d1 + reserveD2)));
     }
 
@@ -1742,7 +1754,7 @@ contract PoolLogic is Ownable, IPoolLogic {
         override
         returns (uint256)
     {
-        return (dAmount.wmul(reserveA)).wdiv(dAmount + reserveD);
+        return (dAmount * reserveA) / (dAmount + reserveD);
     }
 
     function getDOut(
@@ -1775,7 +1787,7 @@ contract PoolLogic is Ownable, IPoolLogic {
     }
 
     function getAmountOut(uint256 amountIn, uint256 reserveIn, uint256 reserveOut) public pure returns (uint256) {
-        return amountIn.wmul(reserveIn).wdiv(reserveOut);
+        return (amountIn * reserveOut) / reserveIn;
     }
 
     function updatePoolAddress(address poolAddress) external override onlyOwner {

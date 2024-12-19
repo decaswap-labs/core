@@ -27,19 +27,21 @@ contract Router_SwapLimit is RouterTest {
     }
 
     function test_swapLimitOrder_whenExecutionPriceIsZero() public {
+        uint8 decimals = tokenA.decimals();
         vm.prank(owner);
         vm.expectRevert(IRouterErrors.InvalidExecutionPrice.selector);
-        router.swapLimitOrder(address(tokenA), address(tokenB), 1 ether, 0);
+        router.swapLimitOrder(address(tokenA), address(tokenB), 1 * 10 ** decimals, 0);
     }
 
     function test_swapLimitOrder_whenInvalidPool() public {
+        uint8 decimals = tokenA.decimals();
         vm.prank(owner);
         vm.expectRevert(IRouterErrors.InvalidPool.selector);
-        router.swapLimitOrder(address(tokenA), address(tokenC), 1 ether, 1 ether);
+        router.swapLimitOrder(address(tokenA), address(tokenC), 1 * 10 ** decimals, 1 ether);
     }
 
     function test_swapLimitOrder_addToMarketOrderBook() public {
-        uint256 TOKEN_A_SWAP_AMOUNT = 30 ether;
+        uint256 TOKEN_A_SWAP_AMOUNT = 30 * 10 ** tokenA.decimals();
 
         (uint256 currentExecPrice,,) = poolLogic.getCurrentPrice(address(tokenA), address(tokenB));
 
@@ -71,7 +73,7 @@ contract Router_SwapLimit is RouterTest {
      * because the swap price execution is lower than the current price (pool reserves)
      */
     function test_swapLimitOrder_addToOrderBook() public {
-        uint256 TOKEN_A_SWAP_AMOUNT = 30 ether;
+        uint256 TOKEN_A_SWAP_AMOUNT = 30 * 10 ** tokenA.decimals();
 
         (uint256 marketPriceBeforeSwap,,) = poolLogic.getCurrentPrice(address(tokenA), address(tokenB));
 
@@ -139,7 +141,8 @@ contract Router_SwapLimit is RouterTest {
 
         uint256 limitOrderPrice = marketPriceBeforeSwap + 9 * poolLogic.PRICE_PRECISION();
 
-        uint256 tokenASwapAmount = 0.0001 ether; // low amount to get consumed by the reserves in one stream
+        uint256 tokenASwapAmount = 1 * 10 ** (tokenA.decimals() - 3); // low amount to get consumed by the reserves in
+            // one stream
         uint256 streamCount = poolLogic.getStreamCount(address(tokenA), address(tokenB), tokenASwapAmount);
 
         uint256 dust;
@@ -204,15 +207,15 @@ contract Router_SwapLimit is RouterTest {
         address[] memory oppositeSwapUsers = new address[](oppositeSwapsCount);
         for (uint256 i = 0; i < oppositeSwapsCount; i++) {
             address user = makeAddr(string(abi.encodePacked("oppositeSwapUser", i)));
-            tokenB.mint(user, 150 ether);
-            tokenB.approve(address(router), 150 ether);
+            tokenB.mint(user, 150 * 10 ** tokenB.decimals());
+            tokenB.approve(address(router), 150 * 10 ** tokenB.decimals());
             oppositeSwapUsers[i] = user;
         }
 
         // we need to add swaps to the opposite pair to be able to fully execute the swap
         // let's make sure that the opposite swaps have streamCount > 1 to have them ready to be consumed in the
         // streameQueue
-        uint256 tokenBSwapAmount = 150 ether;
+        uint256 tokenBSwapAmount = 150 * 10 ** tokenB.decimals();
 
         uint256 streamCount = poolLogic.getStreamCount(address(tokenB), address(tokenA), tokenBSwapAmount);
         uint256 swapPerStream = tokenBSwapAmount / streamCount;
@@ -257,7 +260,7 @@ contract Router_SwapLimit is RouterTest {
             executionPriceOppositeSwap, reserveA_tokenB, tokenBdecimals, tokenADecimals
         );
 
-        uint256 swapTokenAAmountIn = tokenInAmountOut - 1 ether;
+        uint256 swapTokenAAmountIn = tokenInAmountOut - 1 * 10 ** tokenA.decimals();
 
         uint256 _streamCount = poolLogic.getStreamCount(address(tokenA), address(tokenB), swapTokenAAmountIn);
         uint256 _swapPerStream = swapTokenAAmountIn / _streamCount;
@@ -328,12 +331,12 @@ contract Router_SwapLimit is RouterTest {
         address[] memory oppositeSwapUsers = new address[](oppositeSwapsCount);
         for (uint256 i = 0; i < oppositeSwapsCount; i++) {
             address user = makeAddr(string(abi.encodePacked("oppositeSwapUser", i)));
-            tokenB.mint(user, 200 ether);
-            tokenB.approve(address(router), 200 ether);
+            tokenB.mint(user, 200 * 10 ** tokenB.decimals());
+            tokenB.approve(address(router), 200 * 10 ** tokenB.decimals());
             oppositeSwapUsers[i] = user;
         }
 
-        uint256 oppSwapAmount = 1 ether;
+        uint256 oppSwapAmount = 1 * 10 ** tokenB.decimals();
 
         uint256 oppStreamCount = poolLogic.getStreamCount(address(tokenB), address(tokenA), oppSwapAmount);
         uint256 oppSwapPerStream = oppSwapAmount / oppStreamCount;
@@ -382,7 +385,7 @@ contract Router_SwapLimit is RouterTest {
         uint256 swapExecutionPrice =
             poolLogic.getReciprocalOppositePrice(executionPriceOppositeSwap, reserveA_tokenB, decimalsB, decimalsA);
 
-        uint256 tokenAForPoolReserveSwap = 0.0001 ether;
+        uint256 tokenAForPoolReserveSwap = 1 * 10 ** (tokenA.decimals() - 3);
         uint256 swapAmount = tokenAOutOppSwaps + tokenAForPoolReserveSwap;
 
         uint256 streamCount = poolLogic.getStreamCount(address(tokenA), address(tokenB), tokenAForPoolReserveSwap);

@@ -86,9 +86,10 @@ contract RouterTest is Deploys {
 
         tokenB.approve(address(router), streamTokenAmount);
         tokenA.approve(address(router), streamToDTokenAmount);
+        (,,,,,,uint8 decimalA) = pool.poolInfo(address(tokenA));
 
         uint256 streamToDTokenStreamCount =
-            poolLogic.calculateStreamCount(streamToDTokenAmount, pool.globalSlippage(), dToMint);
+            poolLogic.calculateStreamCount(streamToDTokenAmount, pool.globalSlippage(), dToMint, decimalA);
         uint256 swapPerStreamToDToken = streamToDTokenAmount / streamToDTokenStreamCount;
 
         uint256 swapPerStreamInputToken = streamTokenAmount / streamToDTokenStreamCount;

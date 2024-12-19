@@ -128,9 +128,9 @@ contract Router is Ownable, ReentrancyGuard, IRouter {
     function removeLiquidity(address token, uint256 lpUnits) external override nonReentrant {
         if (!poolExist(token)) revert InvalidPool();
         if (lpUnits == 0 || lpUnits > poolStates.userLpUnitInfo(msg.sender, token)) revert InvalidAmount();
-        (uint256 reserveD,,,,,,) = poolStates.poolInfo(address(token));
+        (uint256 reserveD,,,,,, uint8 decimals) = poolStates.poolInfo(address(token));
         uint256 streamCount = IPoolLogicActions(poolStates.POOL_LOGIC()).calculateStreamCount(
-            lpUnits, poolStates.globalSlippage(), reserveD
+            lpUnits, poolStates.globalSlippage(), reserveD, decimals
         );
         if (lpUnits % streamCount != 0) {
             uint256 swapPerStream = lpUnits / streamCount;

@@ -28,13 +28,14 @@ contract RouterTest is Deploys {
 
         uint256 depositAmount = 200e18;
 
-        (uint256 reserveDBefore,, uint256 reserveABefore,,,,) = pool.poolInfo(address(tokenA));
+        (uint256 reserveDBefore,, uint256 reserveABefore,,,, uint8 decimalsA) = pool.poolInfo(address(tokenA));
 
         uint256 dGlobalBalanceBefore = pool.globalPoolDBalance(pool.GLOBAL_POOL());
         uint256 userDPoolBalanceBefore = pool.userGlobalPoolInfo(owner, address(tokenA));
         uint256 userBalanceBefore = tokenA.balanceOf(owner);
 
-        uint256 streamCount = poolLogic.calculateStreamCount(depositAmount, pool.globalSlippage(), reserveDBefore);
+        uint256 streamCount =
+            poolLogic.calculateStreamCount(depositAmount, pool.globalSlippage(), reserveDBefore, decimalsA);
         uint256 swapPerStream = depositAmount / streamCount;
 
         if (depositAmount % streamCount != 0) {
@@ -78,13 +79,14 @@ contract RouterTest is Deploys {
 
         uint256 depositAmount = 100e18; // for 1 stream
 
-        (uint256 reserveDBefore,, uint256 reserveABefore,,,,) = pool.poolInfo(address(tokenA));
+        (uint256 reserveDBefore,, uint256 reserveABefore,,,, uint8 decimalsA) = pool.poolInfo(address(tokenA));
 
         uint256 dGlobalBalanceBefore = pool.globalPoolDBalance(pool.GLOBAL_POOL());
         uint256 userDPoolBalanceBefore = pool.userGlobalPoolInfo(owner, address(tokenA));
         uint256 userBalanceBefore = tokenA.balanceOf(owner);
 
-        uint256 streamCount = poolLogic.calculateStreamCount(depositAmount, pool.globalSlippage(), reserveDBefore);
+        uint256 streamCount =
+            poolLogic.calculateStreamCount(depositAmount, pool.globalSlippage(), reserveDBefore, decimalsA);
         uint256 swapPerStream = depositAmount / streamCount;
 
         if (depositAmount % streamCount != 0) {
@@ -142,13 +144,14 @@ contract RouterTest is Deploys {
 
         uint256 dToWtihdraw = pool.userGlobalPoolInfo(owner, address(tokenA));
 
-        (uint256 reserveDBefore,, uint256 reserveABefore,,,,) = pool.poolInfo(address(tokenA));
+        (uint256 reserveDBefore,, uint256 reserveABefore,,,, uint8 decimalsA) = pool.poolInfo(address(tokenA));
 
         uint256 dGlobalBalanceBefore = pool.globalPoolDBalance(pool.GLOBAL_POOL());
         uint256 userDPoolBalanceBefore = pool.userGlobalPoolInfo(owner, address(tokenA));
         // uint256 userBalanceBefore = tokenA.balanceOf(owner);
 
-        uint256 streamCount = poolLogic.calculateStreamCount(dToWtihdraw, pool.globalSlippage(), reserveDBefore);
+        uint256 streamCount =
+            poolLogic.calculateStreamCount(dToWtihdraw, pool.globalSlippage(), reserveDBefore, decimalsA);
         uint256 swapPerStream = dToWtihdraw / streamCount;
         uint256 amountOutPerStream = poolLogic.getSwapAmountOutFromD(swapPerStream, reserveABefore, reserveDBefore);
 
@@ -190,13 +193,14 @@ contract RouterTest is Deploys {
 
         uint256 dToWtihdraw = pool.userGlobalPoolInfo(owner, address(tokenA));
 
-        (uint256 reserveDBefore,, uint256 reserveABefore,,,,) = pool.poolInfo(address(tokenA));
+        (uint256 reserveDBefore,, uint256 reserveABefore,,,, uint8 decimalsA) = pool.poolInfo(address(tokenA));
 
         uint256 dGlobalBalanceBefore = pool.globalPoolDBalance(pool.GLOBAL_POOL());
         uint256 userDPoolBalanceBefore = pool.userGlobalPoolInfo(owner, address(tokenA));
         // uint256 userBalanceBefore = tokenA.balanceOf(owner);
 
-        uint256 streamCount = poolLogic.calculateStreamCount(dToWtihdraw, pool.globalSlippage(), reserveDBefore);
+        uint256 streamCount =
+            poolLogic.calculateStreamCount(dToWtihdraw, pool.globalSlippage(), reserveDBefore, decimalsA);
         uint256 swapPerStream = dToWtihdraw / streamCount;
         uint256 amountOutPerStream = poolLogic.getSwapAmountOutFromD(swapPerStream, reserveABefore, reserveDBefore);
 
@@ -240,8 +244,9 @@ contract RouterTest is Deploys {
         _initGenesisPool(dToMint, tokenAReserve);
 
         uint256 depositAmount = 300e18; //for 3 streams
+        (,,,,,, uint8 decimalsA) = pool.poolInfo(address(tokenA));
 
-        uint256 streamCount = poolLogic.calculateStreamCount(depositAmount, pool.globalSlippage(), dToMint);
+        uint256 streamCount = poolLogic.calculateStreamCount(depositAmount, pool.globalSlippage(), dToMint, decimalsA);
 
         vm.startPrank(owner);
         for (uint256 i = 0; i < 10; i++) {
@@ -270,8 +275,9 @@ contract RouterTest is Deploys {
         _initGenesisPool(dToMint, tokenAReserve);
 
         uint256 depositAmount = 200e18; //for 2 streams
+        (,,,,,, uint8 decimalsA) = pool.poolInfo(address(tokenA));
 
-        uint256 streamCount = poolLogic.calculateStreamCount(depositAmount, pool.globalSlippage(), dToMint);
+        uint256 streamCount = poolLogic.calculateStreamCount(depositAmount, pool.globalSlippage(), dToMint, decimalsA);
 
         vm.startPrank(owner);
         for (uint256 i = 0; i < 10; i++) {
