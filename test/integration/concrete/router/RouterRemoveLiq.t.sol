@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.13;
 
-import {Deploys} from "test/shared/DeploysForRouter.t.sol";
-import {IRouterErrors} from "src/interfaces/router/IRouterErrors.sol";
-import {LiquidityStream, RemoveLiquidityStream} from "src/lib/SwapQueue.sol";
+import { Deploys } from "test/shared/DeploysForRouter.t.sol";
+import { IRouterErrors } from "src/interfaces/router/IRouterErrors.sol";
+import { LiquidityStream, RemoveLiquidityStream } from "src/lib/SwapQueue.sol";
 import "forge-std/Test.sol";
 
 contract RouterTest is Deploys {
@@ -34,12 +34,14 @@ contract RouterTest is Deploys {
             uint256 reserveA,
             uint256 initialDToMint,
             uint256 poolFeeCollected,
-            bool initialized
+            bool initialized,
+            uint8 decimals
         ) = pool.poolInfo(address(tokenA));
 
         uint256 userLpUnits = pool.userLpUnitInfo(owner, address(tokenA));
 
-        uint256 expectedStreamCount = poolLogic.calculateStreamCount(userLpUnits, pool.globalSlippage(), reserveD);
+        uint256 expectedStreamCount =
+            poolLogic.calculateStreamCount(userLpUnits, pool.globalSlippage(), reserveD, decimals);
         uint256 expectedConversionPerStream = userLpUnits / expectedStreamCount;
         uint256 expectedTokenAmountOutPerStream =
             poolLogic.calculateAssetTransfer(expectedConversionPerStream, reserveA, poolOwnershipUnitsTotal);
@@ -68,7 +70,7 @@ contract RouterTest is Deploys {
             uint256 reserveA_After,
             uint256 initialDToMint_After,
             uint256 poolFeeCollected_After,
-            bool initialized_After
+            bool initialized_After,
         ) = pool.poolInfo(address(tokenA));
 
         assertEq(reserveDA_After, reserveD);
@@ -95,12 +97,14 @@ contract RouterTest is Deploys {
             uint256 reserveA,
             uint256 initialDToMint,
             uint256 poolFeeCollected,
-            bool initialized
+            bool initialized,
+            uint8 decimals
         ) = pool.poolInfo(address(tokenA));
 
         uint256 userLpUnits = pool.userLpUnitInfo(owner, address(tokenA));
 
-        uint256 expectedStreamCount = poolLogic.calculateStreamCount(userLpUnits, pool.globalSlippage(), reserveD);
+        uint256 expectedStreamCount =
+            poolLogic.calculateStreamCount(userLpUnits, pool.globalSlippage(), reserveD, decimals);
         uint256 expectedConversionPerStream = userLpUnits / expectedStreamCount;
         uint256 expectedTokenAmountOutPerStream =
             poolLogic.calculateAssetTransfer(expectedConversionPerStream, reserveA, poolOwnershipUnitsTotal);
@@ -137,7 +141,7 @@ contract RouterTest is Deploys {
             uint256 reserveA_After,
             uint256 initialDToMint_After,
             uint256 poolFeeCollected_After,
-            bool initialized_After
+            bool initialized_After,
         ) = pool.poolInfo(address(tokenA));
 
         assertEq(reserveDA_After, reserveD);
@@ -180,12 +184,14 @@ contract RouterTest is Deploys {
             uint256 reserveA,
             uint256 initialDToMint,
             uint256 poolFeeCollected,
-            bool initialized
+            bool initialized,
+            uint8 decimals
         ) = pool.poolInfo(address(tokenB));
 
         uint256 userLpUnits_poolB = pool.userLpUnitInfo(owner, address(tokenB));
         uint256 userTokenBalanceBefore = tokenB.balanceOf(owner);
-        uint256 expectedStreamCount = poolLogic.calculateStreamCount(userLpUnits_poolB, pool.globalSlippage(), reserveD);
+        uint256 expectedStreamCount =
+            poolLogic.calculateStreamCount(userLpUnits_poolB, pool.globalSlippage(), reserveD, decimals);
         uint256 expectedConversionPerStream = userLpUnits_poolB / expectedStreamCount;
         uint256 expectedTokenAmountOutPerStream =
             poolLogic.calculateAssetTransfer(expectedConversionPerStream, reserveA, poolOwnershipUnitsTotal);
@@ -217,7 +223,7 @@ contract RouterTest is Deploys {
             uint256 reserveA_After,
             uint256 initialDToMint_After,
             uint256 poolFeeCollected_After,
-            bool initialized_After
+            bool initialized_After,
         ) = pool.poolInfo(address(tokenB));
 
         assertEq(reserveDA_After, reserveD);
@@ -258,12 +264,14 @@ contract RouterTest is Deploys {
             uint256 reserveA,
             uint256 initialDToMint,
             uint256 poolFeeCollected,
-            bool initialized
+            bool initialized,
+            uint8 decimals
         ) = pool.poolInfo(address(tokenB));
 
         uint256 userLpUnits_poolB = pool.userLpUnitInfo(owner, address(tokenB));
         uint256 userTokenBalanceBefore = tokenB.balanceOf(owner);
-        uint256 expectedStreamCount = poolLogic.calculateStreamCount(userLpUnits_poolB, pool.globalSlippage(), reserveD);
+        uint256 expectedStreamCount =
+            poolLogic.calculateStreamCount(userLpUnits_poolB, pool.globalSlippage(), reserveD, decimals);
         uint256 expectedConversionPerStream = userLpUnits_poolB / expectedStreamCount;
         uint256 dust = userLpUnits_poolB % expectedStreamCount;
         if (dust != 0) {
@@ -307,7 +315,7 @@ contract RouterTest is Deploys {
                 uint256 reserveA_After,
                 uint256 initialDToMint_After,
                 uint256 poolFeeCollected_After,
-                bool initialized_After
+                bool initialized_After,
             ) = pool.poolInfo(address(tokenB));
 
             assertEq(reserveDA_After, reserveD);

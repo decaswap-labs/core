@@ -1,12 +1,12 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.13;
 
-import {Test, console} from "forge-std/Test.sol";
-import {Router} from "src/Router.sol";
-import {PoolLogic} from "src/PoolLogic.sol";
-import {Pool} from "src/Pool.sol";
-import {MockERC20} from "src/MockERC20.sol";
-import {console} from "forge-std/Test.sol";
+import { Test, console } from "forge-std/Test.sol";
+import { Router } from "src/Router.sol";
+import { PoolLogic } from "src/PoolLogic.sol";
+import { Pool } from "src/Pool.sol";
+import { MockERC20 } from "src/MockERC20.sol";
+import { console } from "forge-std/Test.sol";
 
 contract Handler is Test {
     Router public router;
@@ -68,9 +68,7 @@ contract Handler is Test {
         MockERC20 tokenIn = _getTokenFromSeed(seed);
         MockERC20 tokenOut = tokenIn == tokenA ? tokenB : tokenA;
         amountIn = bound(amountIn, 1, MAX_DEPOSIT_SIZE);
-        (,, uint256 reserveA_tokenIn,,,) = pool.poolInfo(address(tokenIn));
-        (,, uint256 reserveA_tokenOut,,,) = pool.poolInfo(address(tokenOut));
-        uint256 executionPrice = poolLogic.getExecutionPrice(reserveA_tokenIn, reserveA_tokenOut);
+        (uint256 executionPrice,,) = poolLogic.getCurrentPrice(address(tokenIn), address(tokenOut));
         uint256 executionpriceDelta = bound(seed, 0, executionPrice / 10);
         bool addDelta = _getBoolFromSeed(seed);
         executionPrice = addDelta ? executionPrice + executionpriceDelta : executionPrice - executionpriceDelta;
