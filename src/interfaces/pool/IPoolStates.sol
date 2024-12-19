@@ -26,14 +26,11 @@ interface IPoolStates {
     // function pairSwapHistory(bytes32) external view returns(uint256,uint256);
     function pairStreamQueue(bytes32) external view returns (Swap[] memory swaps, uint256 front, uint256 back);
     function pairPendingQueue(bytes32) external view returns (Swap[] memory swaps, uint256 front, uint256 back);
-    function liquidityStreamQueue(bytes32)
-        external
-        view
-        returns (LiquidityStream[] memory liquidityStream, uint256 front, uint256 back);
+    function liquidityStreamQueue(bytes32) external view returns (LiquidityStream[] memory liquidityStream);
     function removeLiquidityStreamQueue(address)
         external
         view
-        returns (RemoveLiquidityStream[] memory removeLiquidityStream, uint256 front, uint256 back);
+        returns (RemoveLiquidityStream[] memory removeLiquidityStream);
 
     function globalPoolDBalance(address) external view returns (uint256);
     function highestPriceMarker(bytes32) external view returns (uint256);
