@@ -275,6 +275,7 @@ contract Router_SwapLimit is RouterTest {
         // our frontSwap swap
         uint256 tokenInCalculation = swapTokenAAmountIn;
         for (uint256 i = 0; i < oppositeSwaps.length; i++) {
+            uint256 t = tokenInCalculation;
             Swap memory oppositeSwap = oppositeSwaps[i];
             uint256 reserveAInFromPrice = PoolLogicLib.getOtherReserveFromPrice(
                 executionPriceOppositeSwap, reserveA_tokenB, tokenBdecimals, tokenADecimals
@@ -286,24 +287,23 @@ contract Router_SwapLimit is RouterTest {
             uint256 oppTokenInAmountOut =
                 PoolLogicLib.getAmountOut(oppSwapTokenAmount, reserveA_tokenB, reserveAInFromPrice);
 
-            if (tokenInCalculation > oppTokenInAmountOut) {
+            if (t > oppTokenInAmountOut) {
                 swapTokenBAmountOut += oppSwapTokenAmount;
-                tokenInCalculation -= oppTokenInAmountOut;
+                t -= oppTokenInAmountOut;
 
                 if (i == oppositeSwaps.length - 1) {
-                    uint256 _streamCount =
-                        poolLogic.getStreamCount(address(tokenA), address(tokenB), tokenInCalculation);
-                    uint256 _swapPerStream = tokenInCalculation / _streamCount;
-                    if (tokenInCalculation % streamCount != 0) {
-                        dust += (tokenInCalculation - (streamCount * swapPerStream));
-                        tokenInCalculation = _streamCount * _swapPerStream;
+                    uint256 _streamCount = poolLogic.getStreamCount(address(tokenA), address(tokenB), t);
+                    uint256 _swapPerStream = t / _streamCount;
+                    if (t % streamCount != 0) {
+                        dust += (t - (streamCount * swapPerStream));
+                        t = _streamCount * _swapPerStream;
                     }
                 }
             } else {
-                swapTokenBAmountOut +=
-                    PoolLogicLib.getAmountOut(tokenInCalculation, reserveA_tokenA, reserveAOutFromPrice);
+                swapTokenBAmountOut += PoolLogicLib.getAmountOut(t, reserveA_tokenA, reserveAOutFromPrice);
                 break;
             }
+            tokenInCalculation = t;
         }
 
         uint256 currentPrice = _getCurrentPrice(address(tokenA), address(tokenB));
