@@ -273,7 +273,7 @@ contract Router_SwapLimit is RouterTest {
         uint256 swapTokenBAmountOut;
         // we loop through the opposite swaps to get the expected amount of tokenB we will receive, after fully execute
         // our frontSwap swap
-        uint256 swapTokenAAmountInForCalculation = swapTokenAAmountIn;
+        uint256 tokenInCalculation = swapTokenAAmountIn;
         for (uint256 i = 0; i < oppositeSwaps.length; i++) {
             Swap memory oppositeSwap = oppositeSwaps[i];
             uint256 reserveAInFromPrice = PoolLogicLib.getOtherReserveFromPrice(
@@ -286,22 +286,22 @@ contract Router_SwapLimit is RouterTest {
             uint256 oppTokenInAmountOut =
                 PoolLogicLib.getAmountOut(oppSwapTokenAmount, reserveA_tokenB, reserveAInFromPrice);
 
-            if (swapTokenAAmountInForCalculation > oppTokenInAmountOut) {
+            if (tokenInCalculation > oppTokenInAmountOut) {
                 swapTokenBAmountOut += oppSwapTokenAmount;
-                swapTokenAAmountInForCalculation -= oppTokenInAmountOut;
+                tokenInCalculation -= oppTokenInAmountOut;
 
                 if (i == oppositeSwaps.length - 1) {
                     uint256 _streamCount =
-                        poolLogic.getStreamCount(address(tokenA), address(tokenB), swapTokenAAmountInForCalculation);
-                    uint256 _swapPerStream = swapTokenAAmountInForCalculation / _streamCount;
-                    if (swapTokenAAmountInForCalculation % streamCount != 0) {
-                        dust += (swapTokenAAmountInForCalculation - (streamCount * swapPerStream));
-                        swapTokenAAmountInForCalculation = _streamCount * _swapPerStream;
+                        poolLogic.getStreamCount(address(tokenA), address(tokenB), tokenInCalculation);
+                    uint256 _swapPerStream = tokenInCalculation / _streamCount;
+                    if (tokenInCalculation % streamCount != 0) {
+                        dust += (tokenInCalculation - (streamCount * swapPerStream));
+                        tokenInCalculation = _streamCount * _swapPerStream;
                     }
                 }
             } else {
                 swapTokenBAmountOut +=
-                    PoolLogicLib.getAmountOut(swapTokenAAmountInForCalculation, reserveA_tokenA, reserveAOutFromPrice);
+                    PoolLogicLib.getAmountOut(tokenInCalculation, reserveA_tokenA, reserveAOutFromPrice);
                 break;
             }
         }
