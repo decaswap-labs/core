@@ -29,10 +29,9 @@ interface IPoolLogicActions {
         external;
 
     function addLiqDualToken(address tokenA, address tokenB, address user, uint256 amountA, uint256 amountB) external;
-    function addToPoolSingle(address token, address user, uint256 amount) external;
-    function streamDToPool(address tokenA, address tokenB, address user, uint256 amountB) external;
+    function addOnlyTokenLiquidity(address token, address user, uint256 amount) external;
+    function addOnlyDLiquidity(address tokenA, address tokenB, address user, uint256 amountB) external;
     function processLiqStream(address tokenA, address tokenB) external;
-    function processRemoveLiquidity(address token) external;
     function removeLiquidity(address token, address user, uint256 lpUnits) external;
     function depositToGlobalPool(
         address user,
@@ -62,37 +61,18 @@ interface IPoolLogicActions {
         external;
     function swapMarketOrder(address user, address tokenIn, address tokenOut, uint256 amountIn) external;
     function processLimitOrders(address tokenIn, address tokenOut) external;
-    function calculateLpUnitsToMint(uint256, uint256, uint256, uint256, uint256) external pure returns (uint256);
 
     function getStreamCount(address tokenIn, address tokenOut, uint256 amountIn) external view returns (uint256);
     function getStreamCountForDPool(address tokenIn, uint256 amountIn) external view returns (uint256);
-    function calculateDUnitsToMint(uint256, uint256, uint256, uint256) external view returns (uint256);
     function updatePoolAddress(address) external;
+    function updateLiquidityLogicAddress(address) external;
 
-    function calculateAssetTransfer(uint256, uint256, uint256) external pure returns (uint256);
-    function calculateDToDeduct(uint256, uint256, uint256) external pure returns (uint256);
-    function calculateStreamCount(uint256, uint256, uint256, uint8) external pure returns (uint256);
-    function getSwapAmountOut(uint256, uint256, uint256, uint256, uint256) external pure returns (uint256, uint256);
-
-    function getExecutionPrice(
-        uint256 reserveA_In,
-        uint256 reserveA_Out,
-        uint8 decimals_In,
-        uint8 decimals_Out
-    )
-        external
-        pure
-        returns (uint256);
-    function getTokenOut(uint256, uint256, uint256) external pure returns (uint256);
-    function getDOut(uint256, uint256, uint256) external pure returns (uint256);
-    function processGlobalStreamPairDeposit() external;
-    function processGlobalStreamPairWithdraw() external;
+    function processGlobalStreamPairDeposit(address token) external;
+    function processGlobalStreamPairWithdraw(address token) external;
     function processMarketAndTriggerOrders() external;
-    function getCurrentPrice(
-        address tokenIn,
-        address tokenOut
-    )
-        external
-        view
-        returns (uint256 currentPrice, uint256 reserveA_In, uint256 reserveA_Out);
+
+    function processAddLiquidity(address poolA, address poolB) external;
+    function processRemoveLiquidity(address token) external;
+
+    function updateOwner(address ownerAddress) external;
 }

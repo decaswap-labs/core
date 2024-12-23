@@ -15,7 +15,7 @@ interface IPoolActions {
     function updateUserLpUnits(bytes memory updatedLpUnits) external;
     // updatedReservesAndRemoveLiqData encoding format => (address token, uint256 reservesToRemove, uint
     // conversionRemaining, uint streamCountRemaining)
-    function updateReservesAndRemoveLiqStream(bytes memory updatedReservesAndRemoveLiqData) external;
+    function updateRemoveLiqStream(bytes memory updatedReservesAndRemoveLiqData, uint256 index) external;
     function enqueueSwap_pairStreamQueue(bytes32 pairId, Swap memory swap) external;
     function enqueueSwap_pairPendingQueue(bytes32 pairId, Swap memory swap) external;
     function enqueueLiquidityStream(bytes32 pairId, LiquidityStream memory liquidityStream) external;
@@ -31,8 +31,8 @@ interface IPoolActions {
     )
         external;
     function dequeueSwap_pairPendingQueue(bytes32 pairId) external;
-    function dequeueLiquidityStream_streamQueue(bytes32 pairId) external;
-    function dequeueRemoveLiquidity_streamQueue(address token) external;
+    function dequeueLiquidityStream_streamQueue(bytes32 pairId, uint256 index) external;
+    function dequeueRemoveLiquidity_streamQueue(address token, uint256 index) external;
     function dequeueGlobalStream_streamQueue(bytes32 pairId) external;
     function dequeueGlobalPoolDepositStream(bytes32 pairId, uint256 index) external;
     function dequeueGlobalPoolWithdrawStream(bytes32 pairId, uint256 index) external;
@@ -79,4 +79,8 @@ interface IPoolActions {
     function setHighestPriceMarker(bytes32 pairId, uint256 value) external;
 
     function getPoolAddresses() external view returns (address[] memory);
+
+    function updatePoolOwnershipUnitsTotalRemoveLiqStream(bytes memory updatedPoolOwnershipUnitsTotalRemoveLiqData)
+        external;
+    function updateReservesRemoveLiqStream(bytes memory updatedReservesAndRemoveLiqData) external;
 }

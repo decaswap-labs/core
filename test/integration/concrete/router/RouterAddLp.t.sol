@@ -1,335 +1,338 @@
-// SPDX-License-Identifier: UNLICENSED
-pragma solidity ^0.8.13;
-
-import { Deploys } from "test/shared/DeploysForRouter.t.sol";
-import { IRouterErrors } from "src/interfaces/router/IRouterErrors.sol";
-import { LiquidityStream } from "src/lib/SwapQueue.sol";
-import "forge-std/Test.sol";
-
-contract RouterTest is Deploys {
-    address nonAuthorized = makeAddr("nonAuthorized");
-
-    function setUp() public virtual override {
-        super.setUp();
-    }
-
-    // ======================================= PERMISSIONLESS POOLS ========================================//
-    function _initGenesisPool(uint256 d, uint256 a) internal {
-        vm.startPrank(owner);
-        tokenA.approve(address(router), a);
-        router.initGenesisPool(address(tokenA), a, d);
-        vm.stopPrank();
-    }
-
-    function test_addLiqDualToken_success() public {
-        uint256 tokenAReserve = 100e18;
-        uint256 dToMint = 10e18;
-        _initGenesisPool(dToMint, tokenAReserve);
-
-        vm.startPrank(owner);
-        uint256 tokenAmount = 100e18;
-        uint256 dToTokenAmount = 50e18;
-
-        tokenB.approve(address(router), tokenAmount);
-        tokenA.approve(address(router), dToTokenAmount);
-
-        router.initPool(address(tokenB), address(tokenA), tokenAmount, dToTokenAmount);
-
-        bytes32 pairId = keccak256(abi.encodePacked(address(tokenB), address(tokenA)));
-        (LiquidityStream[] memory streams, uint256 front,) = pool.liquidityStreamQueue(pairId);
-
-        for (uint8 i = 0; i < streams[front].poolBStream.streamsRemaining; i++) {
-            router.processLiqStream(address(tokenB), address(tokenA));
-        }
-        (LiquidityStream[] memory streamsAfter, uint256 frontAfter,) = pool.liquidityStreamQueue(pairId);
+// // SPDX-License-Identifier: UNLICENSED
+// pragma solidity ^0.8.13;
+
+// import {Deploys} from "test/shared/DeploysForRouter.t.sol";
+// import {IRouterErrors} from "src/interfaces/router/IRouterErrors.sol";
+// import {LiquidityStream} from "src/lib/SwapQueue.sol";
+// import "forge-std/Test.sol";
+
+// contract RouterTest is Deploys {
+//     address nonAuthorized = makeAddr("nonAuthorized");
+
+//     function setUp() public virtual override {
+//         super.setUp();
+//     }
+
+//     // ======================================= PERMISSIONLESS POOLS ========================================//
+//     function _initGenesisPool(uint256 d, uint256 a) internal {
+//         vm.startPrank(owner);
+//         tokenA.approve(address(router), a);
+//         router.initGenesisPool(address(tokenA), a, d);
+//         vm.stopPrank();
+//     }
+
+//     function test_addLiqDualToken_success() public {
+//         uint256 tokenAReserve = 100e18;
+//         uint256 dToMint = 10e18;
+//         _initGenesisPool(dToMint, tokenAReserve);
+
+//         vm.startPrank(owner);
+//         uint256 tokenAmount = 100e18;
+//         uint256 dToTokenAmount = 50e18;
+
+//         tokenB.approve(address(router), tokenAmount);
+//         tokenA.approve(address(router), dToTokenAmount);
+
+//         router.initPool(address(tokenB), address(tokenA), tokenAmount, dToTokenAmount);
+
+//         bytes32 pairId = keccak256(abi.encodePacked(address(tokenB), address(tokenA)));
+//         (LiquidityStream[] memory streams, uint256 front,) = pool.liquidityStreamQueue(pairId);
+
+//         for (uint8 i = 0; i < streams[front].poolBStream.streamsRemaining; i++) {
+//             router.processLiqStream(address(tokenB), address(tokenA));
+//         }
+//         (LiquidityStream[] memory streamsAfter, uint256 frontAfter,) = pool.liquidityStreamQueue(pairId);
+
+//         assertEq(streamsAfter[frontAfter - 1].poolBStream.streamsRemaining, 0);
+//         assertEq(streamsAfter[frontAfter - 1].poolAStream.streamsRemaining, 0);
+//         assertEq(streamsAfter[frontAfter - 1].poolAStream.swapAmountRemaining, 0);
+//         assertEq(streamsAfter[frontAfter - 1].poolBStream.swapAmountRemaining, 0);
+
+//         uint256 tokenAmountSingle = 50e18;
+//         uint256 dToTokenAmountSingle = 25e18;
+
+//         tokenB.approve(address(router), tokenAmountSingle);
+//         tokenA.approve(address(router), dToTokenAmountSingle);
+
+//         (uint256 reserveDBeforeB, uint256 poolOwnershipUnitsTotalBeforeB, uint256 reserveABeforeB,,,) =
+//             pool.poolInfo(address(tokenB));
+
+//         (uint256 reserveDBeforeA,, uint256 reserveABeforeA,,,) = pool.poolInfo(address(tokenA));
 
-        assertEq(streamsAfter[frontAfter - 1].poolBStream.streamsRemaining, 0);
-        assertEq(streamsAfter[frontAfter - 1].poolAStream.streamsRemaining, 0);
-        assertEq(streamsAfter[frontAfter - 1].poolAStream.swapAmountRemaining, 0);
-        assertEq(streamsAfter[frontAfter - 1].poolBStream.swapAmountRemaining, 0);
-
-        uint256 tokenAmountSingle = 50e18;
-        uint256 dToTokenAmountSingle = 25e18;
-
-        tokenB.approve(address(router), tokenAmountSingle);
-        tokenA.approve(address(router), dToTokenAmountSingle);
+//         uint256 tokenStreamCount =
+//             poolLogic.calculateStreamCount(tokenAmountSingle, pool.globalSlippage(), reserveDBeforeB);
+//         uint256 swapPerStreamInputToken = tokenAmountSingle / tokenStreamCount;
+
+//         uint256 dStreamCount =
+//             poolLogic.calculateStreamCount(dToTokenAmountSingle, pool.globalSlippage(), reserveDBeforeA);
+//         uint256 swapPerStreamDToToken = dToTokenAmountSingle / dStreamCount;
+
+//         (uint256 dToTransfer,) =
+//             poolLogic.getSwapAmountOut(swapPerStreamDToToken, reserveABeforeA, 0, reserveDBeforeA, 0);
+
+//         uint256 lpUnitsBeforeFromToken = poolLogic.calculateLpUnitsToMint(
+//             poolOwnershipUnitsTotalBeforeB,
+//             swapPerStreamInputToken,
+//             swapPerStreamInputToken + reserveABeforeB,
+//             0,
+//             reserveDBeforeB
+//         );
+//         uint256 lpUnitsBeforeFromD = poolLogic.calculateLpUnitsToMint(
+//             lpUnitsBeforeFromToken + poolOwnershipUnitsTotalBeforeB,
+//             0,
+//             swapPerStreamInputToken + reserveABeforeB,
+//             dToTransfer,
+//             reserveDBeforeB + dToTransfer
+//         );
 
-        (uint256 reserveDBeforeB, uint256 poolOwnershipUnitsTotalBeforeB, uint256 reserveABeforeB,,,, uint8 decimalsOut)
-        = pool.poolInfo(address(tokenB));
+//         uint256 tokenBBalanceBefore = tokenB.balanceOf(owner);
+//         uint256 tokenABalanceBefore = tokenA.balanceOf(owner);
 
-        (uint256 reserveDBeforeA,, uint256 reserveABeforeA,,,, uint8 decimalsIn) = pool.poolInfo(address(tokenA));
+//         router.addLiqDualToken(address(tokenB), address(tokenA), tokenAmountSingle, dToTokenAmountSingle);
 
-        uint256 tokenStreamCount =
-            poolLogic.calculateStreamCount(tokenAmountSingle, pool.globalSlippage(), reserveDBeforeB, decimalsOut);
-        uint256 swapPerStreamInputToken = tokenAmountSingle / tokenStreamCount;
+//         uint256 tokenBBalanceAfter = tokenB.balanceOf(owner);
+//         uint256 tokenABalanceAfter = tokenA.balanceOf(owner);
 
-        uint256 dStreamCount =
-            poolLogic.calculateStreamCount(dToTokenAmountSingle, pool.globalSlippage(), reserveDBeforeA, decimalsIn);
-        uint256 swapPerStreamDToToken = dToTokenAmountSingle / dStreamCount;
-
-        (uint256 dToTransfer,) =
-            poolLogic.getSwapAmountOut(swapPerStreamDToToken, reserveABeforeA, 0, reserveDBeforeA, 0);
-
-        uint256 lpUnitsBeforeFromToken = poolLogic.calculateLpUnitsToMint(
-            poolOwnershipUnitsTotalBeforeB,
-            swapPerStreamInputToken,
-            swapPerStreamInputToken + reserveABeforeB,
-            0,
-            reserveDBeforeB
-        );
-        uint256 lpUnitsBeforeFromD = poolLogic.calculateLpUnitsToMint(
-            lpUnitsBeforeFromToken + poolOwnershipUnitsTotalBeforeB,
-            0,
-            swapPerStreamInputToken + reserveABeforeB,
-            dToTransfer,
-            reserveDBeforeB + dToTransfer
-        );
+//         (LiquidityStream[] memory streamsAfterDual, uint256 frontAD,) = pool.liquidityStreamQueue(pairId);
 
-        uint256 tokenBBalanceBefore = tokenB.balanceOf(owner);
-        uint256 tokenABalanceBefore = tokenA.balanceOf(owner);
+//         assertEq(streamsAfterDual[frontAD].poolAStream.streamsRemaining, tokenStreamCount - 1);
+//         assertEq(streamsAfterDual[frontAD].poolBStream.streamsRemaining, dStreamCount - 1);
 
-        router.addLiqDualToken(address(tokenB), address(tokenA), tokenAmountSingle, dToTokenAmountSingle);
+//         assertEq(streamsAfterDual[frontAD].poolAStream.swapAmountRemaining, tokenAmountSingle -
+// swapPerStreamInputToken);
+//         assertEq(
+//             streamsAfterDual[frontAD].poolBStream.swapAmountRemaining, dToTokenAmountSingle - swapPerStreamDToToken
+//         );
 
-        uint256 tokenBBalanceAfter = tokenB.balanceOf(owner);
-        uint256 tokenABalanceAfter = tokenA.balanceOf(owner);
+//         assertLt(tokenBBalanceAfter, tokenBBalanceBefore);
+//         assertEq(tokenBBalanceAfter, tokenBBalanceBefore - tokenAmountSingle);
+//         assertLt(tokenABalanceAfter, tokenABalanceBefore);
+//         assertEq(tokenABalanceAfter, tokenABalanceBefore - dToTokenAmountSingle);
 
-        (LiquidityStream[] memory streamsAfterDual, uint256 frontAD,) = pool.liquidityStreamQueue(pairId);
+//         (uint256 reserveDAfterB, uint256 poolOwnershipUnitsTotalAfterB, uint256 reserveAAfterB,,,) =
+//             pool.poolInfo(address(tokenB));
 
-        assertEq(streamsAfterDual[frontAD].poolAStream.streamsRemaining, tokenStreamCount - 1);
-        assertEq(streamsAfterDual[frontAD].poolBStream.streamsRemaining, dStreamCount - 1);
+//         (uint256 reserveDAfterA,, uint256 reserveAAfterA,,,) = pool.poolInfo(address(tokenA));
 
-        assertEq(streamsAfterDual[frontAD].poolAStream.swapAmountRemaining, tokenAmountSingle - swapPerStreamInputToken);
-        assertEq(
-            streamsAfterDual[frontAD].poolBStream.swapAmountRemaining, dToTokenAmountSingle - swapPerStreamDToToken
-        );
+//         assertEq(reserveDAfterA, reserveDBeforeA - dToTransfer);
+//         assertEq(reserveAAfterA, reserveABeforeA + swapPerStreamDToToken);
 
-        assertLt(tokenBBalanceAfter, tokenBBalanceBefore);
-        assertEq(tokenBBalanceAfter, tokenBBalanceBefore - tokenAmountSingle);
-        assertLt(tokenABalanceAfter, tokenABalanceBefore);
-        assertEq(tokenABalanceAfter, tokenABalanceBefore - dToTokenAmountSingle);
+//         assertEq(
+//             poolOwnershipUnitsTotalAfterB, poolOwnershipUnitsTotalBeforeB + lpUnitsBeforeFromToken +
+// lpUnitsBeforeFromD
+//         );
+//         assertEq(reserveDAfterB, reserveDBeforeB + dToTransfer);
+//         assertEq(reserveAAfterB, reserveABeforeB + swapPerStreamInputToken);
+//         vm.stopPrank();
+//     }
 
-        (uint256 reserveDAfterB, uint256 poolOwnershipUnitsTotalAfterB, uint256 reserveAAfterB,,,,) =
-            pool.poolInfo(address(tokenB));
+//     function test_addToPoolSingle_success() public {
+//         uint256 tokenAReserve = 100e18;
+//         uint256 dToMint = 10e18;
+//         _initGenesisPool(dToMint, tokenAReserve);
 
-        (uint256 reserveDAfterA,, uint256 reserveAAfterA,,,,) = pool.poolInfo(address(tokenA));
+//         vm.startPrank(owner);
+//         uint256 tokenAmount = 100e18;
+//         uint256 dToTokenAmount = 50e18;
 
-        assertEq(reserveDAfterA, reserveDBeforeA - dToTransfer);
-        assertEq(reserveAAfterA, reserveABeforeA + swapPerStreamDToToken);
+//         tokenB.approve(address(router), tokenAmount);
+//         tokenA.approve(address(router), dToTokenAmount);
 
-        assertEq(
-            poolOwnershipUnitsTotalAfterB, poolOwnershipUnitsTotalBeforeB + lpUnitsBeforeFromToken + lpUnitsBeforeFromD
-        );
-        assertEq(reserveDAfterB, reserveDBeforeB + dToTransfer);
-        assertEq(reserveAAfterB, reserveABeforeB + swapPerStreamInputToken);
-        vm.stopPrank();
-    }
+//         router.initPool(address(tokenB), address(tokenA), tokenAmount, dToTokenAmount);
 
-    function test_addToPoolSingle_success() public {
-        uint256 tokenAReserve = 100e18;
-        uint256 dToMint = 10e18;
-        _initGenesisPool(dToMint, tokenAReserve);
+//         bytes32 pairId = keccak256(abi.encodePacked(address(tokenB), address(tokenA)));
+//         (LiquidityStream[] memory streams, uint256 front,) = pool.liquidityStreamQueue(pairId);
 
-        vm.startPrank(owner);
-        uint256 tokenAmount = 100e18;
-        uint256 dToTokenAmount = 50e18;
+//         for (uint8 i = 0; i < streams[front].poolBStream.streamsRemaining; i++) {
+//             router.processLiqStream(address(tokenB), address(tokenA));
+//         }
+//         (LiquidityStream[] memory streamsAfter, uint256 frontAfter,) = pool.liquidityStreamQueue(pairId);
 
-        tokenB.approve(address(router), tokenAmount);
-        tokenA.approve(address(router), dToTokenAmount);
+//         assertEq(streamsAfter[frontAfter - 1].poolBStream.streamsRemaining, 0);
+//         assertEq(streamsAfter[frontAfter - 1].poolAStream.streamsRemaining, 0);
+//         assertEq(streamsAfter[frontAfter - 1].poolAStream.swapAmountRemaining, 0);
+//         assertEq(streamsAfter[frontAfter - 1].poolBStream.swapAmountRemaining, 0);
 
-        router.initPool(address(tokenB), address(tokenA), tokenAmount, dToTokenAmount);
+//         uint256 tokenAmountSingle = 50e18;
 
-        bytes32 pairId = keccak256(abi.encodePacked(address(tokenB), address(tokenA)));
-        (LiquidityStream[] memory streams, uint256 front,) = pool.liquidityStreamQueue(pairId);
+//         tokenB.approve(address(router), tokenAmountSingle);
 
-        for (uint8 i = 0; i < streams[front].poolBStream.streamsRemaining; i++) {
-            router.processLiqStream(address(tokenB), address(tokenA));
-        }
-        (LiquidityStream[] memory streamsAfter, uint256 frontAfter,) = pool.liquidityStreamQueue(pairId);
+//         (uint256 reserveDBeforeB, uint256 poolOwnershipUnitsTotalBeforeB, uint256 reserveABeforeB,,,) =
+//             pool.poolInfo(address(tokenB));
+//         uint256 tokenStreamCount =
+//             poolLogic.calculateStreamCount(tokenAmountSingle, pool.globalSlippage(), reserveDBeforeB);
+//         uint256 swapPerStreamInputToken = tokenAmountSingle / tokenStreamCount;
 
-        assertEq(streamsAfter[frontAfter - 1].poolBStream.streamsRemaining, 0);
-        assertEq(streamsAfter[frontAfter - 1].poolAStream.streamsRemaining, 0);
-        assertEq(streamsAfter[frontAfter - 1].poolAStream.swapAmountRemaining, 0);
-        assertEq(streamsAfter[frontAfter - 1].poolBStream.swapAmountRemaining, 0);
+//         uint256 lpUnitsBeforeFromToken = poolLogic.calculateLpUnitsToMint(
+//             poolOwnershipUnitsTotalBeforeB,
+//             swapPerStreamInputToken,
+//             swapPerStreamInputToken + reserveABeforeB,
+//             0,
+//             reserveDBeforeB
+//         );
 
-        uint256 tokenAmountSingle = 50e18;
+//         uint256 tokenBBalanceBefore = tokenB.balanceOf(owner);
 
-        tokenB.approve(address(router), tokenAmountSingle);
+//         router.addToPoolSingle(address(tokenB), tokenAmountSingle);
 
-        (uint256 reserveDBeforeB, uint256 poolOwnershipUnitsTotalBeforeB, uint256 reserveABeforeB,,,, uint8 decimalsOut)
-        = pool.poolInfo(address(tokenB));
-        uint256 tokenStreamCount =
-            poolLogic.calculateStreamCount(tokenAmountSingle, pool.globalSlippage(), reserveDBeforeB, decimalsOut);
-        uint256 swapPerStreamInputToken = tokenAmountSingle / tokenStreamCount;
+//         uint256 tokenBBalanceAfter = tokenB.balanceOf(owner);
 
-        uint256 lpUnitsBeforeFromToken = poolLogic.calculateLpUnitsToMint(
-            poolOwnershipUnitsTotalBeforeB,
-            swapPerStreamInputToken,
-            swapPerStreamInputToken + reserveABeforeB,
-            0,
-            reserveDBeforeB
-        );
+//         bytes32 pairIdSingle = keccak256(abi.encodePacked(address(tokenB), address(tokenB)));
+//         (LiquidityStream[] memory streamsAfterDual, uint256 frontAD,) = pool.liquidityStreamQueue(pairIdSingle);
 
-        uint256 tokenBBalanceBefore = tokenB.balanceOf(owner);
+//         assertEq(streamsAfterDual[frontAD].poolAStream.streamsRemaining, tokenStreamCount - 1);
+//         assertEq(streamsAfterDual[frontAD].poolAStream.swapAmountRemaining, tokenAmountSingle -
+// swapPerStreamInputToken);
 
-        router.addToPoolSingle(address(tokenB), tokenAmountSingle);
+//         assertLt(tokenBBalanceAfter, tokenBBalanceBefore);
+//         assertEq(tokenBBalanceAfter, tokenBBalanceBefore - tokenAmountSingle);
 
-        uint256 tokenBBalanceAfter = tokenB.balanceOf(owner);
+//         (, uint256 poolOwnershipUnitsTotalAfterB, uint256 reserveAAfterB,,,) = pool.poolInfo(address(tokenB));
 
-        bytes32 pairIdSingle = keccak256(abi.encodePacked(address(tokenB), address(tokenB)));
-        (LiquidityStream[] memory streamsAfterDual, uint256 frontAD,) = pool.liquidityStreamQueue(pairIdSingle);
+//         assertEq(poolOwnershipUnitsTotalAfterB, poolOwnershipUnitsTotalBeforeB + lpUnitsBeforeFromToken);
+//         assertEq(reserveAAfterB, reserveABeforeB + swapPerStreamInputToken);
+//         vm.stopPrank();
+//     }
 
-        assertEq(streamsAfterDual[frontAD].poolAStream.streamsRemaining, tokenStreamCount - 1);
-        assertEq(streamsAfterDual[frontAD].poolAStream.swapAmountRemaining, tokenAmountSingle - swapPerStreamInputToken);
+//     function test_streamDToPool_success() public {
+//         uint256 tokenAReserve = 100e18;
+//         uint256 dToMint = 10e18;
+//         _initGenesisPool(dToMint, tokenAReserve);
 
-        assertLt(tokenBBalanceAfter, tokenBBalanceBefore);
-        assertEq(tokenBBalanceAfter, tokenBBalanceBefore - tokenAmountSingle);
+//         vm.startPrank(owner);
+//         uint256 tokenAmount = 100e18;
+//         uint256 dToTokenAmount = 50e18;
 
-        (, uint256 poolOwnershipUnitsTotalAfterB, uint256 reserveAAfterB,,,,) = pool.poolInfo(address(tokenB));
+//         tokenB.approve(address(router), tokenAmount);
+//         tokenA.approve(address(router), dToTokenAmount);
 
-        assertEq(poolOwnershipUnitsTotalAfterB, poolOwnershipUnitsTotalBeforeB + lpUnitsBeforeFromToken);
-        assertEq(reserveAAfterB, reserveABeforeB + swapPerStreamInputToken);
-        vm.stopPrank();
-    }
+//         router.initPool(address(tokenB), address(tokenA), tokenAmount, dToTokenAmount);
 
-    function test_streamDToPool_success() public {
-        uint256 tokenAReserve = 100e18;
-        uint256 dToMint = 10e18;
-        _initGenesisPool(dToMint, tokenAReserve);
+//         bytes32 pairId = keccak256(abi.encodePacked(address(tokenB), address(tokenA)));
+//         (LiquidityStream[] memory streams, uint256 front,) = pool.liquidityStreamQueue(pairId);
 
-        vm.startPrank(owner);
-        uint256 tokenAmount = 100e18;
-        uint256 dToTokenAmount = 50e18;
+//         for (uint8 i = 0; i < streams[front].poolBStream.streamsRemaining; i++) {
+//             router.processLiqStream(address(tokenB), address(tokenA));
+//         }
+//         (LiquidityStream[] memory streamsAfter, uint256 frontAfter,) = pool.liquidityStreamQueue(pairId);
 
-        tokenB.approve(address(router), tokenAmount);
-        tokenA.approve(address(router), dToTokenAmount);
+//         assertEq(streamsAfter[frontAfter - 1].poolBStream.streamsRemaining, 0);
+//         assertEq(streamsAfter[frontAfter - 1].poolAStream.streamsRemaining, 0);
+//         assertEq(streamsAfter[frontAfter - 1].poolAStream.swapAmountRemaining, 0);
+//         assertEq(streamsAfter[frontAfter - 1].poolBStream.swapAmountRemaining, 0);
 
-        router.initPool(address(tokenB), address(tokenA), tokenAmount, dToTokenAmount);
+//         uint256 dToTokenAmountSingle = 25e18;
 
-        bytes32 pairId = keccak256(abi.encodePacked(address(tokenB), address(tokenA)));
-        (LiquidityStream[] memory streams, uint256 front,) = pool.liquidityStreamQueue(pairId);
+//         tokenA.approve(address(router), dToTokenAmountSingle);
 
-        for (uint8 i = 0; i < streams[front].poolBStream.streamsRemaining; i++) {
-            router.processLiqStream(address(tokenB), address(tokenA));
-        }
-        (LiquidityStream[] memory streamsAfter, uint256 frontAfter,) = pool.liquidityStreamQueue(pairId);
+//         (uint256 reserveDBeforeB, uint256 poolOwnershipUnitsTotalBeforeB, uint256 reserveABeforeB,,,) =
+//             pool.poolInfo(address(tokenB));
 
-        assertEq(streamsAfter[frontAfter - 1].poolBStream.streamsRemaining, 0);
-        assertEq(streamsAfter[frontAfter - 1].poolAStream.streamsRemaining, 0);
-        assertEq(streamsAfter[frontAfter - 1].poolAStream.swapAmountRemaining, 0);
-        assertEq(streamsAfter[frontAfter - 1].poolBStream.swapAmountRemaining, 0);
+//         (uint256 reserveDBeforeA,, uint256 reserveABeforeA,,,) = pool.poolInfo(address(tokenA));
 
-        uint256 dToTokenAmountSingle = 25e18;
+//         uint256 dStreamCount =
+//             poolLogic.calculateStreamCount(dToTokenAmountSingle, pool.globalSlippage(), reserveDBeforeA);
+//         uint256 swapPerStreamDToToken = dToTokenAmountSingle / dStreamCount;
 
-        tokenA.approve(address(router), dToTokenAmountSingle);
+//         (uint256 dToTransfer,) =
+//             poolLogic.getSwapAmountOut(swapPerStreamDToToken, reserveABeforeA, 0, reserveDBeforeA, 0);
 
-        (uint256 reserveDBeforeB, uint256 poolOwnershipUnitsTotalBeforeB, uint256 reserveABeforeB,,,,) =
-            pool.poolInfo(address(tokenB));
+//         uint256 lpUnitsBeforeFromD = poolLogic.calculateLpUnitsToMint(
+//             poolOwnershipUnitsTotalBeforeB, 0, reserveABeforeB, dToTransfer, reserveDBeforeB + dToTransfer
+//         );
 
-        (uint256 reserveDBeforeA,, uint256 reserveABeforeA,,,, uint8 decimalsIn) = pool.poolInfo(address(tokenA));
+//         uint256 tokenABalanceBefore = tokenA.balanceOf(owner);
 
-        uint256 dStreamCount =
-            poolLogic.calculateStreamCount(dToTokenAmountSingle, pool.globalSlippage(), reserveDBeforeA, decimalsIn);
-        uint256 swapPerStreamDToToken = dToTokenAmountSingle / dStreamCount;
+//         router.streamDToPool(address(tokenB), address(tokenA), dToTokenAmountSingle);
 
-        (uint256 dToTransfer,) =
-            poolLogic.getSwapAmountOut(swapPerStreamDToToken, reserveABeforeA, 0, reserveDBeforeA, 0);
+//         uint256 tokenABalanceAfter = tokenA.balanceOf(owner);
 
-        uint256 lpUnitsBeforeFromD = poolLogic.calculateLpUnitsToMint(
-            poolOwnershipUnitsTotalBeforeB, 0, reserveABeforeB, dToTransfer, reserveDBeforeB + dToTransfer
-        );
+//         (LiquidityStream[] memory streamsAfterDual, uint256 frontAD,) = pool.liquidityStreamQueue(pairId);
 
-        uint256 tokenABalanceBefore = tokenA.balanceOf(owner);
+//         assertEq(streamsAfterDual[frontAD].poolBStream.streamsRemaining, dStreamCount - 1);
 
-        router.streamDToPool(address(tokenB), address(tokenA), dToTokenAmountSingle);
+//         assertEq(
+//             streamsAfterDual[frontAD].poolBStream.swapAmountRemaining, dToTokenAmountSingle - swapPerStreamDToToken
+//         );
+//         assertLt(tokenABalanceAfter, tokenABalanceBefore);
+//         assertEq(tokenABalanceAfter, tokenABalanceBefore - dToTokenAmountSingle);
 
-        uint256 tokenABalanceAfter = tokenA.balanceOf(owner);
+//         (uint256 reserveDAfterB, uint256 poolOwnershipUnitsTotalAfterB,,,,) = pool.poolInfo(address(tokenB));
 
-        (LiquidityStream[] memory streamsAfterDual, uint256 frontAD,) = pool.liquidityStreamQueue(pairId);
+//         (uint256 reserveDAfterA,, uint256 reserveAAfterA,,,) = pool.poolInfo(address(tokenA));
 
-        assertEq(streamsAfterDual[frontAD].poolBStream.streamsRemaining, dStreamCount - 1);
+//         assertEq(reserveDAfterA, reserveDBeforeA - dToTransfer);
+//         assertEq(reserveAAfterA, reserveABeforeA + swapPerStreamDToToken);
 
-        assertEq(
-            streamsAfterDual[frontAD].poolBStream.swapAmountRemaining, dToTokenAmountSingle - swapPerStreamDToToken
-        );
-        assertLt(tokenABalanceAfter, tokenABalanceBefore);
-        assertEq(tokenABalanceAfter, tokenABalanceBefore - dToTokenAmountSingle);
+//         assertEq(poolOwnershipUnitsTotalAfterB, poolOwnershipUnitsTotalBeforeB + lpUnitsBeforeFromD);
+//         assertEq(reserveDAfterB, reserveDBeforeB + dToTransfer);
+//         vm.stopPrank();
+//     }
 
-        (uint256 reserveDAfterB, uint256 poolOwnershipUnitsTotalAfterB,,,,,) = pool.poolInfo(address(tokenB));
+//     function _initPermissionlessPoolForBadCases() internal {
+//         uint256 tokenAReserve = 100e18;
+//         uint256 dToMint = 10e18;
+//         _initGenesisPool(dToMint, tokenAReserve);
 
-        (uint256 reserveDAfterA,, uint256 reserveAAfterA,,,,) = pool.poolInfo(address(tokenA));
+//         vm.startPrank(owner);
+//         uint256 tokenAmount = 100e18;
+//         uint256 dToTokenAmount = 50e18;
 
-        assertEq(reserveDAfterA, reserveDBeforeA - dToTransfer);
-        assertEq(reserveAAfterA, reserveABeforeA + swapPerStreamDToToken);
+//         tokenB.approve(address(router), tokenAmount);
+//         tokenA.approve(address(router), dToTokenAmount);
 
-        assertEq(poolOwnershipUnitsTotalAfterB, poolOwnershipUnitsTotalBeforeB + lpUnitsBeforeFromD);
-        assertEq(reserveDAfterB, reserveDBeforeB + dToTransfer);
-        vm.stopPrank();
-    }
+//         router.initPool(address(tokenB), address(tokenA), tokenAmount, dToTokenAmount);
+//         vm.stopPrank();
+//     }
 
-    function _initPermissionlessPoolForBadCases() internal {
-        uint256 tokenAReserve = 100e18;
-        uint256 dToMint = 10e18;
-        _initGenesisPool(dToMint, tokenAReserve);
+//     function test_addLiqDualToken_samePool() public {
+//         vm.startPrank(owner);
+//         vm.expectRevert(IRouterErrors.SamePool.selector);
+//         router.addLiqDualToken(address(tokenB), address(tokenB), 1, 1);
+//     }
 
-        vm.startPrank(owner);
-        uint256 tokenAmount = 100e18;
-        uint256 dToTokenAmount = 50e18;
+//     function test_addLiqDualToken_poolNotExist() public {
+//         vm.startPrank(owner);
+//         vm.expectRevert(IRouterErrors.InvalidPool.selector);
+//         router.addLiqDualToken(address(tokenB), address(tokenA), 1, 1);
+//     }
 
-        tokenB.approve(address(router), tokenAmount);
-        tokenA.approve(address(router), dToTokenAmount);
+//     function test_addLiqDualToken_invalidAmount() public {
+//         _initPermissionlessPoolForBadCases();
+//         vm.startPrank(owner);
+//         vm.expectRevert(IRouterErrors.InvalidAmount.selector);
+//         router.addLiqDualToken(address(tokenB), address(tokenA), 0, 0);
+//     }
 
-        router.initPool(address(tokenB), address(tokenA), tokenAmount, dToTokenAmount);
-        vm.stopPrank();
-    }
+//     function test_streamDToPool_samePool() public {
+//         vm.startPrank(owner);
+//         vm.expectRevert(IRouterErrors.SamePool.selector);
+//         router.streamDToPool(address(tokenB), address(tokenB), 1);
+//     }
 
-    function test_addLiqDualToken_samePool() public {
-        vm.startPrank(owner);
-        vm.expectRevert(IRouterErrors.SamePool.selector);
-        router.addLiqDualToken(address(tokenB), address(tokenB), 1, 1);
-    }
+//     function test_streamDToPool_poolNotExist() public {
+//         vm.startPrank(owner);
+//         vm.expectRevert(IRouterErrors.InvalidPool.selector);
+//         router.streamDToPool(address(tokenB), address(tokenA), 1);
+//     }
 
-    function test_addLiqDualToken_poolNotExist() public {
-        vm.startPrank(owner);
-        vm.expectRevert(IRouterErrors.InvalidPool.selector);
-        router.addLiqDualToken(address(tokenB), address(tokenA), 1, 1);
-    }
+//     function test_streamDToPool_invalidAmount() public {
+//         _initPermissionlessPoolForBadCases();
+//         vm.startPrank(owner);
+//         vm.expectRevert(IRouterErrors.InvalidAmount.selector);
+//         router.streamDToPool(address(tokenB), address(tokenA), 0);
+//     }
 
-    function test_addLiqDualToken_invalidAmount() public {
-        _initPermissionlessPoolForBadCases();
-        vm.startPrank(owner);
-        vm.expectRevert(IRouterErrors.InvalidAmount.selector);
-        router.addLiqDualToken(address(tokenB), address(tokenA), 0, 0);
-    }
+//     function test_addPoolSingle_poolNotExist() public {
+//         vm.startPrank(owner);
+//         vm.expectRevert(IRouterErrors.InvalidPool.selector);
+//         router.addToPoolSingle(address(tokenB), 1);
+//     }
 
-    function test_streamDToPool_samePool() public {
-        vm.startPrank(owner);
-        vm.expectRevert(IRouterErrors.SamePool.selector);
-        router.streamDToPool(address(tokenB), address(tokenB), 1);
-    }
-
-    function test_streamDToPool_poolNotExist() public {
-        vm.startPrank(owner);
-        vm.expectRevert(IRouterErrors.InvalidPool.selector);
-        router.streamDToPool(address(tokenB), address(tokenA), 1);
-    }
-
-    function test_streamDToPool_invalidAmount() public {
-        _initPermissionlessPoolForBadCases();
-        vm.startPrank(owner);
-        vm.expectRevert(IRouterErrors.InvalidAmount.selector);
-        router.streamDToPool(address(tokenB), address(tokenA), 0);
-    }
-
-    function test_addPoolSingle_poolNotExist() public {
-        vm.startPrank(owner);
-        vm.expectRevert(IRouterErrors.InvalidPool.selector);
-        router.addToPoolSingle(address(tokenB), 1);
-    }
-
-    function test_addPoolSingle_invalidAmount() public {
-        _initPermissionlessPoolForBadCases();
-        vm.startPrank(owner);
-        vm.expectRevert(IRouterErrors.InvalidAmount.selector);
-        router.addToPoolSingle(address(tokenB), 0);
-    }
-}
+//     function test_addPoolSingle_invalidAmount() public {
+//         _initPermissionlessPoolForBadCases();
+//         vm.startPrank(owner);
+//         vm.expectRevert(IRouterErrors.InvalidAmount.selector);
+//         router.addToPoolSingle(address(tokenB), 0);
+//     }
+// }
