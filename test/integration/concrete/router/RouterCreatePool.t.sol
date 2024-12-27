@@ -24,7 +24,8 @@
 //         router.initGenesisPool(address(tokenA), addLiquidityTokenAmount, dToMint);
 //         uint256 lpUnitsAfter = pool.userLpUnitInfo(owner, address(tokenA));
 
-//         (uint256 reserveD, uint256 poolOwnershipUnitsTotal, uint256 reserveA, uint256 initialDToMint,, bool initialized)
+//         (uint256 reserveD, uint256 poolOwnershipUnitsTotal, uint256 reserveA, uint256 initialDToMint,, bool
+// initialized)
 //         = pool.poolInfo(address(tokenA));
 //         uint256 poolBalanceAfter = tokenA.balanceOf(address(pool));
 
@@ -57,7 +58,8 @@
 
 //     function test_initGenesisPool_notOwner() public {
 //         vm.startPrank(nonAuthorized);
-//         vm.expectRevert(abi.encodeWithSelector(bytes4(keccak256("OwnableUnauthorizedAccount(address)")), nonAuthorized));
+//         vm.expectRevert(abi.encodeWithSelector(bytes4(keccak256("OwnableUnauthorizedAccount(address)")),
+// nonAuthorized));
 //         router.initGenesisPool(address(tokenA), 1, 1);
 //     }
 
@@ -134,7 +136,8 @@
 //         // assertEq(reserveAAfterA, reserveABeforeA + swapPerStreamToDToken);
 
 //         // assertEq(
-//         //     poolOwnershipUnitsTotalAfterB, poolOwnershipUnitsTotalBeforeB + lpUnitsBeforeFromToken + lpUnitsBeforeFromD
+//         //     poolOwnershipUnitsTotalAfterB, poolOwnershipUnitsTotalBeforeB + lpUnitsBeforeFromToken +
+// lpUnitsBeforeFromD
 //         // );
 //         // assertEq(reserveDAfterB, reserveDBeforeB + dToTransfer);
 //         // assertEq(reserveAAfterB, reserveABeforeB + swapPerStreamInputToken);

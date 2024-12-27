@@ -1,17 +1,29 @@
 [profile.default]
 src = "src"
 test = "test"
+out = "out"
+libs = ["lib"]
+solc_version = "0.8.28"
 via-ir = true
+optimizer = true
+optimizer_runs = 1000
 
 [profile.test]
 via-ir = false
 
 [fmt]
+bracket_spacing = true
+int_types = "long"
+line_length = 120
+multiline_func_header = "all"
 number_underscore = "thousands"
+quote_style = "double"
+tab_width = 4
+wrap_comments = true
 
 
 [invariant]
-runs = 4
+runs = 200
 depth = 256
 fail_on_revert = true
 # See more config options https://github.com/foundry-rs/foundry/blob/master/crates/config/README.md#all-options

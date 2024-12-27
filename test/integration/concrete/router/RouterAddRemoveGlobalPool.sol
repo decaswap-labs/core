@@ -214,7 +214,8 @@
 //         assertEq(reserveDAfter, reserveDBefore + swapPerStream);
 //         assertEq(reserveAAfter, reserveABefore - amountOutPerStream);
 
-//         assertEq(dGlobalBalanceAfter, dGlobalBalanceBefore - dToWtihdraw); //dividing by 2 because globalPool is being withdrawn in 2 stream
+//         assertEq(dGlobalBalanceAfter, dGlobalBalanceBefore - dToWtihdraw); //dividing by 2 because globalPool is
+// being withdrawn in 2 stream
 //         assertEq(userDPoolBalanceAfter, userDPoolBalanceBefore - dToWtihdraw);
 //         assertEq(userBalanceAfter, userTokenBalanceBefore + amountOutPerStream);
 //     }
@@ -348,7 +349,8 @@
 
 //         // (uint256 reserveDBefore,,,,,) = pool.poolInfo(address(tokenA));
 
-//         // uint256 streamCount = poolLogic.calculateStreamCount(dBalanceToWithdraw, pool.globalSlippage(), reserveDBefore);
+//         // uint256 streamCount = poolLogic.calculateStreamCount(dBalanceToWithdraw, pool.globalSlippage(),
+// reserveDBefore);
 
 //         router.withdrawFromGlobalPool(address(tokenA), dBalanceToWithdraw);
 //         bytes32 pairId = bytes32(abi.encodePacked(tokenA, tokenA));

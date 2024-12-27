@@ -1,9 +1,8 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.13;
 
-interface IPoolLogicEvents {
-    event BaseDUpdated(uint256, uint256);
+interface ILiquidityLogicEvents {
     event PoolAddressUpdated(address, address);
-    event LiquidityLogicAddressUpdated(address, address);
+    event PoolLogicAddressUpdated(address, address);
     event OwnerUpdated(address, address);
 }

@@ -142,7 +142,8 @@
 
 //         assertEq(reserveDA_After, reserveD);
 //         assertEq(
-//             poolOwnershipUnitsTotal_After, poolOwnershipUnitsTotal - (expectedConversionPerStream * expectedStreamCount)
+//             poolOwnershipUnitsTotal_After, poolOwnershipUnitsTotal - (expectedConversionPerStream *
+// expectedStreamCount)
 //         );
 //         assertEq(reserveA_After, reserveA - (expectedTokenAmountOutPerStream * expectedStreamCount));
 //         assertEq(initialDToMint_After, initialDToMint);
@@ -185,7 +186,8 @@
 
 //         uint256 userLpUnits_poolB = pool.userLpUnitInfo(owner, address(tokenB));
 //         uint256 userTokenBalanceBefore = tokenB.balanceOf(owner);
-//         uint256 expectedStreamCount = poolLogic.calculateStreamCount(userLpUnits_poolB, pool.globalSlippage(), reserveD);
+//         uint256 expectedStreamCount = poolLogic.calculateStreamCount(userLpUnits_poolB, pool.globalSlippage(),
+// reserveD);
 //         uint256 expectedConversionPerStream = userLpUnits_poolB / expectedStreamCount;
 //         uint256 expectedTokenAmountOutPerStream =
 //             poolLogic.calculateAssetTransfer(expectedConversionPerStream, reserveA, poolOwnershipUnitsTotal);
@@ -195,7 +197,8 @@
 //         }
 //         router.removeLiquidity(address(tokenB), userLpUnits_poolB);
 
-//         (RemoveLiquidityStream[] memory removeLiqStreams, uint256 removeLiqStreamfront, uint256 removeLiqStreamback) =
+//         (RemoveLiquidityStream[] memory removeLiqStreams, uint256 removeLiqStreamfront, uint256 removeLiqStreamback)
+// =
 //             pool.removeLiquidityStreamQueue(address(tokenB));
 //         RemoveLiquidityStream memory removeLiqStream = removeLiqStreams[removeLiqStreamfront];
 
@@ -263,7 +266,8 @@
 
 //         uint256 userLpUnits_poolB = pool.userLpUnitInfo(owner, address(tokenB));
 //         uint256 userTokenBalanceBefore = tokenB.balanceOf(owner);
-//         uint256 expectedStreamCount = poolLogic.calculateStreamCount(userLpUnits_poolB, pool.globalSlippage(), reserveD);
+//         uint256 expectedStreamCount = poolLogic.calculateStreamCount(userLpUnits_poolB, pool.globalSlippage(),
+// reserveD);
 //         uint256 expectedConversionPerStream = userLpUnits_poolB / expectedStreamCount;
 //         uint256 dust = userLpUnits_poolB % expectedStreamCount;
 //         if (dust != 0) {
@@ -285,7 +289,8 @@
 //             reservesACached -= expectedAmountOut;
 //         }
 
-//         (RemoveLiquidityStream[] memory removeLiqStreams, uint256 removeLiqStreamfront, uint256 removeLiqStreamback) =
+//         (RemoveLiquidityStream[] memory removeLiqStreams, uint256 removeLiqStreamfront, uint256 removeLiqStreamback)
+// =
 //             pool.removeLiquidityStreamQueue(address(tokenB));
 //         RemoveLiquidityStream memory removeLiqStream = removeLiqStreams[removeLiqStreamfront - 1];
 

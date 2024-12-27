@@ -10,14 +10,23 @@ interface IPoolLogicActions {
     //     uint256 minLaunchReserveD,
     //     uint256 initialDToMint
     // ) external;
-    function initGenesisPool(address token, address user, uint256 tokenAmount, uint256 initialDToMint) external;
+    function initGenesisPool(
+        address token,
+        uint8 decimals,
+        address user,
+        uint256 tokenAmount,
+        uint256 initialDToMint
+    )
+        external;
     function initPool(
         address token,
+        uint8 decimals,
         address liquidityToken,
         address user,
         uint256 tokenAmount,
         uint256 liquidityTokenAmount
-    ) external;
+    )
+        external;
 
     function addLiqDualToken(address tokenA, address tokenB, address user, uint256 amountA, uint256 amountB) external;
     function addOnlyTokenLiquidity(address token, address user, uint256 amount) external;
@@ -30,10 +39,17 @@ interface IPoolLogicActions {
         uint256 amount,
         uint256 streamCount,
         uint256 swapPerStream
-    ) external;
+    )
+        external;
     function withdrawFromGlobalPool(address user, address token, uint256 amount) external;
     function swap(address user, address tokenIn, address tokenOut, uint256 amountIn, uint256 executionPrice) external;
-    function swapLimitOrder(address user, address tokenIn, address tokenOut, uint256 amountIn, uint256 limitOrderPrice)
+    function swapLimitOrder(
+        address user,
+        address tokenIn,
+        address tokenOut,
+        uint256 amountIn,
+        uint256 limitOrderPrice
+    )
         external;
     function swapTriggerOrder(
         address user,
@@ -41,13 +57,15 @@ interface IPoolLogicActions {
         address tokenOut,
         uint256 amountIn,
         uint256 triggerExecutionPrice
-    ) external;
+    )
+        external;
     function swapMarketOrder(address user, address tokenIn, address tokenOut, uint256 amountIn) external;
     function processLimitOrders(address tokenIn, address tokenOut) external;
 
     function getStreamCount(address tokenIn, address tokenOut, uint256 amountIn) external view returns (uint256);
     function getStreamCountForDPool(address tokenIn, uint256 amountIn) external view returns (uint256);
     function updatePoolAddress(address) external;
+    function updateLiquidityLogicAddress(address) external;
 
     function processGlobalStreamPairDeposit(address token) external;
     function processGlobalStreamPairWithdraw(address token) external;

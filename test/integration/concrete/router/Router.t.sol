@@ -1,30 +1,39 @@
 // // SPDX-License-Identifier: UNLICENSED
 // pragma solidity ^0.8.13;
 
-// import {Deploys} from "test/shared/Deploys.t.sol";
+import { DSMath } from "src/lib/DSMath.sol";
+import { PoolLogicLib } from "src/lib/PoolLogicLib.sol";
 
-// contract RouterTest is Deploys {
-//     function setUp() public virtual override {
-//         super.setUp();
-//         _createPools();
-//     }
+import { Deploys } from "test/shared/Deploys.t.sol";
 
-//     function _createPools() internal {
-//         vm.startPrank(owner);
+contract RouterTest is Deploys {
+    function setUp() public virtual override {
+        super.setUp();
+        _createPools();
+    }
 
-//         uint256 initialDToMintPoolA = 30e18;
-//         uint256 SLIPPAGE = 10;
+    function _createPools() internal {
+        vm.startPrank(owner);
 
-//         uint256 tokenAAmount = 10_000e18;
-//         uint256 tokenBAmount = 10_000e18;
+        uint256 initialDToMintPoolA = 30e18;
+        uint256 SLIPPAGE = 10;
 
-//         router.initGenesisPool(address(tokenA), tokenAAmount, initialDToMintPoolA);
+        uint256 tokenAAmount = 10_000 * 10 ** tokenA.decimals();
+        uint256 tokenBAmount = 10_000 * 10 ** tokenB.decimals();
 
-//         router.initPool(address(tokenB), address(tokenA), tokenBAmount, tokenAAmount);
+        router.initGenesisPool(address(tokenA), tokenAAmount, initialDToMintPoolA);
 
-//         // update pair slippage
-//         pool.updatePairSlippage(address(tokenA), address(tokenB), SLIPPAGE);
+        router.initPool(address(tokenB), address(tokenA), tokenBAmount, 10 * 10 ** tokenA.decimals());
 
-//         vm.stopPrank();
-//     }
-// }
+        //         // update pair slippage
+        pool.updatePairSlippage(address(tokenA), address(tokenB), SLIPPAGE);
+
+        vm.stopPrank();
+    }
+
+    function _getCurrentPrice(address tokenIn, address tokenOut) internal view returns (uint256) {
+        (,, uint256 reserveIn,,,, uint8 decimalsIn) = pool.poolInfo(tokenIn);
+        (,, uint256 reserveOut,,,, uint8 decimalsOut) = pool.poolInfo(tokenOut);
+        return PoolLogicLib.getExecutionPrice(reserveIn, reserveOut, decimalsIn, decimalsOut);
+    }
+}

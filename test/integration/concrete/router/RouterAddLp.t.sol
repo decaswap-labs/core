@@ -98,7 +98,8 @@
 //         assertEq(streamsAfterDual[frontAD].poolAStream.streamsRemaining, tokenStreamCount - 1);
 //         assertEq(streamsAfterDual[frontAD].poolBStream.streamsRemaining, dStreamCount - 1);
 
-//         assertEq(streamsAfterDual[frontAD].poolAStream.swapAmountRemaining, tokenAmountSingle - swapPerStreamInputToken);
+//         assertEq(streamsAfterDual[frontAD].poolAStream.swapAmountRemaining, tokenAmountSingle -
+// swapPerStreamInputToken);
 //         assertEq(
 //             streamsAfterDual[frontAD].poolBStream.swapAmountRemaining, dToTokenAmountSingle - swapPerStreamDToToken
 //         );
@@ -117,7 +118,8 @@
 //         assertEq(reserveAAfterA, reserveABeforeA + swapPerStreamDToToken);
 
 //         assertEq(
-//             poolOwnershipUnitsTotalAfterB, poolOwnershipUnitsTotalBeforeB + lpUnitsBeforeFromToken + lpUnitsBeforeFromD
+//             poolOwnershipUnitsTotalAfterB, poolOwnershipUnitsTotalBeforeB + lpUnitsBeforeFromToken +
+// lpUnitsBeforeFromD
 //         );
 //         assertEq(reserveDAfterB, reserveDBeforeB + dToTransfer);
 //         assertEq(reserveAAfterB, reserveABeforeB + swapPerStreamInputToken);
@@ -179,7 +181,8 @@
 //         (LiquidityStream[] memory streamsAfterDual, uint256 frontAD,) = pool.liquidityStreamQueue(pairIdSingle);
 
 //         assertEq(streamsAfterDual[frontAD].poolAStream.streamsRemaining, tokenStreamCount - 1);
-//         assertEq(streamsAfterDual[frontAD].poolAStream.swapAmountRemaining, tokenAmountSingle - swapPerStreamInputToken);
+//         assertEq(streamsAfterDual[frontAD].poolAStream.swapAmountRemaining, tokenAmountSingle -
+// swapPerStreamInputToken);
 
 //         assertLt(tokenBBalanceAfter, tokenBBalanceBefore);
 //         assertEq(tokenBBalanceAfter, tokenBBalanceBefore - tokenAmountSingle);
