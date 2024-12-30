@@ -82,7 +82,7 @@ contract LiquidityLogic is ILiquidityLogic {
     {
         bytes32 pairId = keccak256(abi.encodePacked(token, liquidityToken));
         // create liquidity stream for liquidityToken which is used to swap D
-        StreamDetails memory poolBStream = _createLiquidityStream(liquidityToken, liquidityTokenAmount);
+        StreamDetails memory poolBStream = _createLiquidityStreamForToken(liquidityToken, liquidityTokenAmount);
         // streamCount of `token` == streamCount of `liquidityToken`, because reservesD of `token` are 0 at this point
         uint256 swapPerStream = tokenAmount / poolBStream.streamCount;
         uint256 dustTokenAmount;
@@ -122,8 +122,8 @@ contract LiquidityLogic is ILiquidityLogic {
         external
     {
         bytes32 pairId = keccak256(abi.encodePacked(token, liquidityToken));
-        StreamDetails memory poolAStream = _createLiquidityStream(token, tokenAmount);
-        StreamDetails memory poolBStream = _createLiquidityStream(liquidityToken, liquidityTokenAmount);
+        StreamDetails memory poolAStream = _createLiquidityStreamForToken(token, tokenAmount);
+        StreamDetails memory poolBStream = _createLiquidityStreamForD(token, liquidityToken, liquidityTokenAmount);
 
         LiquidityStream memory currentLiquidityStream =
             LiquidityStream({ user: user, poolAStream: poolAStream, poolBStream: poolBStream, dAmountOut: 0 });
@@ -146,7 +146,7 @@ contract LiquidityLogic is ILiquidityLogic {
     {
         bytes32 pairId = keccak256(abi.encodePacked(token, liquidityToken));
         // poolAStream will be empty as tokens are added to poolB and D is streamed from B -> A
-        StreamDetails memory poolBStream = _createLiquidityStream(liquidityToken, liquidityTokenAmount);
+        StreamDetails memory poolBStream = _createLiquidityStreamForD(token, liquidityToken, liquidityTokenAmount);
         StreamDetails memory poolAStream;
         LiquidityStream memory currentLiquidityStream =
             LiquidityStream({ user: user, poolAStream: poolAStream, poolBStream: poolBStream, dAmountOut: 0 });
@@ -159,7 +159,7 @@ contract LiquidityLogic is ILiquidityLogic {
     function addOnlyTokenLiquidity(address token, address user, uint256 amount) external {
         // encoding address with itself so pairId is same here and in _streamLiquidity()
         bytes32 pairId = keccak256(abi.encodePacked(token, token));
-        StreamDetails memory poolAStream = _createLiquidityStream(token, amount);
+        StreamDetails memory poolAStream = _createLiquidityStreamForToken(token, amount);
         StreamDetails memory poolBStream;
         LiquidityStream memory currentLiquidityStream =
             LiquidityStream({ user: user, poolAStream: poolAStream, poolBStream: poolBStream, dAmountOut: 0 });
@@ -352,7 +352,7 @@ contract LiquidityLogic is ILiquidityLogic {
         return stream;
     }
 
-    function _createLiquidityStream(
+    function _createLiquidityStreamForToken(
         address token,
         uint256 amount
     )
@@ -371,6 +371,36 @@ contract LiquidityLogic is ILiquidityLogic {
         }
         streamDetails = StreamDetails({
             token: token,
+            amount: amount,
+            streamCount: streamCount,
+            streamsRemaining: streamCount,
+            swapPerStream: swapPerStream,
+            swapAmountRemaining: amount,
+            dustTokenAmount: dustTokenAmount
+        });
+    }
+
+    function _createLiquidityStreamForD(
+        address token,
+        address liquidityToken,
+        uint256 amount
+    )
+        internal
+        view
+        returns (StreamDetails memory streamDetails)
+    {
+        (uint256 reserveD,,,,,, uint8 decimals) = poolStates.poolInfo(liquidityToken);
+        bytes32 poolId = PoolLogicLib.getPoolId(token, liquidityToken);
+        uint256 streamCount = PoolLogicLib.calculateStreamCount(
+            amount, poolStates.pairSlippage(poolId), reserveD, STREAM_COUNT_PRECISION, decimals
+        );
+        uint256 swapPerStream = amount / streamCount;
+        uint256 dustTokenAmount;
+        if (amount % streamCount != 0) {
+            dustTokenAmount = amount - (streamCount * swapPerStream);
+        }
+        streamDetails = StreamDetails({
+            token: liquidityToken,
             amount: amount,
             streamCount: streamCount,
             streamsRemaining: streamCount,

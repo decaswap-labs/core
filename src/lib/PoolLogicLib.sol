@@ -80,7 +80,8 @@ library PoolLogicLib {
 
         uint256 scaledAmountIn = amountIn.scaleAmountToDecimals(decimalsIn, 18);
 
-        uint256 result = ((scaledAmountIn * streamCountPrecision) / (((streamCountPrecision - poolSlippage) * reserveD)));
+        uint256 result =
+            ((scaledAmountIn * streamCountPrecision) / (((streamCountPrecision - poolSlippage) * reserveD)));
         return result < 1 ? 1 : result;
     }
 
