@@ -168,6 +168,8 @@ contract PoolLogic is IPoolLogic {
                             currentSwap.tokenOut, currentSwap.user, currentSwap.amountOut
                         );
                     }
+
+                    emitSwapUpdated(currentSwap.swapID, currentSwap.streamsRemaining, currentSwap.swapPerStream);
                 } else if (currentSwap.typeOfOrder == 1 && currentSwap.executionPrice == currentExecPrice) {
                     currentSwap = _executeStreamAgainstPool(currentSwap);
                     currentSwap.typeOfOrder++;
@@ -194,6 +196,8 @@ contract PoolLogic is IPoolLogic {
                             currentSwap.tokenOut, currentSwap.user, currentSwap.amountOut
                         );
                     }
+
+                    emitSwapUpdated(currentSwap.swapID, currentSwap.streamsRemaining, currentSwap.swapPerStream);
                 }
 
                 unchecked {
@@ -713,6 +717,8 @@ contract PoolLogic is IPoolLogic {
         }
         currentSwap.amountOut += amountOut;
 
+        emitSwapAgainstPool(currentSwap.swapID, swapAmountIn, amountOut);
+
         return currentSwap;
     }
 
@@ -896,5 +902,37 @@ contract PoolLogic is IPoolLogic {
 
     function STREAM_COUNT_PRECISION() external view override returns (uint256) {
         return liquidityLogic.STREAM_COUNT_PRECISION();
+    }
+
+    function emitSwapEntered(
+        uint256 swapID,
+        bytes32 pairId,
+        uint256 swapAmount,
+        uint256 executionPrice,
+        address user,
+        uint8 typeOfOrder
+    )
+        internal
+    {
+        emit SwapEntered(swapID, pairId, swapAmount, executionPrice, user, typeOfOrder);
+    }
+
+    function emitSwapAgainstOrderBook(
+        uint256 swapIdIncoming,
+        uint256 swapIdOpposite,
+        uint256 settledAmountIn,
+        uint256 settledAmountOut
+    )
+        internal
+    {
+        emit SwapAgainstOrderBook(swapIdIncoming, swapIdOpposite, settledAmountIn, settledAmountOut);
+    }
+
+    function emitSwapUpdated(uint256 swapId, uint256 streamCountRemaining, uint256 swapPerStream) internal {
+        emit SwapUpdated(swapId, streamCountRemaining, swapPerStream);
+    }
+
+    function emitSwapAgainstPool(uint256 swapId, uint256 amountIn, uint256 amountOut) internal {
+        emit SwapAgainstPool(swapId, amountIn, amountOut);
     }
 }
