@@ -83,4 +83,6 @@ interface IPoolActions {
     function updatePoolOwnershipUnitsTotalRemoveLiqStream(bytes memory updatedPoolOwnershipUnitsTotalRemoveLiqData)
         external;
     function updateReservesRemoveLiqStream(bytes memory updatedReservesAndRemoveLiqData) external;
+
+    function updateIsValidCaller(address caller, bool isValid) external;
 }

@@ -59,5 +59,8 @@ contract Deploys is Test {
         poolLogic.updateLiquidityLogicAddress(address(liquidityLogic));
         liquidityLogic.updatePoolAddress(address(pool));
         liquidityLogic.updatePoolLogicAddress(address(poolLogic));
+        pool.updateIsValidCaller(address(poolLogic), true);
+        pool.updateIsValidCaller(address(liquidityLogic), true);
+        pool.updateIsValidCaller(address(router), true);
     }
 }

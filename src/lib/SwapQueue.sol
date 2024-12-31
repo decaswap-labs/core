@@ -23,7 +23,6 @@ struct LiquidityStream {
     address user;
     StreamDetails poolAStream;
     StreamDetails poolBStream;
-    uint256 dAmountOut; // how much D has been taken out from poolB
 }
 
 struct StreamDetails {

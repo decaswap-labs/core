@@ -8,6 +8,7 @@ import { Swap, LiquidityStream, StreamDetails, RemoveLiquidityStream, GlobalPool
 import { DSMath } from "src/lib/DSMath.sol";
 import { PoolLogicLib } from "src/lib/PoolLogicLib.sol";
 import { ILiquidityLogic } from "src/interfaces/ILiquidityLogic.sol";
+import { console } from "forge-std/console.sol";
 
 contract LiquidityLogic is ILiquidityLogic {
     using DSMath for uint256;
@@ -56,6 +57,7 @@ contract LiquidityLogic is ILiquidityLogic {
         uint256 initialDToMint
     )
         external
+        onlyPoolLogic
     {
         bytes memory initPoolParams = abi.encode(
             token,
@@ -79,6 +81,7 @@ contract LiquidityLogic is ILiquidityLogic {
         uint256 liquidityTokenAmount
     )
         external
+        onlyPoolLogic
     {
         bytes32 pairId = keccak256(abi.encodePacked(token, liquidityToken));
         // create liquidity stream for liquidityToken which is used to swap D
@@ -100,7 +103,7 @@ contract LiquidityLogic is ILiquidityLogic {
         });
 
         LiquidityStream memory currentLiquidityStream =
-            LiquidityStream({ user: user, poolAStream: poolAStream, poolBStream: poolBStream, dAmountOut: 0 });
+            LiquidityStream({ user: user, poolAStream: poolAStream, poolBStream: poolBStream });
 
         _settleCurrentAddLiquidity(currentLiquidityStream);
 
@@ -120,18 +123,23 @@ contract LiquidityLogic is ILiquidityLogic {
         uint256 liquidityTokenAmount
     )
         external
+        onlyPoolLogic
     {
-        bytes32 pairId = keccak256(abi.encodePacked(token, liquidityToken));
+        bytes32 pairId = bytes32(abi.encodePacked(token, liquidityToken));
         StreamDetails memory poolAStream = _createLiquidityStreamForToken(token, tokenAmount);
         StreamDetails memory poolBStream = _createLiquidityStreamForD(token, liquidityToken, liquidityTokenAmount);
 
         LiquidityStream memory currentLiquidityStream =
-            LiquidityStream({ user: user, poolAStream: poolAStream, poolBStream: poolBStream, dAmountOut: 0 });
+            LiquidityStream({ user: user, poolAStream: poolAStream, poolBStream: poolBStream });
         _settleCurrentAddLiquidity(currentLiquidityStream);
+        console.log("currentLiquidityStream.poolAStream.streamsRemaining", currentLiquidityStream.poolAStream.streamsRemaining);
+        console.log("currentLiquidityStream.poolBStream.streamsRemaining", currentLiquidityStream.poolBStream.streamsRemaining);
         if (
             currentLiquidityStream.poolAStream.streamsRemaining != 0
                 || currentLiquidityStream.poolBStream.streamsRemaining != 0
         ) {
+
+            console.log("enqueueLiquidityStream", "IN HERE");
             poolActions.enqueueLiquidityStream(pairId, currentLiquidityStream);
         }
     }
@@ -143,33 +151,34 @@ contract LiquidityLogic is ILiquidityLogic {
         uint256 liquidityTokenAmount
     )
         external
+        onlyPoolLogic
     {
         bytes32 pairId = keccak256(abi.encodePacked(token, liquidityToken));
         // poolAStream will be empty as tokens are added to poolB and D is streamed from B -> A
         StreamDetails memory poolBStream = _createLiquidityStreamForD(token, liquidityToken, liquidityTokenAmount);
         StreamDetails memory poolAStream;
         LiquidityStream memory currentLiquidityStream =
-            LiquidityStream({ user: user, poolAStream: poolAStream, poolBStream: poolBStream, dAmountOut: 0 });
+            LiquidityStream({ user: user, poolAStream: poolAStream, poolBStream: poolBStream });
         _settleCurrentAddLiquidity(currentLiquidityStream);
         if (currentLiquidityStream.poolBStream.streamsRemaining != 0) {
             poolActions.enqueueLiquidityStream(pairId, currentLiquidityStream);
         }
     }
 
-    function addOnlyTokenLiquidity(address token, address user, uint256 amount) external {
+    function addOnlyTokenLiquidity(address token, address user, uint256 amount) external onlyPoolLogic {
         // encoding address with itself so pairId is same here and in _streamLiquidity()
         bytes32 pairId = keccak256(abi.encodePacked(token, token));
         StreamDetails memory poolAStream = _createLiquidityStreamForToken(token, amount);
         StreamDetails memory poolBStream;
         LiquidityStream memory currentLiquidityStream =
-            LiquidityStream({ user: user, poolAStream: poolAStream, poolBStream: poolBStream, dAmountOut: 0 });
+            LiquidityStream({ user: user, poolAStream: poolAStream, poolBStream: poolBStream });
         _settleCurrentAddLiquidity(currentLiquidityStream);
         if (currentLiquidityStream.poolAStream.streamsRemaining != 0) {
             poolActions.enqueueLiquidityStream(pairId, currentLiquidityStream);
         }
     }
 
-    function removeLiquidity(address token, address user, uint256 lpUnits) external {
+    function removeLiquidity(address token, address user, uint256 lpUnits) external onlyPoolLogic {
         (uint256 reserveD,,,,,, uint8 decimals) = poolStates.poolInfo(address(token));
         uint256 streamCount = PoolLogicLib.calculateStreamCount(
             lpUnits, poolStates.globalSlippage(), reserveD, STREAM_COUNT_PRECISION, decimals
@@ -202,6 +211,7 @@ contract LiquidityLogic is ILiquidityLogic {
         uint256 swapPerStream
     )
         external
+        onlyPoolLogic
     {
         bytes32 pairId = bytes32(abi.encodePacked(token, token));
 
@@ -220,7 +230,7 @@ contract LiquidityLogic is ILiquidityLogic {
         _handleDPoolObject(localStream);
     }
 
-    function withdrawFromGlobalPool(address token, address user, uint256 amount) external {
+    function withdrawFromGlobalPool(address token, address user, uint256 amount) external onlyPoolLogic {
         bytes32 pairId = bytes32(abi.encodePacked(token, token));
 
         (uint256 reserveD,,,,,, uint8 decimals) = poolStates.poolInfo(address(token));
@@ -289,6 +299,11 @@ contract LiquidityLogic is ILiquidityLogic {
         (uint256 poolANewStreamsRemaining, uint256 poolAReservesToAdd, uint256 lpUnitsAToMint) =
             _streamToken(liquidityStream);
         (uint256 poolBNewStreamsRemaining, uint256 poolBReservesToAdd, uint256 changeInD) = _streamD(liquidityStream);
+
+        liquidityStream.poolAStream.streamsRemaining = poolANewStreamsRemaining;
+        liquidityStream.poolBStream.streamsRemaining = poolBNewStreamsRemaining;
+        liquidityStream.poolAStream.swapAmountRemaining = liquidityStream.poolAStream.swapAmountRemaining - liquidityStream.poolAStream.swapPerStream;
+        liquidityStream.poolBStream.swapAmountRemaining = liquidityStream.poolBStream.swapAmountRemaining - liquidityStream.poolBStream.swapPerStream;
 
         uint256 lpUnitsFromStreamD;
         if (changeInD > 0) {
@@ -375,7 +390,7 @@ contract LiquidityLogic is ILiquidityLogic {
             streamCount: streamCount,
             streamsRemaining: streamCount,
             swapPerStream: swapPerStream,
-            swapAmountRemaining: amount,
+            swapAmountRemaining: swapPerStream * streamCount,
             dustTokenAmount: dustTokenAmount
         });
     }
@@ -405,7 +420,7 @@ contract LiquidityLogic is ILiquidityLogic {
             streamCount: streamCount,
             streamsRemaining: streamCount,
             swapPerStream: swapPerStream,
-            swapAmountRemaining: amount,
+            swapAmountRemaining: swapPerStream * streamCount,
             dustTokenAmount: dustTokenAmount
         });
     }
@@ -489,8 +504,10 @@ contract LiquidityLogic is ILiquidityLogic {
         // both poolStreamA and poolStreamB tokens should be same in case of single sided liquidity
         (uint256 reserveD_B,, uint256 reserveA_B,,,,) = poolStates.poolInfo(liqStream.poolBStream.token);
         poolBNewStreamsRemaining = liqStream.poolBStream.streamsRemaining;
+        console.log("poolBNewStreamsRemaining", poolBNewStreamsRemaining);
         if (liqStream.poolBStream.swapAmountRemaining != 0) {
             poolBNewStreamsRemaining--;
+            console.log("poolBNewStreamsRemaining", poolBNewStreamsRemaining);
             poolBReservesToAdd = liqStream.poolBStream.swapPerStream;
             (changeInD,) =
                 PoolLogicLib.getSwapAmountOut(liqStream.poolBStream.swapPerStream, reserveA_B, 0, reserveD_B, 0);
@@ -506,9 +523,11 @@ contract LiquidityLogic is ILiquidityLogic {
         (uint256 reserveD_A, uint256 poolOwnershipUnitsTotal_A, uint256 reserveA_A,,,,) =
             poolStates.poolInfo(liqStream.poolAStream.token);
         poolANewStreamsRemaining = liqStream.poolAStream.streamsRemaining;
+        console.log("poolANewStreamsRemaining", poolANewStreamsRemaining);
 
         if (liqStream.poolAStream.swapAmountRemaining != 0) {
             poolANewStreamsRemaining--;
+            console.log("poolANewStreamsRemaining", poolANewStreamsRemaining);
             poolAReservesToAdd = liqStream.poolAStream.swapPerStream;
             lpUnitsAToMint = PoolLogicLib.calculateLpUnitsToMint(
                 poolOwnershipUnitsTotal_A, poolAReservesToAdd, poolAReservesToAdd + reserveA_A, 0, reserveD_A
