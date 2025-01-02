@@ -167,7 +167,7 @@ contract LiquidityLogic is ILiquidityLogic {
 
     function addOnlyTokenLiquidity(address token, address user, uint256 amount) external onlyPoolLogic {
         // encoding address with itself so pairId is same here and in _streamLiquidity()
-        bytes32 pairId = keccak256(abi.encodePacked(token, token));
+        bytes32 pairId = bytes32(abi.encodePacked(token, token));
         StreamDetails memory poolAStream = _createLiquidityStreamForToken(token, amount);
         StreamDetails memory poolBStream;
         LiquidityStream memory currentLiquidityStream =
@@ -300,6 +300,7 @@ contract LiquidityLogic is ILiquidityLogic {
             _streamToken(liquidityStream);
         (uint256 poolBNewStreamsRemaining, uint256 poolBReservesToAdd, uint256 changeInD) = _streamD(liquidityStream);
 
+        // TODO: Need to optimize this
         liquidityStream.poolAStream.streamsRemaining = poolANewStreamsRemaining;
         liquidityStream.poolBStream.streamsRemaining = poolBNewStreamsRemaining;
         liquidityStream.poolAStream.swapAmountRemaining = liquidityStream.poolAStream.swapAmountRemaining - liquidityStream.poolAStream.swapPerStream;

@@ -116,72 +116,97 @@ contract RouterTest is Deploys {
         vm.stopPrank();
     }
 
-    // function test_addToPoolSingle_success() public {
-    //     uint256 tokenAReserve = 100e18;
-    //     uint256 dToMint = 10e18;
-    //     _initGenesisPool(dToMint, tokenAReserve);
+    function test_addToPoolSingle_success() public {
+        uint256 tokenAReserve = 100e18;
+        uint256 dToMint = 10e18;
+        _initGenesisPool(dToMint, tokenAReserve, tokenA);
+        _initGenesisPool(dToMint, tokenAReserve, tokenB);
 
-    //     vm.startPrank(owner);
-    //     uint256 tokenAmount = 100e18;
-    //     uint256 dToTokenAmount = 50e18;
+        vm.startPrank(owner);
 
-    //     tokenB.approve(address(router), tokenAmount);
-    //     tokenA.approve(address(router), dToTokenAmount);
+        uint256 inputTokenAmount = 50e18;
+        // uint256 liquidityTokenAmount = 25e18;
 
-    //     router.initPool(address(tokenB), address(tokenA), tokenAmount, dToTokenAmount);
+        tokenA.approve(address(router), inputTokenAmount);
+        // tokenB.approve(address(router), liquidityTokenAmount);
 
-    //     bytes32 pairId = keccak256(abi.encodePacked(address(tokenB), address(tokenA)));
-    //     (LiquidityStream[] memory streams, uint256 front,) = pool.liquidityStreamQueue(pairId);
+        (uint256 reserveD_Before_A, uint256 poolOwnershipUnitsTotal_Before_A, uint256 reserveA_Before_A,,,,) =
+            pool.poolInfo(address(tokenA));
 
-    //     for (uint8 i = 0; i < streams[front].poolBStream.streamsRemaining; i++) {
-    //         router.processLiqStream(address(tokenB), address(tokenA));
-    //     }
-    //     (LiquidityStream[] memory streamsAfter, uint256 frontAfter,) = pool.liquidityStreamQueue(pairId);
+        // (uint256 reserveD_Before_B, uint256 poolOwnershipUnitsTotal_Before_B, uint256 reserveA_Before_B,,,,) =
+        //     pool.poolInfo(address(tokenB));
 
-    //     assertEq(streamsAfter[frontAfter - 1].poolBStream.streamsRemaining, 0);
-    //     assertEq(streamsAfter[frontAfter - 1].poolAStream.streamsRemaining, 0);
-    //     assertEq(streamsAfter[frontAfter - 1].poolAStream.swapAmountRemaining, 0);
-    //     assertEq(streamsAfter[frontAfter - 1].poolBStream.swapAmountRemaining, 0);
+        uint256 inputTokenStreamCount =
+            PoolLogicLib.calculateStreamCount(inputTokenAmount, pool.globalSlippage(), reserveD_Before_A, liquidityLogic.STREAM_COUNT_PRECISION(), tokenA.decimals());
+        uint256 swapPerStreamInputToken = inputTokenAmount / inputTokenStreamCount;
 
-    //     uint256 tokenAmountSingle = 50e18;
+        // bytes32 poolId = PoolLogicLib.getPoolId(address(tokenA), address(tokenB));
+        // uint256 liquidityTokenStreamCount =
+        //     PoolLogicLib.calculateStreamCount(liquidityTokenAmount, pool.pairSlippage(poolId), reserveD_Before_B, liquidityLogic.STREAM_COUNT_PRECISION(), tokenB.decimals());
+        // uint256 swapPerStreamLiquidityToken = liquidityTokenAmount / liquidityTokenStreamCount;
 
-    //     tokenB.approve(address(router), tokenAmountSingle);
+        // console.log("inputTokenStreamCount", inputTokenStreamCount);
+        // console.log("liquidityTokenStreamCount", liquidityTokenStreamCount);
 
-    //     (uint256 reserveDBeforeB, uint256 poolOwnershipUnitsTotalBeforeB, uint256 reserveABeforeB,,,) =
-    //         pool.poolInfo(address(tokenB));
-    //     uint256 tokenStreamCount =
-    //         poolLogic.calculateStreamCount(tokenAmountSingle, pool.globalSlippage(), reserveDBeforeB);
-    //     uint256 swapPerStreamInputToken = tokenAmountSingle / tokenStreamCount;
+        // (uint256 dToTransfer,) =
+        //     PoolLogicLib.getSwapAmountOut(swapPerStreamLiquidityToken, reserveA_Before_B, reserveA_Before_A, reserveD_Before_B, reserveD_Before_A);
 
-    //     uint256 lpUnitsBeforeFromToken = poolLogic.calculateLpUnitsToMint(
-    //         poolOwnershipUnitsTotalBeforeB,
-    //         swapPerStreamInputToken,
-    //         swapPerStreamInputToken + reserveABeforeB,
-    //         0,
-    //         reserveDBeforeB
-    //     );
+        uint256 lpUnitsBeforeFromToken = PoolLogicLib.calculateLpUnitsToMint(
+            poolOwnershipUnitsTotal_Before_A,
+            swapPerStreamInputToken,
+            swapPerStreamInputToken + reserveA_Before_A,
+            0,
+            reserveD_Before_A
+        );
+        // uint256 lpUnitsBeforeFromD = PoolLogicLib.calculateLpUnitsToMint(
+        //     lpUnitsBeforeFromToken + poolOwnershipUnitsTotal_Before_A,
+        //     0,
+        //     swapPerStreamInputToken + reserveA_Before_A,
+        //     dToTransfer,
+        //     reserveD_Before_A
+        // );
 
-    //     uint256 tokenBBalanceBefore = tokenB.balanceOf(owner);
+        uint256 tokenABalanceBefore = tokenA.balanceOf(owner);
+        // uint256 tokenBBalanceBefore = tokenB.balanceOf(owner);
 
-    //     router.addToPoolSingle(address(tokenB), tokenAmountSingle);
 
-    //     uint256 tokenBBalanceAfter = tokenB.balanceOf(owner);
+        router.addOnlyTokenLiquidity(address(tokenA), inputTokenAmount);
 
-    //     bytes32 pairIdSingle = keccak256(abi.encodePacked(address(tokenB), address(tokenB)));
-    //     (LiquidityStream[] memory streamsAfterDual, uint256 frontAD,) = pool.liquidityStreamQueue(pairIdSingle);
+        uint256 tokenABalanceAfter = tokenA.balanceOf(owner);
+        // uint256 tokenBBalanceAfter = tokenB.balanceOf(owner);
 
-    //     assertEq(streamsAfterDual[frontAD].poolAStream.streamsRemaining, tokenStreamCount - 1);
-    //     assertEq(streamsAfterDual[frontAD].poolAStream.swapAmountRemaining, tokenAmountSingle - swapPerStreamInputToken);
+        bytes32 pairId = bytes32(abi.encodePacked(address(tokenA), address(tokenA)));
+        (LiquidityStream[] memory liquidityStreams) = pool.liquidityStreamQueue(pairId);
+        console.log(liquidityStreams.length);
+        assertEq(liquidityStreams[0].poolAStream.streamsRemaining, inputTokenStreamCount - 1);
+        assertEq(liquidityStreams[0].poolBStream.streamsRemaining, 0);
 
-    //     assertLt(tokenBBalanceAfter, tokenBBalanceBefore);
-    //     assertEq(tokenBBalanceAfter, tokenBBalanceBefore - tokenAmountSingle);
+        assertEq(liquidityStreams[0].poolAStream.swapAmountRemaining, inputTokenAmount - swapPerStreamInputToken);
+            // assertEq(
+            //     liquidityStreams[0].poolBStream.swapAmountRemaining, liquidityTokenAmount - swapPerStreamLiquidityToken
+            // );
 
-    //     (, uint256 poolOwnershipUnitsTotalAfterB, uint256 reserveAAfterB,,,) = pool.poolInfo(address(tokenB));
+        assertLt(tokenABalanceAfter, tokenABalanceBefore);
+        assertEq(tokenABalanceAfter, tokenABalanceBefore - inputTokenAmount);
+        // assertLt(tokenBBalanceAfter, tokenBBalanceBefore);
+        // assertEq(tokenBBalanceAfter, tokenBBalanceBefore - liquidityTokenAmount);
 
-    //     assertEq(poolOwnershipUnitsTotalAfterB, poolOwnershipUnitsTotalBeforeB + lpUnitsBeforeFromToken);
-    //     assertEq(reserveAAfterB, reserveABeforeB + swapPerStreamInputToken);
-    //     vm.stopPrank();
-    // }
+        
+        (,uint256 poolOwnershipUnitsTotal_After_A, uint256 reserveA_After_A,,,,) = pool.poolInfo(address(tokenA));
+        // (uint256 reserveD_After_B,, uint256 reserveA_After_B,,,,) =
+        //     pool.poolInfo(address(tokenB));
+
+
+        // assertEq(reserveD_After_B, reserveD_Before_B - dToTransfer);
+        // assertEq(reserveA_After_B, reserveA_Before_B + swapPerStreamLiquidityToken);
+
+        assertEq(
+            poolOwnershipUnitsTotal_After_A, poolOwnershipUnitsTotal_Before_A + lpUnitsBeforeFromToken
+        );
+        // assertEq(reserveD_After_A, reserveD_Before_A + dToTransfer);
+        assertEq(reserveA_After_A, reserveA_Before_A + swapPerStreamInputToken);
+        vm.stopPrank();
+    }
 
     // function test_streamDToPool_success() public {
     //     uint256 tokenAReserve = 100e18;
