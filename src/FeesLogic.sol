@@ -439,13 +439,17 @@ contract FeesLogic is IFeesLogic/**, ReentrancyGuard*/ {
 
     /**
      * @dev _doctorBob
-     *          the result of hybridising masterchef and epoch based rewards,
+     *          the result of streaming epoch based rewards,
      *          specifically adapted to operate in a streaming swap environment.
      *          the algorithm iterates over two arrays of epochs and pUnits
      *          wrt the calling liquidity provider and reads the relative portion 
+     *          from the state of the contract.
+     * 
+     *          the cost is approximately 25k gas for the call + 6k gas 
+     *          for each epoch iterated.
      * 
      * @param pool pool adddress
-     * @param lp lp claimant
+     * @param lp claimant
      */
     function _doctorBob(address pool, address lp) internal returns (uint256) {
         // lp specific information
