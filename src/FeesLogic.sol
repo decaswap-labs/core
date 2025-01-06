@@ -20,10 +20,17 @@ contract FeesLogic is IFeesLogic/**, ReentrancyGuard*/ {
      * @dev poolEpochCounter returns the epoch value for a pool.
      * @dev poolEpochPDepth pool address to epoch to pDepth.
      * @dev instaBotFees pool to bot address to fees accumulated during the execution of streams.
+     * 
      * @dev pools array of pool addresses.
      * 
      * @dev POOL_ADDRESS address of the pool contract.
      * @dev POOL_LOGIC_ADDRESS address of the pool logic contract.
+     * @dev DECA_ADDRESS address of the DECA token contract.
+     * @dev BOT_FEE_BPS bot fee basis points.
+     * @dev LP_FEE_BPS LP fee basis points.
+     * @dev GLOBAL_FEE_PERCENTAGE global fee percentage.
+     * @dev POOL_LP_FEE_PERCENTAGE pool LP fee percentage.
+     * @dev DECA_FEE_PERCENTAGE DECA fee percentage.
      * 
      * @dev all storage should be migrated to the Pool contract
      */
@@ -33,15 +40,12 @@ contract FeesLogic is IFeesLogic/**, ReentrancyGuard*/ {
     */
     mapping(address => mapping(address => uint32[])) public poolLpEpochs;
     mapping(address => mapping(address => uint32[])) public poolLpPUnits;
-    /** */
-
-    // mapping(address => mapping(address => LPDeclaration.Declaration)) public poolLpDeclarations;
     mapping(address => mapping(uint32 => uint256)) public poolEpochCounterFees;
     mapping(address => mapping(uint32 => uint256)) public poolEpochCounterFeesHistory;
-
     mapping(address => uint32) public poolEpochCounter;
     mapping(address => mapping(uint32 => uint32)) public poolEpochPDepth;
     mapping(address => mapping(address => uint256)) public instaBotFees;
+
     address[] public pools;
 
     address public override POOL_ADDRESS;
@@ -171,12 +175,13 @@ contract FeesLogic is IFeesLogic/**, ReentrancyGuard*/ {
         _updateLpDeclaration(_liquidityProvider, _pool, _pUnits, isAdd);
     }
 
-    //  * @dev _debitLpFeesFromStream 
-    //  *          should be called on the execution of amount out calculations and price execution
-    //  *          taking 15BPS of the amount out
-    //  * @param pool address of the token which the fees are accumulated in
-    //  * @param feeInA the amount of A to be taken from the stream
-    //  */
+    /**
+     * @dev _debitLpFeesFromStream 
+     *          should be called on the execution of amount out calculations and price execution
+     *          taking 15BPS of the amount out
+     * @param pool address of the token which the fees are accumulated in
+     * @param feeInA the amount of A to be taken from the stream
+     */
     function debitLpFeesFromSwapStream(address pool, uint256 feeInA) external {
         _debitLpFeesFromSwapStream(pool, feeInA);
     }
@@ -312,16 +317,13 @@ contract FeesLogic is IFeesLogic/**, ReentrancyGuard*/ {
      *
      */
     function _doctorBob(address pool, address lp) internal view returns (uint256) {
-        // lp specific information]
         // @audit need to manage the state of old epochFees to avoid over withdrawal potential
         uint32[] memory lpEpochs = poolLpEpochs[pool][lp];
         uint32[] memory lpPUnits = poolLpPUnits[pool][lp];
 
-        // sc specific information
         uint32 currentEpoch = poolEpochCounter[pool];
         uint256 phases = lpEpochs.length;
 
-        // algo specific information
         uint256 lastIteratedIndex = 0;
         uint256 lastPUnits;
         uint256 accumulator;
@@ -383,7 +385,6 @@ contract FeesLogic is IFeesLogic/**, ReentrancyGuard*/ {
      * 
      */
     function _closeLpDeclaration(address _pool, address _liquidityProvider, uint32 currentEpoch, uint32 lastPUnits) internal {
-        // we close the declaration by pushiing a 0 into the end of the array
         delete poolLpEpochs[_pool][_liquidityProvider];
         poolLpEpochs[_pool][_liquidityProvider].push(currentEpoch);
         delete poolLpPUnits[_pool][_liquidityProvider];
