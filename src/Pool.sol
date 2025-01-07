@@ -311,8 +311,12 @@ contract Pool is IPool, Ownable {
     function updateReservesWhenStreamingLiq(bytes memory updatedReservesParams) external onlyValidCaller {
         (address tokenA, address tokenB, uint256 reserveA_A, uint256 reserveA_B, uint256 changeInD) =
             abi.decode(updatedReservesParams, (address, address, uint256, uint256, uint256));
+
+        console.log("tokenA", tokenA);
         mapToken_reserveA[tokenA] += reserveA_A;
+        console.log("changeInD", mapToken_reserveD[tokenA]);
         mapToken_reserveD[tokenA] += changeInD;
+        console.log("changeInD", mapToken_reserveD[tokenA]);
 
         mapToken_reserveA[tokenB] += reserveA_B;
         mapToken_reserveD[tokenB] -= changeInD;
@@ -391,8 +395,10 @@ contract Pool is IPool, Ownable {
     // updatedLpUnits encoding format => (address token, address user, uint lpUnits)
     function updateUserLpUnits(bytes memory updatedLpUnits) external onlyValidCaller {
         (address token, address user, uint256 lpUnits) = abi.decode(updatedLpUnits, (address, address, uint256));
+        console.log(userLpUnitInfo[user][token]);
         userLpUnitInfo[user][token] += lpUnits;
         mapToken_poolOwnershipUnitsTotal[token] += lpUnits;
+        console.log(userLpUnitInfo[user][token]);
     }
 
     function updateRemoveLiqStream(
@@ -557,11 +563,11 @@ contract Pool is IPool, Ownable {
             abi.decode(addLiqParams, (address, address, uint256, uint256, uint256, uint256));
 
         mapToken_reserveA[token] += amount;
-        mapToken_poolOwnershipUnitsTotal[token] += newLpUnits;
+        // mapToken_poolOwnershipUnitsTotal[token] += newLpUnits;
         // @note may or may not be needed here.
         mapToken_poolFeeCollected[token] += poolFeeCollected;
 
-        userLpUnitInfo[user][token] += newLpUnits;
+        // userLpUnitInfo[user][token] += newLpUnits;
 
         // emit LiquidityAdded(user, token, amount, newLpUnits, newDUnits);
     }

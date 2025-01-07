@@ -1,9 +1,9 @@
 // // SPDX-License-Identifier: UNLICENSED
 // pragma solidity ^0.8.13;
 
-// import {Deploys} from "test/shared/DeploysForRouter.t.sol";
-// import {IRouterErrors} from "src/interfaces/router/IRouterErrors.sol";
-// import {LiquidityStream, RemoveLiquidityStream} from "src/lib/SwapQueue.sol";
+// import { Deploys } from "test/shared/DeploysForRouter.t.sol";
+// import { IRouterErrors } from "src/interfaces/router/IRouterErrors.sol";
+// import { LiquidityStream, RemoveLiquidityStream } from "src/lib/SwapQueue.sol";
 // import "forge-std/Test.sol";
 
 // contract RouterTest is Deploys {
@@ -142,8 +142,7 @@
 
 //         assertEq(reserveDA_After, reserveD);
 //         assertEq(
-//             poolOwnershipUnitsTotal_After, poolOwnershipUnitsTotal - (expectedConversionPerStream *
-// expectedStreamCount)
+//             poolOwnershipUnitsTotal_After, poolOwnershipUnitsTotal - (expectedConversionPerStream * expectedStreamCount)
 //         );
 //         assertEq(reserveA_After, reserveA - (expectedTokenAmountOutPerStream * expectedStreamCount));
 //         assertEq(initialDToMint_After, initialDToMint);
@@ -186,8 +185,7 @@
 
 //         uint256 userLpUnits_poolB = pool.userLpUnitInfo(owner, address(tokenB));
 //         uint256 userTokenBalanceBefore = tokenB.balanceOf(owner);
-//         uint256 expectedStreamCount = poolLogic.calculateStreamCount(userLpUnits_poolB, pool.globalSlippage(),
-// reserveD);
+//         uint256 expectedStreamCount = poolLogic.calculateStreamCount(userLpUnits_poolB, pool.globalSlippage(), reserveD);
 //         uint256 expectedConversionPerStream = userLpUnits_poolB / expectedStreamCount;
 //         uint256 expectedTokenAmountOutPerStream =
 //             poolLogic.calculateAssetTransfer(expectedConversionPerStream, reserveA, poolOwnershipUnitsTotal);
@@ -197,8 +195,7 @@
 //         }
 //         router.removeLiquidity(address(tokenB), userLpUnits_poolB);
 
-//         (RemoveLiquidityStream[] memory removeLiqStreams, uint256 removeLiqStreamfront, uint256 removeLiqStreamback)
-// =
+//         (RemoveLiquidityStream[] memory removeLiqStreams, uint256 removeLiqStreamfront, uint256 removeLiqStreamback) =
 //             pool.removeLiquidityStreamQueue(address(tokenB));
 //         RemoveLiquidityStream memory removeLiqStream = removeLiqStreams[removeLiqStreamfront];
 
@@ -266,8 +263,7 @@
 
 //         uint256 userLpUnits_poolB = pool.userLpUnitInfo(owner, address(tokenB));
 //         uint256 userTokenBalanceBefore = tokenB.balanceOf(owner);
-//         uint256 expectedStreamCount = poolLogic.calculateStreamCount(userLpUnits_poolB, pool.globalSlippage(),
-// reserveD);
+//         uint256 expectedStreamCount = poolLogic.calculateStreamCount(userLpUnits_poolB, pool.globalSlippage(), reserveD);
 //         uint256 expectedConversionPerStream = userLpUnits_poolB / expectedStreamCount;
 //         uint256 dust = userLpUnits_poolB % expectedStreamCount;
 //         if (dust != 0) {
@@ -289,8 +285,7 @@
 //             reservesACached -= expectedAmountOut;
 //         }
 
-//         (RemoveLiquidityStream[] memory removeLiqStreams, uint256 removeLiqStreamfront, uint256 removeLiqStreamback)
-// =
+//         (RemoveLiquidityStream[] memory removeLiqStreams, uint256 removeLiqStreamfront, uint256 removeLiqStreamback) =
 //             pool.removeLiquidityStreamQueue(address(tokenB));
 //         RemoveLiquidityStream memory removeLiqStream = removeLiqStreams[removeLiqStreamfront - 1];
 

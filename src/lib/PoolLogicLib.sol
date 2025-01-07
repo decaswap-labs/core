@@ -128,7 +128,7 @@ library PoolLogicLib {
         // p = P * (dA + Da + 2da)/(dA + Da + 2DA)
         if (lpUnitsDepth == 0 && dIncoming == 0) {
             return amount;
-        } else if (lpUnitsDepth == 0 && amount == 0) {
+        } else if (lpUnitsDepth == 0 || amount == 0) {
             return dIncoming;
         }
 

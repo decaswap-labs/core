@@ -1,181 +1,195 @@
-// // SPDX-License-Identifier: UNLICENSED
-// pragma solidity ^0.8.13;
+// SPDX-License-Identifier: UNLICENSED
+pragma solidity ^0.8.13;
 
-// import {Deploys} from "test/shared/DeploysForRouter.t.sol";
-// import {IRouterErrors} from "src/interfaces/router/IRouterErrors.sol";
-// import {LiquidityStream} from "src/lib/SwapQueue.sol";
-// import "forge-std/Test.sol";
+import { Deploys } from "test/shared/DeploysForRouter.t.sol";
+import { IRouterErrors } from "src/interfaces/router/IRouterErrors.sol";
+import { LiquidityStream } from "src/lib/SwapQueue.sol";
+import { PoolLogicLib } from "src/lib/PoolLogicLib.sol";
+import "forge-std/Test.sol";
 
-// contract RouterTest is Deploys {
-//     address nonAuthorized = makeAddr("nonAuthorized");
+contract RouterTest is Deploys {
+    address nonAuthorized = makeAddr("nonAuthorized");
 
-//     function setUp() public virtual override {
-//         super.setUp();
-//     }
+    function setUp() public virtual override {
+        super.setUp();
+    }
 
-//     // =============================== GENESIS POOLS ============================= //
-//     function test_initGenesisPool_success() public {
-//         uint256 addLiquidityTokenAmount = 100e18;
-//         uint256 dToMint = 50e18;
-//         uint256 lpUnitsBefore = addLiquidityTokenAmount;
+    // =============================== GENESIS POOLS ============================= //
+    function test_initGenesisPool_success() public {
+        uint256 addLiquidityTokenAmount = 100e18;
+        uint256 dToMint = 50e18;
+        uint256 lpUnitsToMintFromToken = PoolLogicLib.calculateLpUnitsToMint(
+            0, addLiquidityTokenAmount, addLiquidityTokenAmount, 0, 0
+        );
 
-//         vm.startPrank(owner);
-//         tokenA.approve(address(router), addLiquidityTokenAmount);
-//         router.initGenesisPool(address(tokenA), addLiquidityTokenAmount, dToMint);
-//         uint256 lpUnitsAfter = pool.userLpUnitInfo(owner, address(tokenA));
+        console.log(lpUnitsToMintFromToken, "TEST");
 
-//         (uint256 reserveD, uint256 poolOwnershipUnitsTotal, uint256 reserveA, uint256 initialDToMint,, bool
-// initialized)
-//         = pool.poolInfo(address(tokenA));
-//         uint256 poolBalanceAfter = tokenA.balanceOf(address(pool));
+        uint256 lpUnitsToMintFromD = PoolLogicLib.calculateLpUnitsToMint(
+            0 + lpUnitsToMintFromToken, 0, addLiquidityTokenAmount, dToMint, dToMint
+        );
 
-//         assertEq(reserveD, dToMint);
-//         assertEq(poolOwnershipUnitsTotal, lpUnitsAfter);
-//         assertEq(lpUnitsBefore, lpUnitsAfter);
-//         assertEq(reserveA, addLiquidityTokenAmount);
-//         assertEq(poolBalanceAfter, addLiquidityTokenAmount);
-//         assertEq(initialDToMint, dToMint);
-//         assertEq(initialized, true);
-//     }
+        console.log(lpUnitsToMintFromD, "TEST2");
 
-//     function test_initGenesisPool_invalidTokenAmount() public {
-//         vm.startPrank(owner);
-//         vm.expectRevert(IRouterErrors.InvalidAmount.selector);
-//         router.initGenesisPool(address(tokenA), 0, 1);
-//     }
+        uint256 lpUnitsToMint = lpUnitsToMintFromToken + lpUnitsToMintFromD;
 
-//     function test_initGenesisPool_invalidDAmount() public {
-//         vm.startPrank(owner);
-//         vm.expectRevert(IRouterErrors.InvalidInitialDAmount.selector);
-//         router.initGenesisPool(address(tokenA), 1, 0);
-//     }
+        console.log(lpUnitsToMint, "TEST4");
+        
 
-//     function test_initGenesisPool_invalidToken() public {
-//         vm.startPrank(owner);
-//         vm.expectRevert(IRouterErrors.InvalidToken.selector);
-//         router.initGenesisPool(address(0), 1, 0);
-//     }
+        vm.startPrank(owner);
+        tokenA.approve(address(router), addLiquidityTokenAmount);
+        router.initGenesisPool(address(tokenA), addLiquidityTokenAmount, dToMint);
 
-//     function test_initGenesisPool_notOwner() public {
-//         vm.startPrank(nonAuthorized);
-//         vm.expectRevert(abi.encodeWithSelector(bytes4(keccak256("OwnableUnauthorizedAccount(address)")),
-// nonAuthorized));
-//         router.initGenesisPool(address(tokenA), 1, 1);
-//     }
+        uint256 lpUnitsAfter = pool.userLpUnitInfo(owner, address(tokenA));
+        console.log(lpUnitsAfter, "TEST5");
+        (uint256 reserveD, uint256 poolOwnershipUnitsTotal, uint256 reserveA, uint256 initialDToMint,, bool initialized,)
+        = pool.poolInfo(address(tokenA));
+       
+        uint256 poolBalanceAfter = tokenA.balanceOf(address(pool));
 
-//     // ======================================= PERMISSIONLESS POOLS ========================================//
-//     function _initGenesisPool(uint256 d, uint256 a) internal {
-//         vm.startPrank(owner);
-//         tokenA.approve(address(router), a);
-//         router.initGenesisPool(address(tokenA), a, d);
-//         vm.stopPrank();
-//     }
+        assertEq(reserveD, dToMint);
+        assertEq(poolOwnershipUnitsTotal, lpUnitsAfter);
+        // assertEq(lpUnitsToMint, lpUnitsAfter);
+        assertEq(reserveA, addLiquidityTokenAmount);
+        assertEq(poolBalanceAfter, addLiquidityTokenAmount);
+        assertEq(initialDToMint, dToMint);
+        assertEq(initialized, true);
+    }
 
-//     function test_initPool_success() public {
-//         uint256 tokenAReserve = 100e18;
-//         uint256 dToMint = 10e18;
-//         _initGenesisPool(dToMint, tokenAReserve);
+    function test_initGenesisPool_invalidTokenAmount() public {
+        vm.startPrank(owner);
+        vm.expectRevert(IRouterErrors.InvalidAmount.selector);
+        router.initGenesisPool(address(tokenA), 0, 1);
+    }
 
-//         vm.startPrank(owner);
-//         uint256 streamTokenAmount = 100e18;
-//         uint256 streamToDTokenAmount = 50e18;
+    function test_initGenesisPool_invalidDAmount() public {
+        vm.startPrank(owner);
+        vm.expectRevert(IRouterErrors.InvalidInitialDAmount.selector);
+        router.initGenesisPool(address(tokenA), 1, 0);
+    }
 
-//         tokenB.approve(address(router), streamTokenAmount);
-//         tokenA.approve(address(router), streamToDTokenAmount);
+    function test_initGenesisPool_invalidToken() public {
+        vm.startPrank(owner);
+        vm.expectRevert(IRouterErrors.InvalidToken.selector);
+        router.initGenesisPool(address(0), 1, 0);
+    }
 
-//         uint256 streamToDTokenStreamCount =
-//             poolLogic.calculateStreamCount(streamToDTokenAmount, pool.globalSlippage(), dToMint);
-//         uint256 swapPerStreamToDToken = streamToDTokenAmount / streamToDTokenStreamCount;
+    function test_initGenesisPool_notOwner() public {
+        vm.startPrank(nonAuthorized);
+        vm.expectRevert(abi.encodeWithSelector(bytes4(keccak256("OwnableUnauthorizedAccount(address)")), nonAuthorized));
+        router.initGenesisPool(address(tokenA), 1, 1);
+    }
 
-//         uint256 swapPerStreamInputToken = streamTokenAmount / streamToDTokenStreamCount;
+    // ======================================= PERMISSIONLESS POOLS ========================================//
+    function _initGenesisPool(uint256 d, uint256 a) internal {
+        vm.startPrank(owner);
+        tokenA.approve(address(router), a);
+        router.initGenesisPool(address(tokenA), a, d);
+        vm.stopPrank();
+    }
 
-//         (uint256 reserveDBeforeA,, uint256 reserveABeforeA,,,) = pool.poolInfo(address(tokenA));
+    function test_initPool_success() public {
+        uint256 tokenAReserve = 100e18;
+        uint256 dToMint = 10e18;
+        _initGenesisPool(dToMint, tokenAReserve);
 
-//         (uint256 reserveDBeforeB, uint256 poolOwnershipUnitsTotalBeforeB, uint256 reserveABeforeB,,,) =
-//             pool.poolInfo(address(tokenB));
+        vm.startPrank(owner);
+        uint256 streamTokenAmount = 100e18;
+        uint256 streamToDTokenAmount = 50e18;
 
-//         (uint256 dToTransfer,) =
-//             poolLogic.getSwapAmountOut(swapPerStreamToDToken, reserveABeforeA, 0, reserveDBeforeA, 0);
+        tokenB.approve(address(router), streamTokenAmount);
+        tokenA.approve(address(router), streamToDTokenAmount);
 
-//         uint256 lpUnitsBeforeFromToken =
-//             poolLogic.calculateLpUnitsToMint(0, swapPerStreamInputToken, swapPerStreamInputToken, 0, 0);
-//         uint256 lpUnitsBeforeFromD =
-//             poolLogic.calculateLpUnitsToMint(lpUnitsBeforeFromToken, 0, swapPerStreamInputToken, dToTransfer, 0);
+        (uint256 reserveDBeforeA,, uint256 reserveABeforeA,,,,uint8 decimals) = pool.poolInfo(address(tokenA));
 
-//         uint256 tokenBBalanceBefore = tokenB.balanceOf(owner);
+        (uint256 reserveDBeforeB, uint256 poolOwnershipUnitsTotalBeforeB, uint256 reserveABeforeB,,,,) =
+            pool.poolInfo(address(tokenB));
 
-//         console.log(address(tokenA));
-//         console.log(address(tokenB));
+        uint256 streamToDTokenStreamCount =
+            PoolLogicLib.calculateStreamCount(streamToDTokenAmount, pool.globalSlippage(), dToMint, 10_000, decimals);
+        uint256 swapPerStreamToDToken = streamToDTokenAmount / streamToDTokenStreamCount;
 
-//         router.initPool(address(tokenB), address(tokenA), streamTokenAmount, streamToDTokenAmount);
+        uint256 swapPerStreamInputToken = streamTokenAmount / streamToDTokenStreamCount;
+        (uint256 dToTransfer,) =
+            PoolLogicLib.getSwapAmountOut(swapPerStreamToDToken, reserveABeforeA, 0, reserveDBeforeA, 0);
 
-//         // uint256 tokenBBalanceAfter = tokenB.balanceOf(owner);
+        uint256 lpUnitsBeforeFromToken =
+            PoolLogicLib.calculateLpUnitsToMint(0, swapPerStreamInputToken, swapPerStreamInputToken, 0, 0);
+        uint256 lpUnitsBeforeFromD =
+            PoolLogicLib.calculateLpUnitsToMint(lpUnitsBeforeFromToken, 0, swapPerStreamInputToken, dToTransfer, 0);
 
-//         // assertLt(tokenBBalanceAfter, tokenBBalanceBefore);
-//         // assertEq(tokenBBalanceAfter, tokenBBalanceBefore - streamTokenAmount);
+        uint256 tokenBBalanceBefore = tokenB.balanceOf(owner);
+        uint256 tokenABalanceBefore = tokenA.balanceOf(owner);
 
-//         // (uint256 reserveDAfterA,, uint256 reserveAAfterA,,,) = pool.poolInfo(address(tokenA));
-//         // (uint256 reserveDAfterB, uint256 poolOwnershipUnitsTotalAfterB, uint256 reserveAAfterB,,,) =
-//         //     pool.poolInfo(address(tokenB));
+        router.initPool(address(tokenB), address(tokenA), streamTokenAmount, streamToDTokenAmount);
 
-//         // bytes32 pairId = keccak256(abi.encodePacked(address(tokenB), address(tokenA)));
+        uint256 tokenBBalanceAfter = tokenB.balanceOf(owner);
+        uint256 tokenABalanceAfter = tokenA.balanceOf(owner);
 
-//         // (LiquidityStream[] memory streams, uint256 front, uint256 back) = pool.liquidityStreamQueue(pairId);
+        // assertLt(tokenBBalanceAfter, tokenBBalanceBefore);
+        assertEq(tokenBBalanceAfter, tokenBBalanceBefore - streamTokenAmount);
+        assertEq(tokenABalanceAfter, tokenABalanceBefore - streamToDTokenAmount);
+        
+        (uint256 reserveDAfterB, uint256 poolOwnershipUnitsTotalAfterB, uint256 reserveAAfterB,,,,) =
+            pool.poolInfo(address(tokenB));
+        (uint256 reserveDAfterA,, uint256 reserveAAfterA,,,,) = pool.poolInfo(address(tokenA));
 
-//         // assertEq(streams[front].poolBStream.streamsRemaining, streams[front].poolAStream.streamsRemaining);
+        // bytes32 pairId = bytes32(abi.encodePacked(address(tokenB), address(tokenA)));
 
-//         // assertEq(streams[front].poolBStream.streamsRemaining, streamToDTokenStreamCount - 1);
-//         // assertEq(streams[front].poolBStream.swapPerStream, swapPerStreamToDToken);
-//         // assertEq(streams[front].poolBStream.swapAmountRemaining, streamToDTokenAmount - swapPerStreamToDToken);
+        // LiquidityStream[] memory streams = pool.liquidityStreamQueue(pairId);
 
-//         // assertEq(streams[front].poolAStream.streamsRemaining, streamToDTokenStreamCount - 1);
-//         // assertEq(streams[front].poolAStream.swapPerStream, swapPerStreamInputToken);
-//         // assertEq(streams[front].poolAStream.swapAmountRemaining, streamTokenAmount - swapPerStreamInputToken);
+        // // assertEq(streams[front].poolBStream.streamsRemaining, streams[front].poolAStream.streamsRemaining);
 
-//         // assertEq(reserveDAfterA, reserveDBeforeA - dToTransfer);
-//         // assertEq(reserveAAfterA, reserveABeforeA + swapPerStreamToDToken);
+        // // assertEq(streams[front].poolBStream.streamsRemaining, streamToDTokenStreamCount - 1);
+        // // assertEq(streams[front].poolBStream.swapPerStream, swapPerStreamToDToken);
+        // // assertEq(streams[front].poolBStream.swapAmountRemaining, streamToDTokenAmount - swapPerStreamToDToken);
 
-//         // assertEq(
-//         //     poolOwnershipUnitsTotalAfterB, poolOwnershipUnitsTotalBeforeB + lpUnitsBeforeFromToken +
-// lpUnitsBeforeFromD
-//         // );
-//         // assertEq(reserveDAfterB, reserveDBeforeB + dToTransfer);
-//         // assertEq(reserveAAfterB, reserveABeforeB + swapPerStreamInputToken);
-//     }
+        // // assertEq(streams[front].poolAStream.streamsRemaining, streamToDTokenStreamCount - 1);
+        // // assertEq(streams[front].poolAStream.swapPerStream, swapPerStreamInputToken);
+        // // assertEq(streams[front].poolAStream.swapAmountRemaining, streamTokenAmount - swapPerStreamInputToken);
 
-//     function _initGenesisPoolsForBadCases() internal {
-//         vm.startPrank(owner);
-//         tokenA.approve(address(router), 100e18);
-//         router.initGenesisPool(address(tokenA), 100e18, 10e18);
-//         vm.stopPrank();
-//     }
+        assertEq(reserveDAfterA, reserveDBeforeA - dToTransfer);
+        assertEq(reserveAAfterA, reserveABeforeA + swapPerStreamToDToken);
 
-//     function test_initPool_invalidPool() public {
-//         vm.startPrank(owner);
-//         vm.expectRevert(IRouterErrors.InvalidPool.selector);
-//         router.initPool(address(tokenB), address(0xEedd), 1, 1);
-//     }
+        assertEq(
+            poolOwnershipUnitsTotalAfterB, poolOwnershipUnitsTotalBeforeB + lpUnitsBeforeFromToken +
+        lpUnitsBeforeFromD
+        );
+        assertEq(reserveDAfterB, reserveDBeforeB + dToTransfer);
+        assertEq(reserveAAfterB, reserveABeforeB + swapPerStreamInputToken);
+    }
 
-//     function test_initPool_duplicatePool() public {
-//         _initGenesisPoolsForBadCases();
-//         vm.startPrank(owner);
-//         tokenB.approve(address(router), 100e18);
-//         router.initGenesisPool(address(tokenB), 100e18, 10e18);
-//         vm.expectRevert(IRouterErrors.DuplicatePool.selector);
-//         router.initPool(address(tokenA), address(tokenB), 1, 1);
-//     }
+    function test_initPool_invalidPool() public {
+        vm.startPrank(owner);
+        vm.expectRevert(IRouterErrors.InvalidPool.selector);
+        router.initPool(address(tokenB), address(0xEedd), 1, 1);
+    }
 
-//     function test_initPool_invalidAmount() public {
-//         _initGenesisPoolsForBadCases();
-//         vm.startPrank(owner);
-//         vm.expectRevert(IRouterErrors.InvalidAmount.selector);
-//         router.initPool(address(tokenB), address(tokenA), 0, 1);
-//     }
+    function test_initPool_duplicatePool() public {
+        uint256 tokenAReserve = 100e18;
+        uint256 dToMint = 10e18;
+        _initGenesisPool(dToMint, tokenAReserve);
+        vm.startPrank(owner);
+        tokenB.approve(address(router), 100e18);
+        router.initGenesisPool(address(tokenB), 100e18, 10e18);
+        vm.expectRevert(IRouterErrors.DuplicatePool.selector);
+        router.initPool(address(tokenA), address(tokenB), 1, 1);
+    }
 
-//     function test_initPool_invalidLiquidityAmount() public {
-//         _initGenesisPoolsForBadCases();
-//         vm.startPrank(owner);
-//         vm.expectRevert(IRouterErrors.InvalidLiquidityTokenAmount.selector);
-//         router.initPool(address(tokenB), address(tokenA), 1, 0);
-//     }
-// }
+    function test_initPool_invalidAmount() public {
+        uint256 tokenAReserve = 100e18;
+        uint256 dToMint = 10e18;
+        _initGenesisPool(dToMint, tokenAReserve);
+        vm.startPrank(owner);
+        vm.expectRevert(IRouterErrors.InvalidAmount.selector);
+        router.initPool(address(tokenB), address(tokenA), 0, 1);
+    }
+
+    function test_initPool_invalidLiquidityAmount() public {
+        uint256 tokenAReserve = 100e18;
+        uint256 dToMint = 10e18;
+        _initGenesisPool(dToMint, tokenAReserve);
+        vm.startPrank(owner);
+        vm.expectRevert(IRouterErrors.InvalidLiquidityTokenAmount.selector);
+        router.initPool(address(tokenB), address(tokenA), 1, 0);
+    }
+}
