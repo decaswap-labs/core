@@ -76,7 +76,7 @@ interface IPoolActions {
     function getReserveA(address pool) external view returns (uint256);
     function getReserveD(address pool) external view returns (uint256);
 
-    function setHighestPriceMarker(bytes32 pairId, uint256 value) external;
+    function setHighestPriceKey(bytes32 pairId, uint256 value) external;
 
     function getPoolAddresses() external view returns (address[] memory);
 

@@ -87,7 +87,7 @@ contract Pool is IPool, Ownable {
     mapping(bytes32 => mapping(uint256 => Swap[])) public triggerAndMarketOrderBook;
     mapping(bytes32 => mapping(uint256 => Swap[])) public limitOrderBook;
 
-    mapping(bytes32 => uint256) public override highestPriceMarker;
+    mapping(bytes32 => uint256) public override highestPriceKey;
 
     address[] public poolAddress;
 
@@ -674,8 +674,8 @@ contract Pool is IPool, Ownable {
         return SWAP_IDS++;
     }
 
-    function setHighestPriceMarker(bytes32 pairId, uint256 value) external override onlyPoolLogic {
-        highestPriceMarker[pairId] = value;
+    function setHighestPriceKey(bytes32 pairId, uint256 value) external override onlyPoolLogic {
+        highestPriceKey[pairId] = value;
     }
 
     function orderBook(

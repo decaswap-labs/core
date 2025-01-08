@@ -155,15 +155,6 @@ contract Router is Ownable, ReentrancyGuard, IRouter {
         IPoolLogic(poolStates.POOL_LOGIC()).processRemoveLiquidity(token);
     }
 
-    function swap(address tokenIn, address tokenOut, uint256 amountIn, uint256 executionPrice) external nonReentrant {
-        // if (amountIn == 0) revert InvalidAmount();
-        // if (executionPrice == 0) revert InvalidExecutionPrice();
-        // if (!poolExist(tokenIn) || !poolExist(tokenOut)) revert InvalidPool();
-
-        // IERC20(tokenIn).safeTransferFrom(msg.sender, POOL_ADDRESS, amountIn);
-        // IPoolLogic(poolStates.POOL_LOGIC()).swap(msg.sender, tokenIn, tokenOut, amountIn, executionPrice);
-    }
-
     function swapMarketOrder(address tokenIn, address tokenOut, uint256 amountIn) external nonReentrant {
         if (amountIn == 0) revert InvalidAmount();
         if (!poolExist(tokenIn) || !poolExist(tokenOut)) revert InvalidPool();

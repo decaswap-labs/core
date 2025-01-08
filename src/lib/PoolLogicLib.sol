@@ -8,6 +8,7 @@ library PoolLogicLib {
     using DSMath for uint256;
     using ScaleDecimals for uint256;
 
+    // @audit ensure that decimals are being passed in efffectively in lib functions
     function getExecutionPrice(
         uint256 reserveA_In,
         uint256 reserveA_Out,
@@ -27,6 +28,7 @@ library PoolLogicLib {
         return (amountIn * reserveOut) / reserveIn;
     }
 
+    // @audit unit test required && scale to A to 18
     function getSwapAmountOut(
         uint256 amountIn,
         uint256 reserveA_In,
@@ -46,17 +48,24 @@ library PoolLogicLib {
         //         100000000000000000000
         //         1000000000000000000
         uint256 d1 = (amountIn * reserveD_In) / (amountIn + reserveA_In);
+        // use the wdiv divide 2  18 decimals
         return (d1, ((d1 * reserveA_Out) / (d1 + reserveD_Out)));
     }
 
+    // @audit unit test required && scale reserveA to 18 decimals
+    // not used yet or duplicated
     function getSwapAmountOutFromD(uint256 dIn, uint256 reserveA, uint256 reserveD) public pure returns (uint256) {
         return ((dIn * reserveA) / (dIn + reserveD));
     }
 
+    // @audit unit test required && scale reserveA to 18 decimals
+    // not used yet
     function getTokenOut(uint256 dAmount, uint256 reserveA, uint256 reserveD) external pure returns (uint256) {
         return (dAmount * reserveA) / (dAmount + reserveD);
     }
 
+    // @audit unit test required && scale reserveA to 18 decimals
+    // not used yet
     function getDOut(uint256 tokenAmount, uint256 reserveA, uint256 reserveD) external pure returns (uint256) {
         return (tokenAmount * reserveD) / (tokenAmount + reserveA);
     }
@@ -80,8 +89,10 @@ library PoolLogicLib {
 
         uint256 scaledAmountIn = amountIn.scaleAmountToDecimals(decimalsIn, 18);
 
-        uint256 result = ((scaledAmountIn * streamCountPrecision) / (((streamCountPrecision - poolSlippage) * reserveD)));
+        uint256 result =
+            ((scaledAmountIn * streamCountPrecision) / (((streamCountPrecision - poolSlippage) * reserveD)));
         return result < 1 ? 1 : result;
+        // @audit require a limit on the maximum number of streams
     }
 
     function calculateAssetTransfer(
@@ -93,9 +104,10 @@ library PoolLogicLib {
         pure
         returns (uint256)
     {
-        return (reserveA.wmul(lpUnits)).wdiv(totalLpUnits);
+        return (reserveA * lpUnits) / totalLpUnits;
     }
 
+    // @audit ensure that this is being handled effectively without wmul
     function calculateDToDeduct(
         uint256 lpUnits,
         uint256 reserveD,
@@ -105,14 +117,16 @@ library PoolLogicLib {
         pure
         returns (uint256)
     {
-        return reserveD.wmul(lpUnits).wdiv(totalLpUnits);
+        return (reserveD * lpUnits) / totalLpUnits;
     }
 
     function getPoolId(address tokenA, address tokenB) public pure returns (bytes32) {
         (address A, address B) = tokenA < tokenB ? (tokenA, tokenB) : (tokenB, tokenA);
+        // @audit replace keccak for abi.encode && check dependancies
         return keccak256(abi.encodePacked(A, B));
     }
 
+    // @audit ensure that this is being handled well with decimals
     function calculateLpUnitsToMint(
         uint256 lpUnitsDepth, // P => depth of lpUnits
         uint256 amount, // a => assets incoming
@@ -137,6 +151,7 @@ library PoolLogicLib {
         return lpUnitsDepth * (num / den);
     }
 
+    // @note not used anymore , comment out and check for breaking changes
     function calculateDUnitsToMint(
         uint256 amount,
         uint256 reserveA,
@@ -151,44 +166,18 @@ library PoolLogicLib {
             return initialDToMint;
         }
 
-        return reserveD.wmul(amount).wdiv(reserveA);
+        return (reserveD * amount) / reserveA;
     }
 
-    function getExecutionPriceLower(uint256 executionPrice, uint256 pricePrecision) public pure returns (uint256) {
+    function getExecutionPriceKey(uint256 executionPrice, uint256 pricePrecision) public pure returns (uint256) {
         uint256 mod = executionPrice % pricePrecision; // @audit decide decimals for precission + use global variable
             // for precission
         return executionPrice - mod;
     }
 
-    function getReciprocalOppositePrice(
-        uint256 executionPrice,
-        uint256 reserveA_In,
-        uint8 decimals_In,
-        uint8 decimals_Out
-    )
-        public
-        pure
-        returns (uint256)
-    {
-        uint256 reserveA_Out = getOtherReserveFromPrice(executionPrice, reserveA_In, decimals_In, decimals_Out);
-        return getExecutionPrice(reserveA_Out, reserveA_In, decimals_Out, decimals_In);
-    }
-
-    function getOtherReserveFromPrice(
-        uint256 executionPrice,
-        uint256 reserveA_In,
-        uint8 decimals_In,
-        uint8 decimals_Out
-    )
-        public
-        pure
-        returns (uint256)
-    {
-        return (reserveA_In.scaleAmountToDecimals(decimals_In, 18).wdiv(executionPrice)).scaleAmountToDecimals(
-            18, decimals_Out
-        ); // @audit confirm scaling
-    }
-
+    // @audit is it gas efficient to pass decimals as inputs
+    // @audit is a high level check approach for all non-18 tokens a better way to avoid utilising scaling
+    // considerations on every stream execution
     function calculateAmountOutFromPrice(
         uint256 amountIn,
         uint256 price,
@@ -237,5 +226,9 @@ library PoolLogicLib {
 
         // Scale back to TokenA decimals
         return scaledAmountIn.scaleAmountToDecimals(18, decimalsIn);
+    }
+
+    function getOppositePrice(uint256 price) public pure returns (uint256) {
+        return DSMath.WAD.wdiv(price);
     }
 }

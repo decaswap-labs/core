@@ -26,12 +26,6 @@ contract PoolLogic is IPoolLogic {
     IPoolStates public pool;
     ILiquidityLogic public liquidityLogic;
 
-    struct Payout {
-        address swapUser;
-        address token;
-        uint256 amount;
-    }
-
     modifier onlyRouter() {
         if (msg.sender != pool.ROUTER_ADDRESS()) revert NotRouter(msg.sender);
         _;
@@ -138,7 +132,7 @@ contract PoolLogic is IPoolLogic {
             (,, uint256 reserveA_In,,,, uint8 decimals_In) = pool.poolInfo(address(token));
             uint256 currentExecPrice =
                 PoolLogicLib.getExecutionPrice(reserveA_In, reserveA_In, decimals_In, decimals_In);
-            uint256 executionPriceKey = PoolLogicLib.getExecutionPriceLower(currentExecPrice, PRICE_PRECISION);
+            uint256 executionPriceKey = PoolLogicLib.getExecutionPriceKey(currentExecPrice, PRICE_PRECISION);
 
             // Get market orders (isLimitOrder = false)
             Swap[] memory swaps = pool.orderBook(pairId, executionPriceKey, false);
@@ -150,7 +144,7 @@ contract PoolLogic is IPoolLogic {
                 // @todo: handle trigger orders
 
                 if (currentSwap.typeOfOrder == 2) {
-                    currentSwap = _settleCurrentSwapAgainstPool(currentSwap, currentExecPrice);
+                    currentSwap = _streamingAgainstPool(currentSwap);
                     // Update the order book entry
                     bytes memory updatedSwapData = abi.encode(
                         pairId,
@@ -175,7 +169,7 @@ contract PoolLogic is IPoolLogic {
                         );
                     }
                 } else if (currentSwap.typeOfOrder == 1 && currentSwap.executionPrice == currentExecPrice) {
-                    currentSwap = _settleCurrentSwapAgainstPool(currentSwap, currentExecPrice);
+                    currentSwap = _streamingAgainstPool(currentSwap);
                     currentSwap.typeOfOrder++;
                     // Update the order book entry
                     bytes memory updatedSwapData = abi.encode(
@@ -221,102 +215,7 @@ contract PoolLogic is IPoolLogic {
         liquidityLogic.removeLiquidity(token, user, lpUnits);
     }
 
-    function swap(
-        address user,
-        address tokenIn,
-        address tokenOut,
-        uint256 amountIn,
-        uint256 executionPrice
-    )
-        external
-        onlyRouter
-    {
-        // uint256 swapId = IPoolActions(POOL_ADDRESS).getNextSwapId();
-
-        // Swap memory currentSwap = Swap({
-        //     swapID: swapId, // will be filled in if/else
-        //     swapAmount: amountIn,
-        //     executionPrice: executionPrice,
-        //     swapAmountRemaining: amountIn,
-        //     streamsCount: 0,
-        //     swapPerStream: 0,
-        //     streamsRemaining: 0,
-        //     tokenIn: tokenIn,
-        //     tokenOut: tokenOut,
-        //     completed: false,
-        //     amountOut: 0,
-        //     user: user,
-        //     dustTokenAmount: 0,
-        //     typeOfOrder: 2
-        // });
-
-        // (,, uint256 reserveA_In,,,) = pool.poolInfo(address(tokenIn));
-
-        // (,, uint256 reserveA_Out,,,) = pool.poolInfo(address(tokenOut));
-
-        // uint256 currentExecPrice = getExecutionPrice(reserveA_In, reserveA_Out);
-        // bytes32 pairId = bytes32(abi.encodePacked(tokenIn, tokenOut)); // for one direction
-        // uint256 executionPriceKey = getExecutionPriceLower(executionPrice); //KEY
-
-        // // if price of order less than current, then just insert it in order book
-        // if (executionPrice < currentExecPrice) {
-        //     uint256 streamCount = getStreamCount(tokenIn, tokenOut, currentSwap.swapAmount);
-        //     uint256 swapPerStream = currentSwap.swapAmount / streamCount;
-        //     if (currentSwap.swapAmount % streamCount != 0) {
-        //         currentSwap.dustTokenAmount += (currentSwap.swapAmount - (streamCount * swapPerStream));
-        //         currentSwap.swapAmountRemaining = streamCount * swapPerStream;
-        //     }
-        //     currentSwap.streamsCount = streamCount;
-        //     currentSwap.streamsRemaining = streamCount;
-        //     currentSwap.swapPerStream = swapPerStream;
-
-        //     _insertInOrderBook(pairId, currentSwap, executionPriceKey);
-        // } else {
-        //     if (executionPrice > pool.highestPriceMarker(pairId)) {
-        //         IPoolActions(POOL_ADDRESS).setHighestPriceMarker(pairId, executionPrice);
-        //     }
-
-        //     uint256 executionPriceReciprocal = getReciprocalOppositePrice(executionPrice, reserveA_In);
-        //     uint256 executionPriceLower = getExecutionPriceLower(executionPriceReciprocal);
-
-        //     currentSwap = _settleCurrentSwapAgainstOpposite(
-        //         currentSwap, executionPriceLower, executionPrice, executionPriceReciprocal
-        //     );
-
-        //     if (currentSwap.completed) {
-        //         IPoolActions(POOL_ADDRESS).transferTokens(tokenOut, user, currentSwap.amountOut);
-        //     } else {
-        //         /*
-        //             * pool processing, swap should be consumed against pool, reserves will be updated in this case
-        //             * swap should be broken down into streams
-        //             * if stream's are completed, do something with dust token??? and transferOut the amountOut
-        //             * if streams are not completed, then just enqueue the swap, and update the reserves.
-        //         */
-
-        //         uint256 streamCount = getStreamCount(tokenIn, tokenOut, currentSwap.swapAmountRemaining);
-        //         uint256 swapPerStream = currentSwap.swapAmountRemaining / streamCount;
-        //         if (currentSwap.swapAmountRemaining % streamCount != 0) {
-        //             currentSwap.dustTokenAmount += (currentSwap.swapAmountRemaining - (streamCount * swapPerStream));
-        //             currentSwap.swapAmountRemaining = streamCount * swapPerStream;
-        //         }
-        //         currentSwap.streamsCount = streamCount;
-        //         currentSwap.streamsRemaining = streamCount;
-        //         currentSwap.swapPerStream = swapPerStream;
-
-        //         currentSwap = _settleCurrentSwapAgainstPool(currentSwap, executionPrice); // amountOut is updated
-        //         if (currentSwap.completed) {
-        //             IPoolActions(POOL_ADDRESS).transferTokens(
-        //                 currentSwap.tokenOut, currentSwap.user, currentSwap.amountOut
-        //             );
-        //         } else {
-        //             _insertInOrderBook(pairId, currentSwap, executionPriceKey);
-        //         }
-        //     }
-        // }
-    }
-
     function swapMarketOrder(address user, address tokenIn, address tokenOut, uint256 amountIn) public onlyRouter {
-        uint256 swapId = IPoolActions(POOL_ADDRESS).getNextSwapId();
         (,, uint256 reserveA_In,,,, uint8 decimals_In) = pool.poolInfo(address(tokenIn));
         (,, uint256 reserveA_Out,,,, uint8 decimals_Out) = pool.poolInfo(address(tokenOut));
         uint256 currentExecPrice = PoolLogicLib.getExecutionPrice(reserveA_In, reserveA_Out, decimals_In, decimals_Out);
@@ -339,20 +238,11 @@ contract PoolLogic is IPoolLogic {
         });
 
         bytes32 pairId = bytes32(abi.encodePacked(tokenIn, tokenOut)); // for one direction
-        uint256 executionPriceKey = PoolLogicLib.getExecutionPriceLower(currentExecPrice, PRICE_PRECISION); //KEY
-        uint256 streamCount = getStreamCount(tokenIn, tokenOut, currentSwap.swapAmountRemaining);
-        uint256 swapPerStream = currentSwap.swapAmountRemaining / streamCount;
-        if (currentSwap.swapAmountRemaining % streamCount != 0) {
-            currentSwap.dustTokenAmount += (currentSwap.swapAmountRemaining - (streamCount * swapPerStream));
-            currentSwap.swapAmountRemaining = streamCount * swapPerStream;
-        }
-        currentSwap.streamsCount = streamCount;
-        currentSwap.streamsRemaining = streamCount;
-        currentSwap.swapPerStream = swapPerStream;
+        uint256 executionPriceKey = PoolLogicLib.getExecutionPriceKey(currentExecPrice, PRICE_PRECISION); //KEY
 
-        // currentSwap = updateSwapStreamInfo(currentSwap);
+        currentSwap = updateSwapStreamInfo(currentSwap);
 
-        currentSwap = _settleCurrentSwapAgainstPool(currentSwap, currentExecPrice); // amountOut is updated
+        currentSwap = _streamingAgainstPool(currentSwap); // amountOut is updated
         if (currentSwap.completed) {
             IPoolActions(POOL_ADDRESS).transferTokens(currentSwap.tokenOut, currentSwap.user, currentSwap.amountOut);
         } else {
@@ -389,24 +279,15 @@ contract PoolLogic is IPoolLogic {
 
         bytes32 pairId = bytes32(abi.encodePacked(tokenIn, tokenOut)); // for one direction
 
-        if (triggerExecutionPrice > pool.highestPriceMarker(pairId)) {
-            IPoolActions(POOL_ADDRESS).setHighestPriceMarker(pairId, triggerExecutionPrice);
+        uint256 triggerExecutionPriceKey = PoolLogicLib.getExecutionPriceKey(triggerExecutionPrice, PRICE_PRECISION);
+
+        if (triggerExecutionPriceKey > pool.highestPriceKey(pairId)) {
+            IPoolActions(POOL_ADDRESS).setHighestPriceKey(pairId, triggerExecutionPriceKey);
         }
 
-        // uint256 streamCount = getStreamCount(tokenIn, tokenOut, currentSwap.swapAmountRemaining);
-        // uint256 swapPerStream = currentSwap.swapAmountRemaining / streamCount;
-        // if (currentSwap.swapAmountRemaining % streamCount != 0) {
-        //     currentSwap.dustTokenAmount += (currentSwap.swapAmountRemaining - (streamCount * swapPerStream));
-        //     currentSwap.swapAmountRemaining = streamCount * swapPerStream;
-        // }
-        // currentSwap.streamsCount = streamCount;
-        // currentSwap.streamsRemaining = streamCount;
-        // currentSwap.swapPerStream = swapPerStream;
-
         currentSwap = updateSwapStreamInfo(currentSwap);
-        uint256 executionPriceKey = PoolLogicLib.getExecutionPriceLower(triggerExecutionPrice, PRICE_PRECISION); //KEY
 
-        _insertInOrderBook(pairId, currentSwap, executionPriceKey, false);
+        _insertInOrderBook(pairId, currentSwap, triggerExecutionPriceKey, false);
     }
 
     function swapLimitOrder(
@@ -419,17 +300,12 @@ contract PoolLogic is IPoolLogic {
         external
         onlyRouter
     {
-        // 1. we need to check if the limitOrderPrice key is higher than the MAX_LIMIT ticks limit of the current price
-        // key
         (,, uint256 reserveA_In,,,, uint8 decimals_In) = pool.poolInfo(tokenIn);
         (,, uint256 reserveA_Out,,,, uint8 decimals_Out) = pool.poolInfo(tokenOut);
 
-        // get the current PriceKey
         uint256 currentExecPrice = PoolLogicLib.getExecutionPrice(reserveA_In, reserveA_Out, decimals_In, decimals_Out);
 
-        // check if the limitOrderPriceKey is higher than the current price key by MAX_LIMIT * times the PRICE_PRECISION
-        if (limitOrderPrice > currentExecPrice + MAX_LIMIT_TICKS * PRICE_PRECISION) {
-            // if yes, then we need to process the limit order as a market order
+        if (limitOrderPrice > currentExecPrice + (MAX_LIMIT_TICKS * PRICE_PRECISION)) {
             swapMarketOrder(user, tokenIn, tokenOut, amountIn);
             return;
         }
@@ -451,11 +327,14 @@ contract PoolLogic is IPoolLogic {
             typeOfOrder: 3
         });
 
-        bytes32 pairId = bytes32(abi.encodePacked(tokenIn, tokenOut)); // for one direction
+        bytes32 pairId = bytes32(abi.encodePacked(tokenIn, tokenOut));
 
-        uint256 limitOrderPriceKey = PoolLogicLib.getExecutionPriceLower(limitOrderPrice, PRICE_PRECISION);
+        uint256 limitOrderPriceKey = PoolLogicLib.getExecutionPriceKey(limitOrderPrice, PRICE_PRECISION);
 
-        /// @notice if price of order less than current, then just insert it in order book and return
+        if (limitOrderPriceKey > pool.highestPriceKey(pairId)) {
+            IPoolActions(POOL_ADDRESS).setHighestPriceKey(pairId, limitOrderPriceKey);
+        }
+
         if (limitOrderPrice < currentExecPrice) {
             currentSwap = updateSwapStreamInfo(currentSwap);
 
@@ -463,47 +342,19 @@ contract PoolLogic is IPoolLogic {
             return;
         }
 
-        /// @notice update the highest price marker if the limit order price is higher than the current highest price
-        /// marker
-        if (limitOrderPrice > pool.highestPriceMarker(pairId)) {
-            IPoolActions(POOL_ADDRESS).setHighestPriceMarker(pairId, limitOrderPrice);
-        }
+        uint256 oppositeExecutionPriceKey =
+            PoolLogicLib.getExecutionPriceKey(PoolLogicLib.getOppositePrice(currentExecPrice), PRICE_PRECISION);
 
-        // 1. process swap with opposite swaps
-        uint256 executionPriceReciprocal =
-            PoolLogicLib.getReciprocalOppositePrice(limitOrderPrice, reserveA_In, decimals_In, decimals_Out);
-        uint256 executionPriceKeyOpp = PoolLogicLib.getExecutionPriceLower(executionPriceReciprocal, PRICE_PRECISION);
-
-        currentSwap = _settleCurrentLimitOrderAgainstOpposite(
-            currentSwap, executionPriceKeyOpp, limitOrderPrice, executionPriceReciprocal
-        );
+        currentSwap = _swappingAgainstOppositeSwaps(currentSwap, oppositeExecutionPriceKey);
 
         if (currentSwap.completed) {
             IPoolActions(POOL_ADDRESS).transferTokens(tokenOut, user, currentSwap.amountOut);
-            // 2. calculate streams count and swap per stream, then process the swap with the pool
         } else {
-            /*
-            * pool processing, swap should be consumed against pool, reserves will be updated in this case
-                    * swap should be broken down into streams
-            * if stream's are completed, do something with dust token??? and transferOut the amountOut
-                    * if streams are not completed, then just enqueue the swap, and update the reserves.
-                */
-
-            // uint256 streamCount = getStreamCount(tokenIn, tokenOut, currentSwap.swapAmountRemaining);
-            // uint256 swapPerStream = currentSwap.swapAmountRemaining / streamCount;
-            // if (currentSwap.swapAmountRemaining % streamCount != 0) {
-            //     currentSwap.dustTokenAmount += (currentSwap.swapAmountRemaining - (streamCount * swapPerStream));
-            //     currentSwap.swapAmountRemaining = streamCount * swapPerStream;
-            // }
-            // currentSwap.streamsCount = streamCount;
-            // currentSwap.streamsRemaining = streamCount;
-            // currentSwap.swapPerStream = swapPerStream;
+            // calculate streams count and swap per stream, then process the swap with the pool
 
             currentSwap = updateSwapStreamInfo(currentSwap);
 
-            // don't we need to insert in order book here if the limitOrderPrice is lower from the current price
-
-            currentSwap = _settleCurrentSwapAgainstPool(currentSwap, limitOrderPrice); // amountOut is updated
+            currentSwap = _streamingAgainstPool(currentSwap); // amountOut is updated
             if (currentSwap.completed) {
                 IPoolActions(POOL_ADDRESS).transferTokens(currentSwap.tokenOut, currentSwap.user, currentSwap.amountOut);
             } else {
@@ -514,471 +365,338 @@ contract PoolLogic is IPoolLogic {
 
     function processLimitOrders(address tokenIn, address tokenOut) external onlyRouter {
         bytes32 currentPairId = bytes32(abi.encodePacked(tokenIn, tokenOut));
-        uint256 startingExecutionPrice = pool.highestPriceMarker(currentPairId);
-        uint256 priceKey = PoolLogicLib.getExecutionPriceLower(startingExecutionPrice, PRICE_PRECISION);
+        uint256 priceKey = pool.highestPriceKey(currentPairId);
 
         (,, uint256 reserveA_In,,,, uint8 decimals_In) = pool.poolInfo(address(tokenIn));
         (,, uint256 reserveA_Out,,,, uint8 decimals_Out) = pool.poolInfo(address(tokenOut));
-        uint256 poolReservesPriceKey = PoolLogicLib.getExecutionPriceLower(
+        uint256 poolReservesPriceKey = PoolLogicLib.getExecutionPriceKey(
             PoolLogicLib.getExecutionPrice(reserveA_In, reserveA_Out, decimals_In, decimals_Out), PRICE_PRECISION
         ); // @noticewhy
             // this?
 
         while (priceKey > poolReservesPriceKey) {
-            _executeStream(currentPairId, priceKey); // Appelle la fonction pour ce priceKey.
-            (,, reserveA_In,,,, decimals_In) = pool.poolInfo(address(tokenIn));
-            (,, reserveA_Out,,,, decimals_Out) = pool.poolInfo(address(tokenOut));
-            poolReservesPriceKey = PoolLogicLib.getExecutionPriceLower(
-                PoolLogicLib.getExecutionPrice(reserveA_In, reserveA_Out, decimals_In, decimals_Out), PRICE_PRECISION
-            );
+            bool poolSwapExecuted = _executeStreams(currentPairId, priceKey); // Appelle la fonction pour ce priceKey.
+            if (poolSwapExecuted) {
+                (,, reserveA_In,,,, decimals_In) = pool.poolInfo(address(tokenIn));
+                (,, reserveA_Out,,,, decimals_Out) = pool.poolInfo(address(tokenOut));
+                poolReservesPriceKey = PoolLogicLib.getExecutionPriceKey(
+                    PoolLogicLib.getExecutionPrice(reserveA_In, reserveA_Out, decimals_In, decimals_Out),
+                    PRICE_PRECISION
+                );
+            }
+
             priceKey -= PRICE_PRECISION; // 1 Gwei ou autre précision utilisée.
+                // update A->B highest price marker
                 // need get reserve price for the next priceKey
         }
     }
 
-    function _executeStream(bytes32 pairId, uint256 executionPriceKey) internal {
+    // @note dedicate some limititation on price gap and opp swaps count on single prcieKey for maintenance bot call !!
+    function _executeStreams(bytes32 pairId, uint256 executionPriceKey) internal returns (bool poolSwapExecuted) {
         Swap[] memory swaps = pool.orderBook(pairId, executionPriceKey, true);
         if (swaps.length == 0) {
-            return;
+            return poolSwapExecuted;
         }
         uint256 swapRemoved;
         for (uint256 i = 0; i < swaps.length;) {
             Swap memory currentSwap = swaps[i];
-            uint256 swapExecutionPrice = currentSwap.executionPrice;
 
-            (,, uint256 reserveA_In,,,, uint8 decimals_In) = pool.poolInfo(address(currentSwap.tokenIn));
-            (,,,,,, uint8 decimals_Out) = pool.poolInfo(address(currentSwap.tokenIn));
-            uint256 executionPriceReciprocal =
-                PoolLogicLib.getReciprocalOppositePrice(swapExecutionPrice, reserveA_In, decimals_In, decimals_Out);
-            uint256 oppPriceKey = PoolLogicLib.getExecutionPriceLower(executionPriceReciprocal, PRICE_PRECISION);
-
-            currentSwap = _settleCurrentSwapAgainstOpposite(
-                currentSwap, oppPriceKey, swapExecutionPrice, executionPriceReciprocal
+            uint256 oppositeExecutionPriceKey = PoolLogicLib.getExecutionPriceKey(
+                PoolLogicLib.getOppositePrice(currentSwap.executionPrice), PRICE_PRECISION
             );
-            if (currentSwap.completed) {
-                // if the swap is completed, we keep looping to consume the opposite swaps
-                IPoolActions(POOL_ADDRESS).dequeueSwap_pairStreamQueue(pairId, executionPriceKey, 0, true);
-                IPoolActions(POOL_ADDRESS).transferTokens(currentSwap.tokenOut, currentSwap.user, currentSwap.amountOut);
-                swapRemoved++;
-                uint256 lastIndex = swaps.length - swapRemoved;
-                swaps[i] = swaps[lastIndex];
-                delete swaps[lastIndex];
-                if (lastIndex == 0) {
-                    // TODO we need to decrement the priceKey and find next collection of swaps
-                    // it means no more swaps to process for the current priceKey
-                    return;
-                }
-            } else {
-                // we recalculate the streams for the current swap
-                // I don't think we need to save it now
-                uint256 streamCount =
-                    getStreamCount(currentSwap.tokenIn, currentSwap.tokenOut, currentSwap.swapAmountRemaining);
-                uint256 swapPerStream = currentSwap.swapAmountRemaining / streamCount;
-                currentSwap.streamsCount = streamCount;
-                currentSwap.swapPerStream = swapPerStream;
-                if (currentSwap.swapAmountRemaining % streamCount != 0) {
-                    currentSwap.dustTokenAmount += (currentSwap.swapAmountRemaining - (streamCount * swapPerStream));
-                    currentSwap.swapAmountRemaining = streamCount * swapPerStream; // reAssigning newTokenOutAmountIn
-                        // without dust tokens
-                }
 
-                swaps[i] = currentSwap;
-                break;
-            }
-        }
+            uint256 amountInRemaining;
+            (currentSwap, amountInRemaining) = _streamingAgainstOppositeSwaps(currentSwap, oppositeExecutionPriceKey);
 
-        uint256 count;
-        for (uint256 i; i < swaps.length - 1;) {
-            // settle against pool;
-            Swap memory currentSwap = swaps[i];
-            currentSwap = _settleCurrentSwapAgainstPool(currentSwap, currentSwap.executionPrice);
-            if (currentSwap.completed) {
-                swapRemoved++;
-                IPoolActions(POOL_ADDRESS).dequeueSwap_pairStreamQueue(pairId, executionPriceKey, i, true);
-                IPoolActions(POOL_ADDRESS).transferTokens(currentSwap.tokenOut, currentSwap.user, currentSwap.amountOut);
-                uint256 lastIndex = swaps.length - swapRemoved;
-                swaps[i] = swaps[lastIndex];
-                delete swaps[lastIndex];
-                if (lastIndex == 0) {
-                    break;
-                }
-            } else {
-                // update the swap
-                bytes memory updatedSwapData = abi.encode(
-                    pairId,
-                    currentSwap.swapAmount,
-                    currentSwap.swapAmountRemaining,
-                    currentSwap.completed,
-                    currentSwap.streamsRemaining,
-                    currentSwap.streamsCount,
-                    currentSwap.swapPerStream,
-                    currentSwap.dustTokenAmount
-                );
-
-                IPoolActions(POOL_ADDRESS).updatePairStreamQueueSwap(updatedSwapData, executionPriceKey, i, true);
-                unchecked {
-                    ++i;
-                }
-            }
-            if (count == swaps.length - 1) {
-                break;
-            }
-            count++;
-        }
-    }
-
-    function _settleCurrentLimitOrderAgainstOpposite(
-        Swap memory currentSwap,
-        uint256 executionPriceOppositeKey,
-        uint256 executionPriceCurrentSwap,
-        uint256 executionPriceOppositeSwap
-    )
-        internal
-        returns (Swap memory)
-    {
-        uint256 initialTokenInAmountIn = currentSwap.swapAmountRemaining;
-        uint256 dustTokenInAmountIn = currentSwap.dustTokenAmount;
-
-        // tokenInAmountIn is the amount of tokenIn that is remaining to be processed from the selected swap
-        // it contains the dust token amount
-        uint256 tokenInAmountIn = initialTokenInAmountIn + dustTokenInAmountIn;
-        address tokenIn = currentSwap.tokenIn;
-        address tokenOut = currentSwap.tokenOut;
-
-        // we need to look for the opposite swaps
-        bytes32 oppositePairId = bytes32(abi.encodePacked(tokenOut, tokenIn));
-        //NEED TO CHANGE THIS. ORDERBOOK IS NOW DIFFERENT
-        Swap[] memory oppositeSwaps = pool.orderBook(oppositePairId, executionPriceOppositeKey, true);
-
-        if (oppositeSwaps.length == 0) {
-            return currentSwap; // will call pool handling function
-        }
-        /* 
-            iterate on all the opposite swaps
-            And check that if the amountOut of the oppositeSwap < currentSwapAmountIn
-            if yes the consume oppositeSwap, and move on to the next oppositeSwap
-            transferOut the swapAmoutOut asset
-
-            if amountOut of oppositeSwap > currentSwapAmountIn 
-            then consume the currentSwap, break the loop
-            transferIn the swapAmountIn assets
-            update the oppositeSwap struct
-        */
-        (,, uint256 reserveA_In,,,, uint8 decimals_In) = pool.poolInfo(address(tokenIn));
-        (,, uint256 reserveA_Out,,,, uint8 decimals_Out) = pool.poolInfo(address(tokenOut));
-
-        uint256 reserveAInFromPrice =
-            PoolLogicLib.getOtherReserveFromPrice(executionPriceOppositeSwap, reserveA_Out, decimals_Out, decimals_In);
-        uint256 reserveAOutFromPrice =
-            PoolLogicLib.getOtherReserveFromPrice(executionPriceCurrentSwap, reserveA_In, decimals_In, decimals_Out);
-
-        // the number of opposite swaps
-        // uint256 oppositeSwapsCount = oppositeBack - oppositeFront;
-        // Payout[] memory oppositePayouts = new Payout[](oppositeSwapsCount);
-
-        // now we need to loop through the opposite swaps and to process them
-        uint256 swapRemoved;
-        for (uint256 i = 0; i < oppositeSwaps.length;) {
-            Swap memory oppositeSwap = oppositeSwaps[i];
-
-            // tokenOutAmountIn is the amount of tokenOut that is remaining to be processed from the opposite swap
-            // it contains opp swap dust token
-            uint256 tokenOutAmountIn = oppositeSwap.swapAmountRemaining + oppositeSwap.dustTokenAmount;
-
-            // we need to calculate the amount of tokenOut for the given tokenInAmountIn -> tokenA -> tokenB
-            uint256 tokenOutAmountOut = PoolLogicLib.getAmountOut(tokenInAmountIn, reserveA_In, reserveAOutFromPrice);
-
-            // we need to calculate the amount of tokenIn for the given tokenOutAmountIn -> tokenB -> tokenA
-            uint256 tokenInAmountOut = PoolLogicLib.getAmountOut(tokenOutAmountIn, reserveA_Out, reserveAInFromPrice);
-
-            // we need to check if the amount of tokenIn that we need to send to the user is less than the amount of
-            // tokenIn that is remaining to be processed
-            if (tokenInAmountIn > tokenInAmountOut) {
-                // 1. we keep in memory the swapUser, tokenOut address and the amountOutSwap in memory to transfer the
-                // tokens
-
-                IPoolActions(POOL_ADDRESS).transferTokens(
-                    oppositeSwap.tokenOut, oppositeSwap.user, tokenInAmountOut + oppositeSwap.amountOut
-                );
-
-                IPoolActions(POOL_ADDRESS).dequeueSwap_pairStreamQueue(
-                    oppositePairId, executionPriceOppositeKey, i, true
-                );
-
-                uint256 newTokenInAmountIn = tokenInAmountIn - tokenInAmountOut;
-
-                currentSwap.swapAmountRemaining = newTokenInAmountIn;
-                currentSwap.amountOut += tokenOutAmountIn;
-                tokenInAmountIn = newTokenInAmountIn;
-                // 4. we continue to the next oppositeSwap
-
-                swapRemoved++;
-                if (swapRemoved == oppositeSwaps.length) {
-                    break;
-                }
-                uint256 lastIndex = oppositeSwaps.length - swapRemoved;
-                oppositeSwaps[i] = oppositeSwaps[lastIndex];
-                delete oppositeSwaps[lastIndex];
-            } else {
-                // 1. frontSwap is completed and is taken out of the stream queue
-
-                currentSwap.amountOut += tokenOutAmountOut;
-                currentSwap.completed = true; // we don't need to do this
-                currentSwap.dustTokenAmount = 0;
-
-                // 2. we recalculate the oppositeSwap conditions and update it (if tokenInAmountIn == tokenInAmountOut
-                // we complete the oppositeSwap)
-
-                //both swaps consuming each other
-                if (tokenInAmountIn == tokenInAmountOut) {
-                    IPoolActions(POOL_ADDRESS).dequeueSwap_pairStreamQueue(
-                        oppositePairId, executionPriceOppositeKey, i, true
-                    );
-
+            if (amountInRemaining == 0) {
+                // if completed
+                if (currentSwap.completed) {
+                    // if the swap is completed, we keep looping to consume the opposite swaps
+                    IPoolActions(POOL_ADDRESS).dequeueSwap_pairStreamQueue(pairId, executionPriceKey, 0, true);
                     IPoolActions(POOL_ADDRESS).transferTokens(
-                        oppositeSwap.tokenOut, oppositeSwap.user, tokenInAmountOut + oppositeSwap.amountOut
+                        currentSwap.tokenOut, currentSwap.user, currentSwap.amountOut
                     );
-                } else {
-                    // only front is getting consumed. so we need to update opposite one
-                    // uint256 newTokenOutAmountIn = tokenOutAmountIn - tokenOutAmountOut;
-
-                    oppositeSwap.swapAmountRemaining = tokenOutAmountIn - tokenOutAmountOut;
-                    oppositeSwap.amountOut += tokenInAmountIn;
-
-                    // uint256 streamCount = getStreamCount(tokenOut, tokenIn, newTokenOutAmountIn);
-                    // uint256 swapPerStream = newTokenOutAmountIn / streamCount;
-                    // uint256 dustTokenAmount;
-                    // if (newTokenOutAmountIn % streamCount != 0) {
-                    //     dustTokenAmount += (newTokenOutAmountIn - (streamCount * swapPerStream));
-                    //     newTokenOutAmountIn = streamCount * swapPerStream; // reAssigning newTokenOutAmountIn without
-                    // dust tokens
-                    // }
-
-                    oppositeSwap = updateSwapStreamInfo(oppositeSwap);
-
-                    // updating oppositeSwap
-                    bytes memory updatedSwapData_opposite = abi.encode(
-                        oppositePairId,
-                        oppositeSwap.amountOut,
-                        oppositeSwap.swapAmountRemaining,
-                        oppositeSwap.completed,
-                        oppositeSwap.streamsCount,
-                        oppositeSwap.streamsCount,
-                        oppositeSwap.swapPerStream,
-                        oppositeSwap.dustTokenAmount,
-                        2
-                    );
-
-                    IPoolActions(POOL_ADDRESS).updatePairStreamQueueSwap(
-                        updatedSwapData_opposite, executionPriceOppositeKey, i, true
-                    );
-                }
-                // 3. we terminate the loop as we have completed the frontSwap
-                break;
-            }
-        }
-
-        return currentSwap;
-    }
-
-    function _settleCurrentSwapAgainstOpposite(
-        Swap memory currentSwap,
-        uint256 executionPriceOppositeKey,
-        uint256 executionPriceCurrentSwap,
-        uint256 executionPriceOppositeSwap
-    )
-        internal
-        returns (Swap memory)
-    {
-        uint256 initialTokenInAmountIn = currentSwap.swapAmountRemaining;
-        uint256 dustTokenInAmountIn = currentSwap.dustTokenAmount;
-
-        // tokenInAmountIn is the amount of tokenIn that is remaining to be processed from the selected swap
-        // it contains the dust token amount
-        uint256 tokenInAmountIn = initialTokenInAmountIn + dustTokenInAmountIn;
-        address tokenIn = currentSwap.tokenIn;
-        address tokenOut = currentSwap.tokenOut;
-
-        // we need to look for the opposite swaps
-        bytes32 oppositePairId = bytes32(abi.encodePacked(tokenOut, tokenIn));
-        Swap[] memory oppositeSwaps;
-
-        uint256 priceKey = executionPriceOppositeKey;
-
-        while (true) {
-            oppositeSwaps = pool.orderBook(oppositePairId, priceKey, true);
-            if (oppositeSwaps.length == 0) {
-                priceKey = priceKey - PoolLogic.PRICE_PRECISION; // will call pool handling function
-            } else {
-                break;
-            }
-        }
-
-        /*
-            iterate on all the opposite swaps
-            And check that if the amountOut of the oppositeSwap < currentSwapAmountIn
-            if yes the consume oppositeSwap, and move on to the next oppositeSwap
-            transferOut the swapAmoutOut asset
-
-            if amountOut of oppositeSwap > currentSwapAmountIn
-            then consume the currentSwap, break the loop
-            transferIn the swapAmountIn assets
-            update the oppositeSwap struct
-        */
-        (,, uint256 reserveA_In,,,, uint8 decimals_In) = pool.poolInfo(address(tokenIn));
-        (,, uint256 reserveA_Out,,,, uint8 decimals_Out) = pool.poolInfo(address(tokenOut));
-
-        uint256 reserveAInFromPrice =
-            PoolLogicLib.getOtherReserveFromPrice(executionPriceOppositeSwap, reserveA_Out, decimals_Out, decimals_In);
-        uint256 reserveAOutFromPrice =
-            PoolLogicLib.getOtherReserveFromPrice(executionPriceCurrentSwap, reserveA_In, decimals_In, decimals_Out);
-
-        // the number of opposite swaps
-        // uint256 oppositeSwapsCount = oppositeBack - oppositeFront;
-        // Payout[] memory oppositePayouts = new Payout[](oppositeSwapsCount);
-
-        // now we need to loop through the opposite swaps and to process them
-        uint256 swapRemoved;
-        for (uint256 i = 0; i < oppositeSwaps.length;) {
-            Swap memory oppositeSwap = oppositeSwaps[i];
-
-            // tokenOutAmountIn is the amount of tokenOut that is remaining to be processed from the opposite swap
-            // it contains opp swap dust token
-            uint256 tokenOutAmountIn = oppositeSwap.swapAmountRemaining + oppositeSwap.dustTokenAmount;
-
-            // we need to calculate the amount of tokenOut for the given tokenInAmountIn -> tokenA -> tokenB
-            uint256 tokenOutAmountOut = PoolLogicLib.getAmountOut(tokenInAmountIn, reserveA_In, reserveAOutFromPrice);
-
-            // we need to calculate the amount of tokenIn for the given tokenOutAmountIn -> tokenB -> tokenA
-            uint256 tokenInAmountOut = PoolLogicLib.getAmountOut(tokenOutAmountIn, reserveA_Out, reserveAInFromPrice);
-
-            // we need to check if the amount of tokenIn that we need to send to the user is less than the amount of
-            // tokenIn that is remaining to be processed
-            if (tokenInAmountIn > tokenInAmountOut) {
-                // 1. we keep in memory the swapUser, tokenOut address and the amountOutSwap in memory to transfer the
-                // tokens
-
-                IPoolActions(POOL_ADDRESS).transferTokens(
-                    oppositeSwap.tokenOut, oppositeSwap.user, tokenInAmountOut + oppositeSwap.amountOut
-                );
-
-                IPoolActions(POOL_ADDRESS).dequeueSwap_pairStreamQueue(
-                    oppositePairId, executionPriceOppositeKey, i, true
-                );
-
-                uint256 newTokenInAmountIn = tokenInAmountIn - tokenInAmountOut;
-
-                currentSwap.swapAmountRemaining = newTokenInAmountIn;
-                currentSwap.amountOut += tokenOutAmountIn;
-                tokenInAmountIn = newTokenInAmountIn;
-                // 4. we continue to the next oppositeSwap
-
-                swapRemoved++;
-                if (swapRemoved == oppositeSwaps.length) {
-                    break;
-                }
-                uint256 lastIndex = oppositeSwaps.length - swapRemoved;
-                oppositeSwaps[i] = oppositeSwaps[lastIndex];
-                delete oppositeSwaps[lastIndex];
-            } else {
-                // 1. frontSwap is completed and is taken out of the stream queue
-
-                currentSwap.amountOut += tokenOutAmountOut;
-                currentSwap.completed = true; // we don't need to do this
-                currentSwap.dustTokenAmount = 0;
-
-                // 2. we recalculate the oppositeSwap conditions and update it (if tokenInAmountIn == tokenInAmountOut
-                // we complete the oppositeSwap)
-
-                //both swaps consuming each other
-                if (tokenInAmountIn == tokenInAmountOut) {
-                    IPoolActions(POOL_ADDRESS).dequeueSwap_pairStreamQueue(
-                        oppositePairId, executionPriceOppositeKey, i, true
-                    );
-
-                    IPoolActions(POOL_ADDRESS).transferTokens(
-                        oppositeSwap.tokenOut, oppositeSwap.user, tokenInAmountOut + oppositeSwap.amountOut
-                    );
-                } else {
-                    // only front is getting consumed. so we need to update opposite one
-                    uint256 newTokenOutAmountIn = tokenOutAmountIn - tokenOutAmountOut;
-                    uint256 streamCount = getStreamCount(tokenOut, tokenIn, newTokenOutAmountIn);
-                    uint256 swapPerStream = newTokenOutAmountIn / streamCount;
-                    uint256 dustTokenAmount;
-                    if (newTokenOutAmountIn % streamCount != 0) {
-                        dustTokenAmount += (newTokenOutAmountIn - (streamCount * swapPerStream));
-                        newTokenOutAmountIn = streamCount * swapPerStream; // reAssigning newTokenOutAmountIn without
-                            // dust tokens
+                    swapRemoved++;
+                    uint256 lastIndex = swaps.length - swapRemoved;
+                    swaps[i] = swaps[lastIndex];
+                    delete swaps[lastIndex];
+                    if (lastIndex == 0) {
+                        // TODO we need to decrement the priceKey and find next collection of swaps
+                        // it means no more swaps to process for the current priceKey
+                        return poolSwapExecuted;
                     }
-
-                    // updating oppositeSwap
-                    bytes memory updatedSwapData_opposite = abi.encode(
-                        oppositePairId,
-                        tokenOutAmountOut,
-                        newTokenOutAmountIn,
-                        oppositeSwap.completed,
-                        streamCount,
-                        streamCount,
-                        swapPerStream,
-                        dustTokenAmount
+                } else {
+                    currentSwap = updateSwapStreamInfo(currentSwap);
+                    bytes memory updatedSwapData = abi.encode(
+                        pairId,
+                        currentSwap.swapAmount,
+                        currentSwap.swapAmountRemaining,
+                        currentSwap.completed,
+                        currentSwap.streamsRemaining,
+                        currentSwap.streamsCount,
+                        currentSwap.swapPerStream,
+                        currentSwap.dustTokenAmount
                     );
 
-                    IPoolActions(POOL_ADDRESS).updatePairStreamQueueSwap(
-                        updatedSwapData_opposite, executionPriceOppositeKey, i, true
-                    );
+                    IPoolActions(POOL_ADDRESS).updatePairStreamQueueSwap(updatedSwapData, executionPriceKey, i, true);
                 }
-                // 3. we terminate the loop as we have completed the frontSwap
-                break;
+
+                // we go to the next swap without trying to stream against pool
+                continue;
+            } else {
+                // we go against pool with the remaining amount
+                currentSwap = _swappingAgainstPool(currentSwap, amountInRemaining);
+                currentSwap.streamsRemaining--;
+                poolSwapExecuted = true;
+                if (currentSwap.streamsRemaining == 0) {
+                    currentSwap.completed = true;
+                    swapRemoved++;
+                    IPoolActions(POOL_ADDRESS).dequeueSwap_pairStreamQueue(pairId, executionPriceKey, i, true);
+                    IPoolActions(POOL_ADDRESS).transferTokens(
+                        currentSwap.tokenOut, currentSwap.user, currentSwap.amountOut
+                    );
+                    uint256 lastIndex = swaps.length - swapRemoved;
+                    swaps[i] = swaps[lastIndex];
+                    delete swaps[lastIndex];
+                    if (lastIndex == 0) {
+                        break;
+                    }
+                } else {
+                    // update the swap
+                    bytes memory updatedSwapData = abi.encode(
+                        pairId,
+                        currentSwap.swapAmount,
+                        currentSwap.swapAmountRemaining,
+                        currentSwap.completed,
+                        currentSwap.streamsRemaining,
+                        currentSwap.streamsCount,
+                        currentSwap.swapPerStream,
+                        currentSwap.dustTokenAmount
+                    );
+
+                    IPoolActions(POOL_ADDRESS).updatePairStreamQueueSwap(updatedSwapData, executionPriceKey, i, true);
+                    unchecked {
+                        ++i;
+                    }
+                }
             }
+        }
+    }
+
+    function _swappingAgainstOppositeSwaps(
+        Swap memory currentSwap,
+        uint256 currentOppositePriceKey
+    )
+        internal
+        returns (Swap memory)
+    {
+        uint256 initialTokenInAmountIn = currentSwap.swapAmountRemaining;
+        uint256 dustTokenInAmountIn = currentSwap.dustTokenAmount;
+
+        uint256 tokenInAmountIn = initialTokenInAmountIn + dustTokenInAmountIn;
+
+        uint256 amountInRemaining;
+
+        (currentSwap, amountInRemaining) = _computeOppositeSwaps(currentSwap, currentOppositePriceKey, tokenInAmountIn);
+
+        if (amountInRemaining == 0) {
+            currentSwap.completed = true;
+            currentSwap.dustTokenAmount = 0;
         }
 
         return currentSwap;
     }
 
-    function _settleCurrentSwapAgainstPool(
+    function _streamingAgainstOppositeSwaps(
         Swap memory currentSwap,
-        uint256 executionPriceCurrentSwap
+        uint256 currentOppositePriceKey
     )
         internal
-        returns (Swap memory)
+        returns (Swap memory, uint256 amountInRemaining)
     {
-        uint256 swapAmountIn = currentSwap.swapPerStream;
-        uint256 amountIn;
+        uint256 tokenInAmountIn = currentSwap.swapPerStream;
 
-        (uint256 reserveD_In,, uint256 reserveA_In,,,,) = pool.poolInfo(address(currentSwap.tokenIn));
-        (uint256 reserveD_Out,, uint256 reserveA_Out,,,,) = pool.poolInfo(address(currentSwap.tokenOut));
-
-        // TODO we probably need to separate this limit order logic in a separate function
-        if (currentSwap.typeOfOrder == 2) {
-            amountIn = swapAmountIn;
-        } else {
-            (,,,,,, uint8 decimals_In) = pool.poolInfo(address(currentSwap.tokenIn));
-            (,,,,,, uint8 decimals_Out) = pool.poolInfo(address(currentSwap.tokenOut));
-            uint256 currentExecPrice =
-                PoolLogicLib.getExecutionPrice(reserveA_In, reserveA_Out, decimals_In, decimals_Out);
-
-            uint256 expectedAmountOut = PoolLogicLib.calculateAmountOutFromPrice(
-                swapAmountIn, executionPriceCurrentSwap, decimals_In, decimals_Out
-            );
-            // now we get the expected amount in to get the expectedAmountOut at the pool price
-            amountIn =
-                PoolLogicLib.calculateAmountInFromPrice(expectedAmountOut, currentExecPrice, decimals_In, decimals_Out);
-
-            // uint256 extraToThePool = swapAmountIn - amountIn;
-        }
-
-        // the logic here is that we add, if present, the dust token amount to the swapAmountRemaining on the last swap
-        // (when streamsRemaining == 1)
         if (currentSwap.streamsRemaining == 1) {
-            amountIn += currentSwap.dustTokenAmount;
+            tokenInAmountIn += currentSwap.dustTokenAmount;
         }
 
-        (uint256 dToUpdate, uint256 amountOut) =
-            PoolLogicLib.getSwapAmountOut(amountIn, reserveA_In, reserveA_Out, reserveD_In, reserveD_Out);
+        (currentSwap, amountInRemaining) = _computeOppositeSwaps(currentSwap, currentOppositePriceKey, tokenInAmountIn);
+        if (amountInRemaining == 0) {
+            currentSwap.streamsRemaining--;
+            if (currentSwap.streamsRemaining == 0) {
+                currentSwap.dustTokenAmount = 0; // don't know if we need this update
+                currentSwap.completed = true; // don't know if we need this update
+            }
+        }
 
-        bytes memory updateReservesParams =
-            abi.encode(true, currentSwap.tokenIn, currentSwap.tokenOut, swapAmountIn, dToUpdate, amountOut, dToUpdate);
-        IPoolActions(POOL_ADDRESS).updateReserves(updateReservesParams);
+        return (currentSwap, amountInRemaining);
+    }
+
+    // @audit need a way to exit gracefully if the gap btw currentOppositePriceKey and currentOppositePriceKey is too
+    // big
+    function _computeOppositeSwaps(
+        Swap memory currentSwap,
+        uint256 currentOppositePriceKey,
+        uint256 tokenInAmountIn
+    )
+        private
+        returns (Swap memory, uint256 amountInRemaining)
+    {
+        amountInRemaining = tokenInAmountIn;
+        address tokenIn = currentSwap.tokenIn;
+        address tokenOut = currentSwap.tokenOut;
+        (,,,,,, uint8 decimals_In) = pool.poolInfo(address(tokenIn));
+        (,,,,,, uint8 decimals_Out) = pool.poolInfo(address(tokenOut));
+        uint256 executionPriceCurrentSwap = currentSwap.executionPrice;
+
+        bytes32 oppositePairId = bytes32(abi.encodePacked(tokenOut, tokenIn));
+        uint256 executionPriceOppositeKey = pool.highestPriceKey(oppositePairId);
+
+        while (executionPriceOppositeKey >= currentOppositePriceKey) {
+            Swap[] memory oppositeSwaps = pool.orderBook(oppositePairId, executionPriceOppositeKey, true);
+
+            if (oppositeSwaps.length == 0) {
+                // return currentSwap;
+                executionPriceOppositeKey -= PRICE_PRECISION;
+                IPoolActions(POOL_ADDRESS).setHighestPriceKey(oppositePairId, executionPriceOppositeKey);
+                continue;
+            }
+
+            uint256 swapRemoved;
+            for (uint256 i = 0; i < oppositeSwaps.length;) {
+                Swap memory oppositeSwap = oppositeSwaps[i];
+
+                // tokenOutAmountIn is the amount of tokenOut that is remaining to be processed from the opposite swap
+                // it contains opp swap dust token
+                uint256 tokenOutAmountIn = oppositeSwap.swapAmountRemaining + oppositeSwap.dustTokenAmount;
+
+                // we need to calculate the amount of tokenOut for the given tokenInAmountIn -> tokenA -> tokenB
+                // uint256 tokenOutAmountOut = PoolLogicLib.getAmountOut(tokenInAmountIn, reserveA_In,
+                // reserveAOutFromPrice);
+                uint256 tokenOutAmountOut = PoolLogicLib.calculateAmountOutFromPrice(
+                    tokenInAmountIn, executionPriceCurrentSwap, decimals_In, decimals_Out
+                );
+
+                // we need to calculate the amount of tokenIn for the given tokenOutAmountIn -> tokenB -> tokenA
+                uint256 tokenInAmountOut = PoolLogicLib.calculateAmountInFromPrice(
+                    tokenOutAmountIn, oppositeSwap.executionPrice, decimals_In, decimals_Out
+                );
+
+                // we need to check if the amount of tokenIn that we need to send to the user is less than the amount of
+                // tokenIn that is remaining to be processed
+                if (tokenInAmountIn > tokenInAmountOut) {
+                    // 1. we keep in memory the swapUser, tokenOut address and the amountOutSwap in memory to transfer
+                    // the
+                    // tokens
+
+                    IPoolActions(POOL_ADDRESS).transferTokens(
+                        oppositeSwap.tokenOut, oppositeSwap.user, tokenInAmountOut + oppositeSwap.amountOut
+                    );
+
+                    IPoolActions(POOL_ADDRESS).dequeueSwap_pairStreamQueue(
+                        oppositePairId, executionPriceOppositeKey, i, true
+                    );
+
+                    uint256 newTokenInAmountIn = tokenInAmountIn - tokenInAmountOut;
+
+                    currentSwap.swapAmountRemaining = newTokenInAmountIn;
+                    currentSwap.amountOut += tokenOutAmountIn;
+                    tokenInAmountIn = newTokenInAmountIn;
+
+                    amountInRemaining -= tokenInAmountOut;
+                    // 4. we continue to the next oppositeSwap
+
+                    swapRemoved++;
+                    if (swapRemoved == oppositeSwaps.length) {
+                        break;
+                    }
+                    uint256 lastIndex = oppositeSwaps.length - swapRemoved;
+                    oppositeSwaps[i] = oppositeSwaps[lastIndex];
+                    delete oppositeSwaps[lastIndex];
+                } else {
+                    // 1. frontSwap is completed and is taken out of the stream queue
+
+                    currentSwap.amountOut += tokenOutAmountOut;
+                    currentSwap.swapAmountRemaining = 0;
+                    amountInRemaining = 0;
+
+                    // 2. we recalculate the oppositeSwap conditions and update it (if tokenInAmountIn ==
+                    // tokenInAmountOut
+                    // we complete the oppositeSwap)
+
+                    //both swaps consuming each other
+                    if (tokenInAmountIn == tokenInAmountOut) {
+                        IPoolActions(POOL_ADDRESS).dequeueSwap_pairStreamQueue(
+                            oppositePairId, executionPriceOppositeKey, i, true
+                        );
+
+                        IPoolActions(POOL_ADDRESS).transferTokens(
+                            oppositeSwap.tokenOut, oppositeSwap.user, tokenInAmountOut + oppositeSwap.amountOut
+                        );
+                    } else {
+                        // only front is getting consumed. so we need to update opposite one
+                        // uint256 newTokenOutAmountIn = tokenOutAmountIn - tokenOutAmountOut;
+
+                        oppositeSwap.swapAmountRemaining = tokenOutAmountIn - tokenOutAmountOut;
+                        oppositeSwap.amountOut += tokenInAmountIn;
+
+                        // uint256 streamCount = getStreamCount(tokenOut, tokenIn, newTokenOutAmountIn);
+                        // uint256 swapPerStream = newTokenOutAmountIn / streamCount;
+                        // uint256 dustTokenAmount;
+                        // if (newTokenOutAmountIn % streamCount != 0) {
+                        //     dustTokenAmount += (newTokenOutAmountIn - (streamCount * swapPerStream));
+                        //     newTokenOutAmountIn = streamCount * swapPerStream; // reAssigning newTokenOutAmountIn
+                        // without
+                        // dust tokens
+                        // }
+
+                        oppositeSwap = updateSwapStreamInfo(oppositeSwap);
+
+                        // updating oppositeSwap
+                        bytes memory updatedSwapData_opposite = abi.encode(
+                            oppositePairId,
+                            oppositeSwap.amountOut,
+                            oppositeSwap.swapAmountRemaining,
+                            oppositeSwap.completed,
+                            oppositeSwap.streamsCount,
+                            oppositeSwap.streamsCount,
+                            oppositeSwap.swapPerStream,
+                            oppositeSwap.dustTokenAmount,
+                            2
+                        );
+
+                        IPoolActions(POOL_ADDRESS).updatePairStreamQueueSwap(
+                            updatedSwapData_opposite, executionPriceOppositeKey, i, true
+                        );
+                    }
+                    // 3. we terminate the loop as we have completed the frontSwap
+                    return (currentSwap, amountInRemaining);
+                }
+            }
+            executionPriceOppositeKey -= PRICE_PRECISION;
+            IPoolActions(POOL_ADDRESS).setHighestPriceKey(oppositePairId, executionPriceOppositeKey);
+            continue;
+        }
+
+        return (currentSwap, amountInRemaining);
+    }
+
+    function _streamingAgainstPool(Swap memory currentSwap) internal returns (Swap memory) {
+        uint256 swapAmountIn = currentSwap.swapPerStream;
+
+        if (currentSwap.streamsRemaining == 1) {
+            swapAmountIn += currentSwap.dustTokenAmount;
+        }
+
+        // @note at this point only market orders are processed at market price
+        uint256 amountOut;
+        if (currentSwap.typeOfOrder == 2) {
+            (, amountOut) = _computePoolReservesAtMarket(currentSwap.tokenIn, currentSwap.tokenOut, swapAmountIn);
+        } else {
+            (, amountOut) = _computePoolReservesAtExecutionPrice(
+                currentSwap.tokenIn, currentSwap.tokenOut, currentSwap.executionPrice, swapAmountIn
+            );
+        }
 
         currentSwap.streamsRemaining--;
         if (currentSwap.streamsRemaining == 0) {
@@ -989,6 +707,82 @@ contract PoolLogic is IPoolLogic {
         currentSwap.amountOut += amountOut;
 
         return currentSwap;
+    }
+
+    function _swappingAgainstPool(Swap memory currentSwap, uint256 swapAmount) private returns (Swap memory) {
+        uint256 swapAmountIn = swapAmount;
+
+        // @note at this point only market orders are processed at market price
+        uint256 amountOut;
+        if (currentSwap.typeOfOrder == 2) {
+            (, amountOut) = _computePoolReservesAtMarket(currentSwap.tokenIn, currentSwap.tokenOut, swapAmountIn);
+        } else {
+            (, amountOut) = _computePoolReservesAtExecutionPrice(
+                currentSwap.tokenIn, currentSwap.tokenOut, currentSwap.executionPrice, swapAmountIn
+            );
+        }
+
+        currentSwap.swapAmountRemaining -= swapAmountIn;
+        currentSwap.amountOut += amountOut;
+
+        return currentSwap;
+    }
+
+    //
+    function _computePoolReservesAtExecutionPrice(
+        address tokenIn,
+        address tokenOut,
+        uint256 executionPrice,
+        uint256 amountToSwap
+    )
+        private
+        returns (uint256 dToUpdate, uint256 amountOut)
+    {
+        uint256 swapAmountIn = amountToSwap;
+
+        (uint256 reserveD_In,, uint256 reserveA_In,,,, uint8 decimals_In) = pool.poolInfo(tokenIn);
+        (uint256 reserveD_Out,, uint256 reserveA_Out,,,, uint8 decimals_Out) = pool.poolInfo(tokenOut);
+
+        uint256 currentExecPrice = PoolLogicLib.getExecutionPrice(reserveA_In, reserveA_Out, decimals_In, decimals_Out);
+
+        // @note if executionPrice <= currentExecPrice, we need to swap at the pool price
+        if (executionPrice <= currentExecPrice) {
+            return _computePoolReservesAtMarket(tokenIn, tokenOut, swapAmountIn);
+        }
+
+        uint256 expectedAmountOut =
+            PoolLogicLib.calculateAmountOutFromPrice(swapAmountIn, executionPrice, decimals_In, decimals_Out);
+        // now we get the expected amount in to get the expectedAmountOut at the pool price
+        uint256 amountIn =
+            PoolLogicLib.calculateAmountInFromPrice(expectedAmountOut, currentExecPrice, decimals_In, decimals_Out);
+
+        (dToUpdate, amountOut) =
+            PoolLogicLib.getSwapAmountOut(amountIn, reserveA_In, reserveA_Out, reserveD_In, reserveD_Out);
+
+        bytes memory updateReservesParams =
+            abi.encode(true, tokenIn, tokenOut, swapAmountIn, dToUpdate, amountOut, dToUpdate);
+        IPoolActions(POOL_ADDRESS).updateReserves(updateReservesParams);
+    }
+
+    function _computePoolReservesAtMarket(
+        address tokenIn,
+        address tokenOut,
+        uint256 amountToSwap
+    )
+        private
+        returns (uint256 dToUpdate, uint256 amountOut)
+    {
+        uint256 swapAmountIn = amountToSwap;
+
+        (uint256 reserveD_In,, uint256 reserveA_In,,,,) = pool.poolInfo(tokenIn);
+        (uint256 reserveD_Out,, uint256 reserveA_Out,,,,) = pool.poolInfo(tokenOut);
+
+        (dToUpdate, amountOut) =
+            PoolLogicLib.getSwapAmountOut(swapAmountIn, reserveA_In, reserveA_Out, reserveD_In, reserveD_Out);
+
+        bytes memory updateReservesParams =
+            abi.encode(true, tokenIn, tokenOut, swapAmountIn, dToUpdate, amountOut, dToUpdate);
+        IPoolActions(POOL_ADDRESS).updateReserves(updateReservesParams);
     }
 
     function _insertInOrderBook(
@@ -1002,37 +796,37 @@ contract PoolLogic is IPoolLogic {
         IPoolActions(POOL_ADDRESS).updateOrderBook(pairId, _swap, executionPriceKey, isLimitOrder);
     }
 
-    /**
-     * @notice here we are maintaining the queue for the given pairId only
-     * if the price is less than the execution price we add the swap to the stream queue
-     * if the price is greater than the execution price we add the swap to the pending queue
-     * @param pairId bytes32 the pairId for the given pair
-     * @param swapDetails Swap the swap details
-     * @param currentPrice uint256 the current price of the pair
-     */
-    function _maintainQueue(bytes32 pairId, Swap memory swapDetails, uint256 currentPrice) internal {
-        // if execution price 0 (stream queue) , otherwise another queue
-        // add into queue
-        if (swapDetails.executionPrice <= currentPrice) {
-            (,, uint256 back) = pool.pairStreamQueue(pairId);
-            swapDetails.swapID = back;
-            IPoolActions(POOL_ADDRESS).enqueueSwap_pairStreamQueue(pairId, swapDetails);
-        } else {
-            (Swap[] memory swaps_pending, uint256 front, uint256 back) = pool.pairPendingQueue(pairId);
-            swapDetails.swapID = back;
+    // /**
+    //  * @notice here we are maintaining the queue for the given pairId only
+    //  * if the price is less than the execution price we add the swap to the stream queue
+    //  * if the price is greater than the execution price we add the swap to the pending queue
+    //  * @param pairId bytes32 the pairId for the given pair
+    //  * @param swapDetails Swap the swap details
+    //  * @param currentPrice uint256 the current price of the pair
+    //  */
+    // function _maintainQueue(bytes32 pairId, Swap memory swapDetails, uint256 currentPrice) internal {
+    //     // if execution price 0 (stream queue) , otherwise another queue
+    //     // add into queue
+    //     if (swapDetails.executionPrice <= currentPrice) {
+    //         (,, uint256 back) = pool.pairStreamQueue(pairId);
+    //         swapDetails.swapID = back;
+    //         IPoolActions(POOL_ADDRESS).enqueueSwap_pairStreamQueue(pairId, swapDetails);
+    //     } else {
+    //         (Swap[] memory swaps_pending, uint256 front, uint256 back) = pool.pairPendingQueue(pairId);
+    //         swapDetails.swapID = back;
 
-            if (back - front == 0) {
-                IPoolActions(POOL_ADDRESS).enqueueSwap_pairPendingQueue(pairId, swapDetails);
-            } else {
-                if (swapDetails.executionPrice >= swaps_pending[back - 1].executionPrice) {
-                    IPoolActions(POOL_ADDRESS).enqueueSwap_pairPendingQueue(pairId, swapDetails);
-                } else {
-                    IPoolActions(POOL_ADDRESS).enqueueSwap_pairPendingQueue(pairId, swapDetails);
-                    IPoolActions(POOL_ADDRESS).sortPairPendingQueue(pairId);
-                }
-            }
-        }
-    }
+    //         if (back - front == 0) {
+    //             IPoolActions(POOL_ADDRESS).enqueueSwap_pairPendingQueue(pairId, swapDetails);
+    //         } else {
+    //             if (swapDetails.executionPrice >= swaps_pending[back - 1].executionPrice) {
+    //                 IPoolActions(POOL_ADDRESS).enqueueSwap_pairPendingQueue(pairId, swapDetails);
+    //             } else {
+    //                 IPoolActions(POOL_ADDRESS).enqueueSwap_pairPendingQueue(pairId, swapDetails);
+    //                 IPoolActions(POOL_ADDRESS).sortPairPendingQueue(pairId);
+    //             }
+    //         }
+    //     }
+    // }
 
     function getStreamCount(address tokenIn, address tokenOut, uint256 amountIn) public view returns (uint256) {
         (uint256 reserveD_In,,,,,, uint8 decimalsIn) = pool.poolInfo(address(tokenIn));
@@ -1073,26 +867,11 @@ contract PoolLogic is IPoolLogic {
         return initialized;
     }
 
-    // function getCurrentPrice(
-    //     address tokenIn,
-    //     address tokenOut
-    // )
-    //     public
-    //     view
-    //     returns (uint256 currentPrice, uint256 reserveA_In, uint256 reserveA_Out)
-    // {
-    //     uint8 decimals_In;
-    //     uint8 decimals_Out;
-    //     (,, reserveA_In,,,, decimals_In) = pool.poolInfo(address(tokenIn));
-    //     (,, reserveA_Out,,,, decimals_Out) = pool.poolInfo(address(tokenOut));
-    //     currentPrice = getExecutionPrice(reserveA_In, reserveA_Out, decimals_In, decimals_Out);
-    // }
-
     function updateSwapStreamInfo(Swap memory _swap) private view returns (Swap memory) {
         uint256 streamCount = getStreamCount(_swap.tokenIn, _swap.tokenOut, _swap.swapAmountRemaining);
         uint256 swapPerStream = _swap.swapAmountRemaining / streamCount;
         if (_swap.swapAmountRemaining % streamCount != 0) {
-            _swap.dustTokenAmount += (_swap.swapAmountRemaining - (streamCount * swapPerStream));
+            _swap.dustTokenAmount = (_swap.swapAmountRemaining - (streamCount * swapPerStream));
             _swap.swapAmountRemaining = streamCount * swapPerStream;
         }
         _swap.streamsCount = streamCount;
