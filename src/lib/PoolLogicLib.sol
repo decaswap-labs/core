@@ -176,6 +176,7 @@ library PoolLogicLib {
     }
 
     // @audit is it gas efficient to pass decimals as inputs
+    // @audit ensure decimals are passed in securely on internal calls
     // @audit is a high level check approach for all non-18 tokens a better way to avoid utilising scaling
     // considerations on every stream execution
     function calculateAmountOutFromPrice(
