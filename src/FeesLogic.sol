@@ -196,9 +196,6 @@ contract FeesLogic is IFeesLogic/**, ReentrancyGuard*/ {
     function debitBotFeesFromSwapStream(address pool, uint256 fee) external {
         _debitBotFeesFromSwapStream(pool, fee);
     }
-    function _debitBotFeesFromSwapStream(address _pool, uint256 _fee) internal {
-        instaBotFees[_pool][msg.sender] += _fee;
-    }
 
     // /**
     //  * @dev _debitBotFeesFromLiquidity
@@ -263,23 +260,8 @@ contract FeesLogic is IFeesLogic/**, ReentrancyGuard*/ {
      */
 
     function _consumeLPAllocation(address pool, address liquidityProvider) internal returns (uint256 allocation) {
-        // LPDeclaration.Declaration storage provider = poolLpDeclarations[pool][msg.sender];
-
         uint32 currentEpoch = poolEpochCounter[pool];
-        uint32[] memory lpEpochs = poolLpEpochs[pool][liquidityProvider];/**provider.lastClaimedEpoch;*/
-        uint32[] memory lpPUnits = poolLpPUnits[pool][liquidityProvider];
-
-        if (lpPUnits.length == 0 || lpPUnits[lpPUnits.length - 1] == 0) revert InternalError();
-
-        require(lpEpochs[lpEpochs.length - 1] != 0, "No declaration exists");
-        require(lpEpochs[0] <= currentEpoch, "Invalid Epoch");
-        require(lpEpochs[0] != currentEpoch, "LP's can only process completed epochs");
-        
-        if (lpEpochs[0] > currentEpoch) {
-            revert InternalError();
-            // this shouldn't be possible
-        }
-        allocation = _doctorBob(pool, liquidityProvider);
+        allocation = _doctorBob(pool, liquidityProvider, currentEpoch);
         _resetDeclaration(pool, liquidityProvider, currentEpoch);
         // IPoolActions(POOL_ADDRESS).transferTokens(pool, liquidityProvider, accumulator);
     }
@@ -316,15 +298,23 @@ contract FeesLogic is IFeesLogic/**, ReentrancyGuard*/ {
      * @param lp claimant
      *
      */
-    function _doctorBob(address pool, address lp) internal view returns (uint256) {
+    function _doctorBob(address pool, address lp, uint32 currentEpoch) internal view returns (uint256) {
         // @audit need to manage the state of old epochFees to avoid over withdrawal potential
         uint32[] memory lpEpochs = poolLpEpochs[pool][lp];
         uint32[] memory lpPUnits = poolLpPUnits[pool][lp];
 
-        uint32 currentEpoch = poolEpochCounter[pool];
-        uint256 phases = lpEpochs.length;
+        if (lpPUnits.length == 0 || lpPUnits[lpPUnits.length - 1] == 0) revert InternalError();
 
-        uint256 lastIteratedIndex = 0;
+        require(lpEpochs[lpEpochs.length - 1] != 0, "No declaration exists");
+        require(lpEpochs[0] <= currentEpoch, "Invalid Epoch");
+        require(lpEpochs[0] != currentEpoch, "LP's can only process completed epochs");
+        
+        if (lpEpochs[0] > currentEpoch) {
+            revert InternalError();
+            // this shouldn't be possible
+        }
+        uint256 phases = lpEpochs.length;
+        uint256 lastIteratedIndex;
         uint256 lastPUnits;
         uint256 accumulator;
 
@@ -389,6 +379,10 @@ contract FeesLogic is IFeesLogic/**, ReentrancyGuard*/ {
         poolLpEpochs[_pool][_liquidityProvider].push(currentEpoch);
         delete poolLpPUnits[_pool][_liquidityProvider];
         poolLpPUnits[_pool][_liquidityProvider].push(lastPUnits);
+    }
+
+    function _debitBotFeesFromSwapStream(address _pool, uint256 _fee) internal {
+        instaBotFees[_pool][msg.sender] += _fee;
     }
 
     function _resolveTypeOfClaimant(address pool, address claimant) internal view returns (uint256) {
