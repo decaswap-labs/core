@@ -1,0 +1,42 @@
+@startuml Router
+!pragma teoz true
+
+title Remove Liquidity
+
+actor User as U
+box "Router" #LightYellow
+    database removeLiquidity as RLR
+end box
+box "PoolLogic" #LightBlue
+    database removeLiquidity as RLPL
+    database updatePUnints as UPU
+end box
+box "PoolLogicLib" #LightGreen
+    database calculateStreamCount as CSC 
+    database calculateAssetTransfer as CAT
+end box
+box "LiquidityLogic" #LightPink
+    database removeLiquidity as RLLL
+    participant RemoveLiquidityEntry as RL
+    database settleCurrentRemoveLiquidity as SRL
+end box
+box "Pool" #LightPink
+    database updateReserves as UR
+    database transferTokens as TT
+    database enqueueRemoveLiquidityEntry as RLE
+
+end box
+
+U --> RLR : removeLiquidity (router)
+RLR --> RLPL: removeLiquidity (pool logic)
+  RLPL --> RLLL: removeLiquidity (liquidity logic)
+  RLLL <--> CSC: calculates stream count\nreturning value
+  RLLL <--> RL: created remove\nliquidity entry
+  RLLL -->  SRL: calls to settle single stream of remove liquidity
+  SRL <--> CAT: calculates assets to transfer from inpput pUnits
+  SRL --> SRL: updates the remove liquidity data object
+  SRL --> UPU: updates the proportional p units
+  SRL --> UR: updates reserves on the pool contract
+  RLR --> TT: transfers tokens if all steams are executed
+  RLR --> RLE: pushes the liquidity entry into the orderbook
+@enduml

@@ -1,0 +1,40 @@
+@startuml Router
+!pragma teoz true
+
+title Add Token Liquidity
+
+actor User as U
+box "Router" #LightYellow
+    database addOnlyTokenLiquidity as ATLR
+end box
+box "PoolLogic" #LightBlue
+    database addOnlyTokenLiquidity as ATLPL
+end box
+box "LiquidityLogic" #LightPink
+    database addOnlyTokenLiquidity as ATLLL
+    participant LiquidityStream as LS
+    database settleCurrentAddLiquidityStream as SLS
+    database streamToken as ST
+    database streamD as SD
+end box
+box "Pool" #LightPink
+    database initPool as IPP
+    database updateReserves as UR
+    database updateLPUnits as ULP
+    database enqueueLiquiditystream as ELS
+    participant decimals as D
+    participant tokenAddress as TA
+end box
+
+U --> ATLR : add token liquidity (router)
+  ATLR --> ATLPL: add token liquidity (pool logic)
+  ATLPL --> ATLLL: add token liquidity (liquidity logic)
+  ATLLL <--> LS: creates LiquidityStream struct
+  ATLLL --> SLS: calls settle add liquidity stream
+  SLS --> SLS: calculates pUnits to mint wrt token added
+  SLS --> UR: updates respective pool reserves
+  SLS --> ULP: updates the lp's units allocation
+  SLS --> ATLL: return liquidity stream struct
+  ATLLL --> ELS: stores the stream struct in the liquidity queue
+
+@enduml

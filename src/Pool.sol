@@ -420,13 +420,15 @@ contract Pool is IPool, Ownable {
         mapToken_reserveA[token] -= reservesToRemove;
     }
 
-    function updatePoolOwnershipUnitsTotalRemoveLiqStream(bytes memory updatedPoolOwnershipUnitsTotalRemoveLiqData)
+    // @audit update the function name to remove LP units
+    function updateLPUnits(bytes memory updatedRemoveLiquidityData)
         external
         override
         onlyPoolLogic
     {
         (address token, uint256 lpUnitsToRemove) =
-            abi.decode(updatedPoolOwnershipUnitsTotalRemoveLiqData, (address, uint256));
+            abi.decode(updatedRemoveLiquidityData, (address, uint256));
+        // userLpUnitInfo[user][token] -= lpUnitsToRemove;
         mapToken_poolOwnershipUnitsTotal[token] -= lpUnitsToRemove;
     }
 

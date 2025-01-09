@@ -63,7 +63,6 @@ contract PoolLogic is IPoolLogic {
         external
         onlyRouter
     {
-        IPoolActions(POOL_ADDRESS).initPool(token, decimals);
         liquidityLogic.initPool(token, decimals, liquidityToken, user, tokenAmount, liquidityTokenAmount);
     }
 

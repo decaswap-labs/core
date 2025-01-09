@@ -74,6 +74,7 @@ contract Router is Ownable, ReentrancyGuard, IRouter {
         uint256 liquidityTokenAmount
     )
         external
+        nonReentrant
         returns (bool success)
     {
         if (!poolExist(liquidityToken)) revert InvalidPool();
@@ -92,7 +93,7 @@ contract Router is Ownable, ReentrancyGuard, IRouter {
         return true;
     }
 
-    function addLiqDualToken(address tokenA, address tokenB, uint256 amountA, uint256 amountB) external {
+    function addLiqDualToken(address tokenA, address tokenB, uint256 amountA, uint256 amountB) external nonReentrant {
         if (tokenA == tokenB) revert SamePool();
         if (!poolExist(tokenA)) revert InvalidPool();
         if (!poolExist(tokenB)) revert InvalidPool();
@@ -102,10 +103,11 @@ contract Router is Ownable, ReentrancyGuard, IRouter {
         IERC20(tokenA).safeTransferFrom(msg.sender, POOL_ADDRESS, amountA);
         IERC20(tokenB).safeTransferFrom(msg.sender, POOL_ADDRESS, amountB);
 
+        // @audit considering returning bool for success
         IPoolLogic(poolStates.POOL_LOGIC()).addLiqDualToken(tokenA, tokenB, msg.sender, amountA, amountB);
     }
 
-    function addOnlyDLiquidity(address tokenA, address tokenB, uint256 amountB) external {
+    function addOnlyDLiquidity(address tokenA, address tokenB, uint256 amountB) external nonReentrant {
         if (tokenA == tokenB) revert SamePool();
         if (!poolExist(tokenA)) revert InvalidPool();
         if (!poolExist(tokenB)) revert InvalidPool();
@@ -116,7 +118,7 @@ contract Router is Ownable, ReentrancyGuard, IRouter {
         IPoolLogic(poolStates.POOL_LOGIC()).addOnlyDLiquidity(tokenA, tokenB, msg.sender, amountB);
     }
 
-    function addOnlyTokenLiquidity(address token, uint256 amount) external {
+    function addOnlyTokenLiquidity(address token, uint256 amount) external nonReentrant {
         if (!poolExist(token)) revert InvalidPool();
         if (amount == 0) revert InvalidAmount();
 
@@ -142,8 +144,8 @@ contract Router is Ownable, ReentrancyGuard, IRouter {
             decimals
         );
         if (lpUnits % streamCount != 0) {
-            uint256 swapPerStream = lpUnits / streamCount;
-            lpUnits = streamCount * swapPerStream;
+            uint256 lpUnitsPerStream = lpUnits / streamCount;
+            lpUnits = streamCount * lpUnitsPerStream;
         }
         IPoolLogic(poolStates.POOL_LOGIC()).removeLiquidity(token, msg.sender, lpUnits);
 

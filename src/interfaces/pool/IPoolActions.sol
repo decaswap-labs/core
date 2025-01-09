@@ -80,7 +80,6 @@ interface IPoolActions {
 
     function getPoolAddresses() external view returns (address[] memory);
 
-    function updatePoolOwnershipUnitsTotalRemoveLiqStream(bytes memory updatedPoolOwnershipUnitsTotalRemoveLiqData)
-        external;
+    function updateLPUnits(bytes memory updatedRemoveLiquidityData) external;
     function updateReservesRemoveLiqStream(bytes memory updatedReservesAndRemoveLiqData) external;
 }

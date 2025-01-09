@@ -1,0 +1,30 @@
+@startuml Router
+!pragma teoz true
+
+title Initialise Pools (permissionless)
+
+actor User as U
+box "Router" #LightYellow
+    database initPool as IPR
+end box
+box "PoolLogic" #LightBlue
+    database initPool as IPPL
+end box
+box "LiquidityLogic" #LightPink
+    database initPool as IPLL
+end box
+box "Pool" #LightPink
+    database initPool as IPP
+    participant decimals as D
+    participant tokenAddress as TA
+end box
+
+U --> IPR : init pool (router)
+  IPR --> IPPL: initPool (pool logic)
+  IPPL --> IPLL: init pool (liquidity logic)
+  IPLL --> IPP: init pool (pool)
+  IPP --> D: token decimals
+  IPLL --> TA: token address
+
+
+@enduml

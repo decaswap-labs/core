@@ -19,6 +19,7 @@ struct Swap {
 }
 /* $10, we will iterate over all the swaps <=$10, n=50, 50 streams */
 
+// @audit update name globally to AddLiquidityEntry
 struct LiquidityStream {
     address user;
     StreamDetails poolAStream;
@@ -36,6 +37,7 @@ struct StreamDetails {
     uint256 dustTokenAmount;
 }
 
+// @audit update name globally to RemoveLiquidityEntry
 struct RemoveLiquidityStream {
     address user;
     uint256 lpAmount;
