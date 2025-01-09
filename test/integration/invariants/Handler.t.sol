@@ -50,7 +50,7 @@ contract Handler is Test {
         MockERC20 tokenOut = tokenIn == tokenA ? tokenB : tokenA;
         amountIn = bound(amountIn, 1, MAX_DEPOSIT_SIZE);
         uint256 executionPrice = _getCurrentPrice(address(tokenIn), address(tokenOut));
-        uint256 executionpriceDelta = bound(seed, 0, executionPrice / 10);
+        uint256 executionpriceDelta = bound(seed, 1, executionPrice / 10);
         bool addDelta = _getBoolFromSeed(seed);
         executionPrice = addDelta ? executionPrice + executionpriceDelta : executionPrice - executionpriceDelta;
 
@@ -58,7 +58,7 @@ contract Handler is Test {
         tokenIn.mint(msg.sender, amountIn);
         tokenIn.approve(address(router), amountIn);
 
-        router.swap(address(tokenIn), address(tokenOut), amountIn, executionPrice);
+        router.swapLimitOrder(address(tokenIn), address(tokenOut), amountIn, executionPrice);
 
         vm.stopPrank();
     }

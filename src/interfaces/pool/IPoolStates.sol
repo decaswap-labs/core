@@ -35,6 +35,6 @@ interface IPoolStates {
         returns (RemoveLiquidityStream[] memory removeLiquidityStream);
 
     function globalPoolDBalance(address) external view returns (uint256);
-    function highestPriceMarker(bytes32) external view returns (uint256);
+    function highestPriceKey(bytes32) external view returns (uint256);
     function orderBook(bytes32 pairId, uint256 priceKey, bool isLimitOrder) external view returns (Swap[] memory);
 }
