@@ -655,4 +655,55 @@ contract LiquidityLogic is ILiquidityLogic {
             }
         }
     }
+
+    // Methods to emit events
+    function emitAddLiquidityEntered(
+        uint256 id,
+        address token,
+        address user,
+        uint256 amount,
+        uint256 streamCount
+    ) internal {
+        emit AddLiquidityEntered(id, token, user, amount, streamCount);
+    }
+
+    function emitRemoveLiquidityEntered(
+        uint256 id,
+        address token,
+        address user,
+        uint256 amount,
+        uint256 streamCount
+    ) internal {
+        emit RemoveLiquidityEntered(id, token, user, amount, streamCount);
+    }
+
+    function emitAddLiquidityStreamExecuted(
+        uint256 id
+    ) internal {
+        emit AddLiquidityStreamExecuted(id);
+    }
+
+    function emitRemoveLiquidityStreamExecuted(
+        uint256 id
+    ) internal {
+        emit RemoveLiquidityStreamExecuted(id);
+    }
+
+    function emitGenesisPoolInitialized(
+        address token,
+        address user,
+        uint256 tokenAmount,
+        uint256 initialDToMint
+    ) internal {
+        emit GenesisPoolInitialized(token, user, tokenAmount, initialDToMint);
+    }
+
+    function emitPoolInitialized(
+        bytes32 pairId,
+        address user,
+        uint256 tokenAmount,
+        uint256 dTokenAmount
+    ) internal {
+        emit PoolInitialized(pairId, user, tokenAmount, dTokenAmount);
+    }
 }
