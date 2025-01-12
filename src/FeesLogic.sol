@@ -291,7 +291,7 @@ contract FeesLogic is IFeesLogic/**, ReentrancyGuard*/ {
      *          wrt the calling liquidity provider and reads the relative portion 
      *          from the state of the contract.
      * 
-     *          the cost is approximately 25k gas for the call + 6k gas 
+     *          the cost is approximately 25k gas for the call + ~500 gas 
      *          for each epoch iterated.
      * 
      * @param pool pool adddress
@@ -304,9 +304,10 @@ contract FeesLogic is IFeesLogic/**, ReentrancyGuard*/ {
         uint32[] memory lpPUnits = poolLpPUnits[pool][lp];
 
         if (lpEpochs.length == 0) revert NoDeclarationExists();
-        if (lpEpochs[0] == currentEpoch || lpEpochs[lpEpochs.length - 1] == currentEpoch) revert InvalidEpoch();        
-        if (lpPUnits.length == 0 || lpPUnits[lpPUnits.length - 1] == 0) revert InternalError();
-        if (lpEpochs[0] > currentEpoch) revert InternalError();
+        console.log("lp epochs length is ", lpEpochs.length);
+        console.log("current epoch is ", currentEpoch);
+        if (lpEpochs[0] == currentEpoch) revert InvalidEpoch();        
+        if (lpPUnits.length == 0 || lpEpochs[0] > currentEpoch) revert InternalError();
         
         uint256 phases = lpEpochs.length;
         uint256 lastIteratedIndex;

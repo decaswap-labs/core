@@ -188,7 +188,7 @@ contract FeesLogicUnitTests is DeploysForFees {
 
         //now move the epoch one forwards to allow declarations to claim
         // @todo this should be a separate test
-        feesLogic.proxyExecuteLiquidityStream(address(tokenA), 10000, 100, lp1, true);
+        feesLogic.proxyExecuteLiquidityStream(address(tokenA), 10000, 100, lpFalse, true);
 
         // and check relevant states
         uint256 currentFeeAccumulation = feesLogic.poolEpochCounterFees(address(tokenA), 5);
@@ -314,6 +314,62 @@ contract FeesLogicUnitTests is DeploysForFees {
 
     }
 
+    function test_ProxyEnvironmentSetup_DualLP_3() public {
+        vm.startPrank(bot);
+        // here we add liquidity to a pool for one LP
+        for (uint256 i = 1; i <= 10; i++) {
+        feesLogic.proxyExecuteLiquidityStream(address(tokenA), 10000, 100, lp1, true);
+        }
+
+        // and then do the same with a different LP to increase the epoch count
+        for (uint256 i = 1; i <= 90; i++) {
+        feesLogic.proxyExecuteLiquidityStream(address(tokenA), 10000, 100, lpFalse, true);
+        }
+
+        // //and now we add some more for lp 1 to test the iterative procedure for multiple despotis
+        // for (uint256 i = 1; i <= 3; i++) {
+        // feesLogic.proxyExecuteLiquidityStream(address(tokenA), 10000, 100, lp2, true);
+        // }
+
+        // // so we can expect the array for lp1 to look like
+        // // [1, 2, 3, 7, 8, 9]
+        // //and relative pUnits to look like
+        // // [100, 200, 300, 400, 500, 600]
+        // // so lets write these assertions
+        // assertEq(feesLogic.poolLpEpochs(address(tokenA), lp1, 0), 1);
+        // assertEq(feesLogic.poolLpEpochs(address(tokenA), lp1, 1), 2);
+        // assertEq(feesLogic.poolLpEpochs(address(tokenA), lp1, 2), 3);
+        // assertEq(feesLogic.poolLpEpochs(address(tokenA), lp1, 3), 7);
+        // assertEq(feesLogic.poolLpEpochs(address(tokenA), lp1, 4), 8);
+        // assertEq(feesLogic.poolLpEpochs(address(tokenA), lp1, 5), 9);
+
+        // assertEq(feesLogic.poolLpPUnits(address(tokenA), lp1, 0), 100);
+        // assertEq(feesLogic.poolLpPUnits(address(tokenA), lp1, 1), 200);
+        // assertEq(feesLogic.poolLpPUnits(address(tokenA), lp1, 2), 300);
+        // assertEq(feesLogic.poolLpPUnits(address(tokenA), lp1, 3), 400);
+        // assertEq(feesLogic.poolLpPUnits(address(tokenA), lp1, 4), 500);
+        // assertEq(feesLogic.poolLpPUnits(address(tokenA), lp1, 5), 600);
+
+        // now lets bang a load of swap streams to accumulate fees
+        for (uint256 i = 0; i < 10; i++) {
+        feesLogic.proxyExecuteSwapStream(address(tokenA), 10000);
+        }
+
+        // and then increase the epoch by depositing more liquidity
+        feesLogic.proxyExecuteLiquidityStream(address(tokenA), 10000, 100, lpFalse, true);
+
+        // now our poolPDepth per epoch would look like 
+        // [100, 200, 300, 400, 500, 600, 700, 800, 900, 1000]
+        // and our fee accumulation would be 150 in epoch 9
+        // and our bot fees would be 80
+        // and current epoch would be 9 
+
+        assertEq(feesLogic.poolLpPUnits(address(tokenA), lp1, 9), 1000);
+        assertEq(feesLogic.poolLpEpochs(address(tokenA), lp1, 9), 10);
+        assertEq(feesLogic.poolEpochCounterFees(address(tokenA), 100), 150);
+
+    }
+
     function test_Claim_SingleLP() public {
         test_ProxyEnvironmentSetup_SingleLP();
 
@@ -368,6 +424,5 @@ contract FeesLogicUnitTests is DeploysForFees {
 
         uint256 allocation = feesLogic.claimLPAllocation(address(tokenA), lp1);
         assertEq(allocation, 415);
-
     }
 }
