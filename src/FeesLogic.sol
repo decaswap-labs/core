@@ -144,7 +144,7 @@ contract FeesLogic is IFeesLogic/**, ReentrancyGuard*/ {
      */
     function claimAccumulatedBotFees(address _pool) external /**onlyRouter*/ {
         uint256 fee = instaBotFees[_pool][msg.sender];
-        require(fee > 0, "No fees available");
+        if (fee == 0) revert NoFeesToClaim();
         instaBotFees[_pool][msg.sender] = 0;
         // IPoolActions(POOL_ADDRESS).transferTokens(_pool, msg.sender, fee);
     }
@@ -303,16 +303,11 @@ contract FeesLogic is IFeesLogic/**, ReentrancyGuard*/ {
         uint32[] memory lpEpochs = poolLpEpochs[pool][lp];
         uint32[] memory lpPUnits = poolLpPUnits[pool][lp];
 
+        if (lpEpochs.length == 0) revert NoDeclarationExists();
+        if (lpEpochs[0] == currentEpoch || lpEpochs[lpEpochs.length - 1] == currentEpoch) revert InvalidEpoch();        
         if (lpPUnits.length == 0 || lpPUnits[lpPUnits.length - 1] == 0) revert InternalError();
-
-        require(lpEpochs[lpEpochs.length - 1] != 0, "No declaration exists");
-        require(lpEpochs[0] <= currentEpoch, "Invalid Epoch");
-        require(lpEpochs[0] != currentEpoch, "LP's can only process completed epochs");
+        if (lpEpochs[0] > currentEpoch) revert InternalError();
         
-        if (lpEpochs[0] > currentEpoch) {
-            revert InternalError();
-            // this shouldn't be possible
-        }
         uint256 phases = lpEpochs.length;
         uint256 lastIteratedIndex;
         uint256 lastPUnits;
