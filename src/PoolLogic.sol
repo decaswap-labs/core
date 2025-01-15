@@ -13,6 +13,8 @@ import { IPoolLogic } from "./interfaces/IPoolLogic.sol";
 import { IPoolActions } from "./interfaces/pool/IPoolActions.sol";
 import { ILiquidityLogic } from "./interfaces/ILiquidityLogic.sol";
 
+import { console } from "forge-std/console.sol";
+
 contract PoolLogic is IPoolLogic {
     using DSMath for uint256;
     using ScaleDecimals for uint256;
@@ -159,7 +161,7 @@ contract PoolLogic is IPoolLogic {
                     );
 
                     // Update swap object in the order book
-                    IPoolActions(POOL_ADDRESS).updatePairStreamQueueSwap(updatedSwapData, executionPriceKey, i, false);
+                    IPoolActions(POOL_ADDRESS).updateSwap(updatedSwapData, executionPriceKey, i, false);
 
                     // If swap is completed, dequeue it and transfer tokens
                     if (currentSwap.streamsRemaining == 0) {
@@ -185,7 +187,7 @@ contract PoolLogic is IPoolLogic {
                     );
 
                     // Update swap object in the order book
-                    IPoolActions(POOL_ADDRESS).updatePairStreamQueueSwap(updatedSwapData, executionPriceKey, i, false);
+                    IPoolActions(POOL_ADDRESS).updateSwap(updatedSwapData, executionPriceKey, i, false);
 
                     // If swap is completed, dequeue it and transfer tokens
                     if (currentSwap.streamsRemaining == 0) {
@@ -396,6 +398,9 @@ contract PoolLogic is IPoolLogic {
             priceKey -= PRICE_PRECISION; // 1 Gwei ou autre précision utilisée.
                 // update A->B highest price marker
                 // need get reserve price for the next priceKey
+            console.log("priceKey", priceKey);
+            console.log("poolReservesPriceKey", poolReservesPriceKey);
+            return;
         }
     }
 
@@ -448,16 +453,18 @@ contract PoolLogic is IPoolLogic {
                         currentSwap.streamsRemaining,
                         currentSwap.streamsCount,
                         currentSwap.swapPerStream,
-                        currentSwap.dustTokenAmount
+                        currentSwap.dustTokenAmount,
+                        currentSwap.typeOfOrder
                     );
 
-                    IPoolActions(POOL_ADDRESS).updatePairStreamQueueSwap(updatedSwapData, executionPriceKey, i, true);
+                    IPoolActions(POOL_ADDRESS).updateSwap(updatedSwapData, executionPriceKey, i, true);
                     unchecked {
                         ++i;
                     }
                 }
 
                 // we go to the next swap without trying to stream against pool
+                console.log("here we continue");
                 continue;
             } else {
                 // we go against pool with the remaining amount
@@ -489,10 +496,19 @@ contract PoolLogic is IPoolLogic {
                         currentSwap.streamsRemaining,
                         currentSwap.streamsCount,
                         currentSwap.swapPerStream,
-                        currentSwap.dustTokenAmount
+                        currentSwap.dustTokenAmount,
+                        currentSwap.typeOfOrder
                     );
+                    console.log("currentSwap.swapAmount", currentSwap.swapAmount);
+                    console.log("currentSwap.swapAmountRemaining", currentSwap.swapAmountRemaining);
+                    console.log("currentSwap.completed", currentSwap.completed);
+                    console.log("currentSwap.streamsRemaining", currentSwap.streamsRemaining);
+                    console.log("currentSwap.streamsCount", currentSwap.streamsCount);
+                    console.log("currentSwap.swapPerStream", currentSwap.swapPerStream);
+                    console.log("currentSwap.dustTokenAmount", currentSwap.dustTokenAmount);
+                    console.log("currentSwap.typeOfOrder", currentSwap.typeOfOrder);
 
-                    IPoolActions(POOL_ADDRESS).updatePairStreamQueueSwap(updatedSwapData, executionPriceKey, i, true);
+                    IPoolActions(POOL_ADDRESS).updateSwap(updatedSwapData, executionPriceKey, i, true);
                     unchecked {
                         ++i;
                     }
@@ -635,7 +651,7 @@ contract PoolLogic is IPoolLogic {
                     // 1. frontSwap is completed and is taken out of the stream queue
 
                     currentSwap.amountOut += tokenOutAmountOut;
-                    currentSwap.swapAmountRemaining = 0;
+                    currentSwap.swapAmountRemaining -= amountInRemaining;
                     amountInRemaining = 0;
 
                     // 2. we recalculate the oppositeSwap conditions and update it (if tokenInAmountIn ==
@@ -669,12 +685,10 @@ contract PoolLogic is IPoolLogic {
                             oppositeSwap.streamsCount,
                             oppositeSwap.swapPerStream,
                             oppositeSwap.dustTokenAmount,
-                            2
+                            oppositeSwap.typeOfOrder
                         );
 
-                        IPoolActions(POOL_ADDRESS).updatePairStreamQueueSwap(
-                            updatedSwapData_opposite, oppositeCachedPriceKey, i, true
-                        );
+                        IPoolActions(POOL_ADDRESS).updateSwap(updatedSwapData_opposite, oppositeCachedPriceKey, i, true);
                     }
                     // 3. we terminate the loop as we have completed the frontSwap
                     return (currentSwap, amountInRemaining);
@@ -800,40 +814,8 @@ contract PoolLogic is IPoolLogic {
     )
         internal
     {
-        IPoolActions(POOL_ADDRESS).updateOrderBook(pairId, _swap, executionPriceKey, isLimitOrder);
+        IPoolActions(POOL_ADDRESS).addSwapToOrderBook(pairId, _swap, executionPriceKey, isLimitOrder);
     }
-
-    // /**
-    //  * @notice here we are maintaining the queue for the given pairId only
-    //  * if the price is less than the execution price we add the swap to the stream queue
-    //  * if the price is greater than the execution price we add the swap to the pending queue
-    //  * @param pairId bytes32 the pairId for the given pair
-    //  * @param swapDetails Swap the swap details
-    //  * @param currentPrice uint256 the current price of the pair
-    //  */
-    // function _maintainQueue(bytes32 pairId, Swap memory swapDetails, uint256 currentPrice) internal {
-    //     // if execution price 0 (stream queue) , otherwise another queue
-    //     // add into queue
-    //     if (swapDetails.executionPrice <= currentPrice) {
-    //         (,, uint256 back) = pool.pairStreamQueue(pairId);
-    //         swapDetails.swapID = back;
-    //         IPoolActions(POOL_ADDRESS).enqueueSwap_pairStreamQueue(pairId, swapDetails);
-    //     } else {
-    //         (Swap[] memory swaps_pending, uint256 front, uint256 back) = pool.pairPendingQueue(pairId);
-    //         swapDetails.swapID = back;
-
-    //         if (back - front == 0) {
-    //             IPoolActions(POOL_ADDRESS).enqueueSwap_pairPendingQueue(pairId, swapDetails);
-    //         } else {
-    //             if (swapDetails.executionPrice >= swaps_pending[back - 1].executionPrice) {
-    //                 IPoolActions(POOL_ADDRESS).enqueueSwap_pairPendingQueue(pairId, swapDetails);
-    //             } else {
-    //                 IPoolActions(POOL_ADDRESS).enqueueSwap_pairPendingQueue(pairId, swapDetails);
-    //                 IPoolActions(POOL_ADDRESS).sortPairPendingQueue(pairId);
-    //             }
-    //         }
-    //     }
-    // }
 
     function getStreamCount(address tokenIn, address tokenOut, uint256 amountIn) public view returns (uint256) {
         (uint256 reserveD_In,,,,,, uint8 decimalsIn) = pool.poolInfo(address(tokenIn));

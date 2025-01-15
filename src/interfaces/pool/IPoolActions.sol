@@ -55,7 +55,7 @@ interface IPoolActions {
     function sortPairPendingQueue(bytes32 pairId) external;
     function globalStreamQueueDeposit(bytes32 pairId) external returns (GlobalPoolStream[] memory globalPoolStream);
     function globalStreamQueueWithdraw(bytes32 pairId) external returns (GlobalPoolStream[] memory globalPoolStream);
-    function updatePairStreamQueueSwap(
+    function updateSwap(
         bytes memory updatedSwapData,
         uint256 executionPriceKey,
         uint256 index,
@@ -70,7 +70,7 @@ interface IPoolActions {
     function updateGlobalPoolDepositStream(GlobalPoolStream memory stream, bytes32 pairId, uint256 index) external;
     function updateGlobalPoolWithdrawStream(GlobalPoolStream memory stream, bytes32 pairId, uint256 index) external;
 
-    function updateOrderBook(bytes32, Swap memory swap, uint256, bool) external;
+    function addSwapToOrderBook(bytes32, Swap memory swap, uint256, bool) external;
 
     function getNextSwapId() external returns (uint256);
     function getReserveA(address pool) external view returns (uint256);

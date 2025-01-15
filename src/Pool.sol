@@ -328,7 +328,7 @@ contract Pool is IPool, Ownable {
 
     // updatedSwapData encoding format => (bytes32 pairId, uint256 amountOut, uint256 swapAmountRemaining, bool
     // completed, uint256 streamsRemaining, uint256 streamCount, uint256 swapPerStream)
-    function updatePairStreamQueueSwap(
+    function updateSwap(
         bytes memory updatedSwapData,
         uint256 executionPriceKey,
         uint256 index,
@@ -454,10 +454,10 @@ contract Pool is IPool, Ownable {
         }
     }
 
-    function updateOrderBook(
+    function addSwapToOrderBook(
         bytes32 pairId,
         Swap memory swap,
-        uint256 key,
+        uint256 priceKey,
         bool isLimitOrder
     )
         external
@@ -465,10 +465,9 @@ contract Pool is IPool, Ownable {
         onlyPoolLogic
     {
         if (isLimitOrder) {
-            console.log("swap.swapID", swap.swapID);
-            limitOrderBook[pairId][key].push(swap);
+            limitOrderBook[pairId][priceKey].push(swap);
         } else {
-            triggerAndMarketOrderBook[pairId][key].push(swap);
+            triggerAndMarketOrderBook[pairId][priceKey].push(swap);
         }
     }
 
