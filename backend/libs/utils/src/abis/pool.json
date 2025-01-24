@@ -1,0 +1,3530 @@
+[
+  {
+    "type": "constructor",
+    "inputs": [
+      {
+        "name": "vaultAddress",
+        "type": "address",
+        "internalType": "address"
+      },
+      {
+        "name": "routerAddress",
+        "type": "address",
+        "internalType": "address"
+      },
+      {
+        "name": "poolLogicAddress",
+        "type": "address",
+        "internalType": "address"
+      },
+      {
+        "name": "liquidityLogicAddress",
+        "type": "address",
+        "internalType": "address"
+      }
+    ],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "GLOBAL_POOL",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "address",
+        "internalType": "address"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "LIQUIDITY_LOGIC",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "address",
+        "internalType": "address"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "POOL_LOGIC",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "address",
+        "internalType": "address"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "ROUTER_ADDRESS",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "address",
+        "internalType": "address"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "SWAP_IDS",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "VAULT_ADDRESS",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "address",
+        "internalType": "address"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "dequeueGlobalPoolDepositStream",
+    "inputs": [
+      {
+        "name": "pairId",
+        "type": "bytes32",
+        "internalType": "bytes32"
+      },
+      {
+        "name": "index",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "dequeueGlobalPoolWithdrawStream",
+    "inputs": [
+      {
+        "name": "pairId",
+        "type": "bytes32",
+        "internalType": "bytes32"
+      },
+      {
+        "name": "index",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "dequeueGlobalStream_streamQueue",
+    "inputs": [
+      {
+        "name": "pairId",
+        "type": "bytes32",
+        "internalType": "bytes32"
+      }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "dequeueLiquidityStream_streamQueue",
+    "inputs": [
+      {
+        "name": "pairId",
+        "type": "bytes32",
+        "internalType": "bytes32"
+      },
+      {
+        "name": "index",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "dequeueRemoveLiquidity_streamQueue",
+    "inputs": [
+      {
+        "name": "token",
+        "type": "address",
+        "internalType": "address"
+      },
+      {
+        "name": "index",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "dequeueSwap_pairPendingQueue",
+    "inputs": [
+      {
+        "name": "pairId",
+        "type": "bytes32",
+        "internalType": "bytes32"
+      }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "dequeueSwap_pairStreamQueue",
+    "inputs": [
+      {
+        "name": "pairId",
+        "type": "bytes32",
+        "internalType": "bytes32"
+      },
+      {
+        "name": "executionPriceKey",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "index",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "isLimitOrder",
+        "type": "bool",
+        "internalType": "bool"
+      }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "enqueueGlobalPoolDepositStream",
+    "inputs": [
+      {
+        "name": "pairId",
+        "type": "bytes32",
+        "internalType": "bytes32"
+      },
+      {
+        "name": "globaPoolStream",
+        "type": "tuple",
+        "internalType": "struct GlobalPoolStream",
+        "components": [
+          {
+            "name": "user",
+            "type": "address",
+            "internalType": "address"
+          },
+          {
+            "name": "tokenIn",
+            "type": "address",
+            "internalType": "address"
+          },
+          {
+            "name": "tokenAmount",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "streamCount",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "streamsRemaining",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "swapPerStream",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "swapAmountRemaining",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "amountOut",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "deposit",
+            "type": "bool",
+            "internalType": "bool"
+          }
+        ]
+      }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "enqueueGlobalPoolWithdrawStream",
+    "inputs": [
+      {
+        "name": "pairId",
+        "type": "bytes32",
+        "internalType": "bytes32"
+      },
+      {
+        "name": "globaPoolStream",
+        "type": "tuple",
+        "internalType": "struct GlobalPoolStream",
+        "components": [
+          {
+            "name": "user",
+            "type": "address",
+            "internalType": "address"
+          },
+          {
+            "name": "tokenIn",
+            "type": "address",
+            "internalType": "address"
+          },
+          {
+            "name": "tokenAmount",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "streamCount",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "streamsRemaining",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "swapPerStream",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "swapAmountRemaining",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "amountOut",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "deposit",
+            "type": "bool",
+            "internalType": "bool"
+          }
+        ]
+      }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "enqueueLiquidityStream",
+    "inputs": [
+      {
+        "name": "pairId",
+        "type": "bytes32",
+        "internalType": "bytes32"
+      },
+      {
+        "name": "liquidityStream",
+        "type": "tuple",
+        "internalType": "struct LiquidityStream",
+        "components": [
+          {
+            "name": "user",
+            "type": "address",
+            "internalType": "address"
+          },
+          {
+            "name": "poolAStream",
+            "type": "tuple",
+            "internalType": "struct StreamDetails",
+            "components": [
+              {
+                "name": "token",
+                "type": "address",
+                "internalType": "address"
+              },
+              {
+                "name": "amount",
+                "type": "uint256",
+                "internalType": "uint256"
+              },
+              {
+                "name": "streamCount",
+                "type": "uint256",
+                "internalType": "uint256"
+              },
+              {
+                "name": "streamsRemaining",
+                "type": "uint256",
+                "internalType": "uint256"
+              },
+              {
+                "name": "swapPerStream",
+                "type": "uint256",
+                "internalType": "uint256"
+              },
+              {
+                "name": "swapAmountRemaining",
+                "type": "uint256",
+                "internalType": "uint256"
+              },
+              {
+                "name": "dustTokenAmount",
+                "type": "uint256",
+                "internalType": "uint256"
+              }
+            ]
+          },
+          {
+            "name": "poolBStream",
+            "type": "tuple",
+            "internalType": "struct StreamDetails",
+            "components": [
+              {
+                "name": "token",
+                "type": "address",
+                "internalType": "address"
+              },
+              {
+                "name": "amount",
+                "type": "uint256",
+                "internalType": "uint256"
+              },
+              {
+                "name": "streamCount",
+                "type": "uint256",
+                "internalType": "uint256"
+              },
+              {
+                "name": "streamsRemaining",
+                "type": "uint256",
+                "internalType": "uint256"
+              },
+              {
+                "name": "swapPerStream",
+                "type": "uint256",
+                "internalType": "uint256"
+              },
+              {
+                "name": "swapAmountRemaining",
+                "type": "uint256",
+                "internalType": "uint256"
+              },
+              {
+                "name": "dustTokenAmount",
+                "type": "uint256",
+                "internalType": "uint256"
+              }
+            ]
+          },
+          {
+            "name": "dAmountOut",
+            "type": "uint256",
+            "internalType": "uint256"
+          }
+        ]
+      }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "enqueueRemoveLiquidityStream",
+    "inputs": [
+      {
+        "name": "token",
+        "type": "address",
+        "internalType": "address"
+      },
+      {
+        "name": "removeLiquidityStream",
+        "type": "tuple",
+        "internalType": "struct RemoveLiquidityStream",
+        "components": [
+          {
+            "name": "user",
+            "type": "address",
+            "internalType": "address"
+          },
+          {
+            "name": "lpAmount",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "streamCountTotal",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "streamCountRemaining",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "conversionPerStream",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "tokenAmountOut",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "conversionRemaining",
+            "type": "uint256",
+            "internalType": "uint256"
+          }
+        ]
+      }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "enqueueSwap_pairPendingQueue",
+    "inputs": [
+      {
+        "name": "pairId",
+        "type": "bytes32",
+        "internalType": "bytes32"
+      },
+      {
+        "name": "swap",
+        "type": "tuple",
+        "internalType": "struct Swap",
+        "components": [
+          {
+            "name": "swapID",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "swapAmount",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "swapAmountRemaining",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "streamsCount",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "streamsRemaining",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "swapPerStream",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "executionPrice",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "amountOut",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "dustTokenAmount",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "user",
+            "type": "address",
+            "internalType": "address"
+          },
+          {
+            "name": "tokenIn",
+            "type": "address",
+            "internalType": "address"
+          },
+          {
+            "name": "tokenOut",
+            "type": "address",
+            "internalType": "address"
+          },
+          {
+            "name": "typeOfOrder",
+            "type": "uint8",
+            "internalType": "uint8"
+          },
+          {
+            "name": "completed",
+            "type": "bool",
+            "internalType": "bool"
+          }
+        ]
+      }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "enqueueSwap_pairStreamQueue",
+    "inputs": [
+      {
+        "name": "pairId",
+        "type": "bytes32",
+        "internalType": "bytes32"
+      },
+      {
+        "name": "swap",
+        "type": "tuple",
+        "internalType": "struct Swap",
+        "components": [
+          {
+            "name": "swapID",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "swapAmount",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "swapAmountRemaining",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "streamsCount",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "streamsRemaining",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "swapPerStream",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "executionPrice",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "amountOut",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "dustTokenAmount",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "user",
+            "type": "address",
+            "internalType": "address"
+          },
+          {
+            "name": "tokenIn",
+            "type": "address",
+            "internalType": "address"
+          },
+          {
+            "name": "tokenOut",
+            "type": "address",
+            "internalType": "address"
+          },
+          {
+            "name": "typeOfOrder",
+            "type": "uint8",
+            "internalType": "uint8"
+          },
+          {
+            "name": "completed",
+            "type": "bool",
+            "internalType": "bool"
+          }
+        ]
+      }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "getNextSwapId",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "getPoolAddresses",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "address[]",
+        "internalType": "address[]"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "getPoolId",
+    "inputs": [
+      {
+        "name": "tokenA",
+        "type": "address",
+        "internalType": "address"
+      },
+      {
+        "name": "tokenB",
+        "type": "address",
+        "internalType": "address"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "",
+        "type": "bytes32",
+        "internalType": "bytes32"
+      }
+    ],
+    "stateMutability": "pure"
+  },
+  {
+    "type": "function",
+    "name": "getReserveA",
+    "inputs": [
+      {
+        "name": "pool",
+        "type": "address",
+        "internalType": "address"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "getReserveD",
+    "inputs": [
+      {
+        "name": "pool",
+        "type": "address",
+        "internalType": "address"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "globalPoolDBalance",
+    "inputs": [
+      {
+        "name": "",
+        "type": "address",
+        "internalType": "address"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "globalSlippage",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "globalStreamQueueDeposit",
+    "inputs": [
+      {
+        "name": "pairId",
+        "type": "bytes32",
+        "internalType": "bytes32"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "globalPoolStream",
+        "type": "tuple[]",
+        "internalType": "struct GlobalPoolStream[]",
+        "components": [
+          {
+            "name": "user",
+            "type": "address",
+            "internalType": "address"
+          },
+          {
+            "name": "tokenIn",
+            "type": "address",
+            "internalType": "address"
+          },
+          {
+            "name": "tokenAmount",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "streamCount",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "streamsRemaining",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "swapPerStream",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "swapAmountRemaining",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "amountOut",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "deposit",
+            "type": "bool",
+            "internalType": "bool"
+          }
+        ]
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "globalStreamQueueWithdraw",
+    "inputs": [
+      {
+        "name": "pairId",
+        "type": "bytes32",
+        "internalType": "bytes32"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "globalPoolStream",
+        "type": "tuple[]",
+        "internalType": "struct GlobalPoolStream[]",
+        "components": [
+          {
+            "name": "user",
+            "type": "address",
+            "internalType": "address"
+          },
+          {
+            "name": "tokenIn",
+            "type": "address",
+            "internalType": "address"
+          },
+          {
+            "name": "tokenAmount",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "streamCount",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "streamsRemaining",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "swapPerStream",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "swapAmountRemaining",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "amountOut",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "deposit",
+            "type": "bool",
+            "internalType": "bool"
+          }
+        ]
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "highestPriceKey",
+    "inputs": [
+      {
+        "name": "",
+        "type": "bytes32",
+        "internalType": "bytes32"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "initGenesisPool",
+    "inputs": [
+      {
+        "name": "initPoolParams",
+        "type": "bytes",
+        "internalType": "bytes"
+      }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "initPool",
+    "inputs": [
+      {
+        "name": "tokenAddress",
+        "type": "address",
+        "internalType": "address"
+      },
+      {
+        "name": "decimals",
+        "type": "uint8",
+        "internalType": "uint8"
+      }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "limitOrderBook",
+    "inputs": [
+      {
+        "name": "",
+        "type": "bytes32",
+        "internalType": "bytes32"
+      },
+      {
+        "name": "",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "swapID",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "swapAmount",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "swapAmountRemaining",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "streamsCount",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "streamsRemaining",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "swapPerStream",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "executionPrice",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "amountOut",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "dustTokenAmount",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "user",
+        "type": "address",
+        "internalType": "address"
+      },
+      {
+        "name": "tokenIn",
+        "type": "address",
+        "internalType": "address"
+      },
+      {
+        "name": "tokenOut",
+        "type": "address",
+        "internalType": "address"
+      },
+      {
+        "name": "typeOfOrder",
+        "type": "uint8",
+        "internalType": "uint8"
+      },
+      {
+        "name": "completed",
+        "type": "bool",
+        "internalType": "bool"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "liquidityStreamQueue",
+    "inputs": [
+      {
+        "name": "pairId",
+        "type": "bytes32",
+        "internalType": "bytes32"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "liquidityStream",
+        "type": "tuple[]",
+        "internalType": "struct LiquidityStream[]",
+        "components": [
+          {
+            "name": "user",
+            "type": "address",
+            "internalType": "address"
+          },
+          {
+            "name": "poolAStream",
+            "type": "tuple",
+            "internalType": "struct StreamDetails",
+            "components": [
+              {
+                "name": "token",
+                "type": "address",
+                "internalType": "address"
+              },
+              {
+                "name": "amount",
+                "type": "uint256",
+                "internalType": "uint256"
+              },
+              {
+                "name": "streamCount",
+                "type": "uint256",
+                "internalType": "uint256"
+              },
+              {
+                "name": "streamsRemaining",
+                "type": "uint256",
+                "internalType": "uint256"
+              },
+              {
+                "name": "swapPerStream",
+                "type": "uint256",
+                "internalType": "uint256"
+              },
+              {
+                "name": "swapAmountRemaining",
+                "type": "uint256",
+                "internalType": "uint256"
+              },
+              {
+                "name": "dustTokenAmount",
+                "type": "uint256",
+                "internalType": "uint256"
+              }
+            ]
+          },
+          {
+            "name": "poolBStream",
+            "type": "tuple",
+            "internalType": "struct StreamDetails",
+            "components": [
+              {
+                "name": "token",
+                "type": "address",
+                "internalType": "address"
+              },
+              {
+                "name": "amount",
+                "type": "uint256",
+                "internalType": "uint256"
+              },
+              {
+                "name": "streamCount",
+                "type": "uint256",
+                "internalType": "uint256"
+              },
+              {
+                "name": "streamsRemaining",
+                "type": "uint256",
+                "internalType": "uint256"
+              },
+              {
+                "name": "swapPerStream",
+                "type": "uint256",
+                "internalType": "uint256"
+              },
+              {
+                "name": "swapAmountRemaining",
+                "type": "uint256",
+                "internalType": "uint256"
+              },
+              {
+                "name": "dustTokenAmount",
+                "type": "uint256",
+                "internalType": "uint256"
+              }
+            ]
+          },
+          {
+            "name": "dAmountOut",
+            "type": "uint256",
+            "internalType": "uint256"
+          }
+        ]
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "mapPairId_globalPoolQueue_deposit",
+    "inputs": [
+      {
+        "name": "pairId",
+        "type": "bytes32",
+        "internalType": "bytes32"
+      },
+      {
+        "name": "",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "user",
+        "type": "address",
+        "internalType": "address"
+      },
+      {
+        "name": "tokenIn",
+        "type": "address",
+        "internalType": "address"
+      },
+      {
+        "name": "tokenAmount",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "streamCount",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "streamsRemaining",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "swapPerStream",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "swapAmountRemaining",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "amountOut",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "deposit",
+        "type": "bool",
+        "internalType": "bool"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "mapPairId_globalPoolQueue_withdraw",
+    "inputs": [
+      {
+        "name": "pairId",
+        "type": "bytes32",
+        "internalType": "bytes32"
+      },
+      {
+        "name": "",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "user",
+        "type": "address",
+        "internalType": "address"
+      },
+      {
+        "name": "tokenIn",
+        "type": "address",
+        "internalType": "address"
+      },
+      {
+        "name": "tokenAmount",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "streamCount",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "streamsRemaining",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "swapPerStream",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "swapAmountRemaining",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "amountOut",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "deposit",
+        "type": "bool",
+        "internalType": "bool"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "mapPairId_pairPendingQueue_Swaps",
+    "inputs": [
+      {
+        "name": "pairId",
+        "type": "bytes32",
+        "internalType": "bytes32"
+      },
+      {
+        "name": "",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "swapID",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "swapAmount",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "swapAmountRemaining",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "streamsCount",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "streamsRemaining",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "swapPerStream",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "executionPrice",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "amountOut",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "dustTokenAmount",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "user",
+        "type": "address",
+        "internalType": "address"
+      },
+      {
+        "name": "tokenIn",
+        "type": "address",
+        "internalType": "address"
+      },
+      {
+        "name": "tokenOut",
+        "type": "address",
+        "internalType": "address"
+      },
+      {
+        "name": "typeOfOrder",
+        "type": "uint8",
+        "internalType": "uint8"
+      },
+      {
+        "name": "completed",
+        "type": "bool",
+        "internalType": "bool"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "mapPairId_pairPendingQueue_back",
+    "inputs": [
+      {
+        "name": "pairId",
+        "type": "bytes32",
+        "internalType": "bytes32"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "back",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "mapPairId_pairPendingQueue_front",
+    "inputs": [
+      {
+        "name": "pairId",
+        "type": "bytes32",
+        "internalType": "bytes32"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "front",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "mapPairId_pairStreamQueue_Swaps",
+    "inputs": [
+      {
+        "name": "pairId",
+        "type": "bytes32",
+        "internalType": "bytes32"
+      },
+      {
+        "name": "",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "swapID",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "swapAmount",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "swapAmountRemaining",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "streamsCount",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "streamsRemaining",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "swapPerStream",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "executionPrice",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "amountOut",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "dustTokenAmount",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "user",
+        "type": "address",
+        "internalType": "address"
+      },
+      {
+        "name": "tokenIn",
+        "type": "address",
+        "internalType": "address"
+      },
+      {
+        "name": "tokenOut",
+        "type": "address",
+        "internalType": "address"
+      },
+      {
+        "name": "typeOfOrder",
+        "type": "uint8",
+        "internalType": "uint8"
+      },
+      {
+        "name": "completed",
+        "type": "bool",
+        "internalType": "bool"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "mapPairId_pairStreamQueue_back",
+    "inputs": [
+      {
+        "name": "pairId",
+        "type": "bytes32",
+        "internalType": "bytes32"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "back",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "mapPairId_pairStreamQueue_front",
+    "inputs": [
+      {
+        "name": "pairId",
+        "type": "bytes32",
+        "internalType": "bytes32"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "front",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "mapPairId_streamQueue_back",
+    "inputs": [
+      {
+        "name": "pairId",
+        "type": "bytes32",
+        "internalType": "bytes32"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "back",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "mapPairId_streamQueue_front",
+    "inputs": [
+      {
+        "name": "pairId",
+        "type": "bytes32",
+        "internalType": "bytes32"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "front",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "mapPairId_streamQueue_liquidityStream",
+    "inputs": [
+      {
+        "name": "pairId",
+        "type": "bytes32",
+        "internalType": "bytes32"
+      },
+      {
+        "name": "",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "user",
+        "type": "address",
+        "internalType": "address"
+      },
+      {
+        "name": "poolAStream",
+        "type": "tuple",
+        "internalType": "struct StreamDetails",
+        "components": [
+          {
+            "name": "token",
+            "type": "address",
+            "internalType": "address"
+          },
+          {
+            "name": "amount",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "streamCount",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "streamsRemaining",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "swapPerStream",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "swapAmountRemaining",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "dustTokenAmount",
+            "type": "uint256",
+            "internalType": "uint256"
+          }
+        ]
+      },
+      {
+        "name": "poolBStream",
+        "type": "tuple",
+        "internalType": "struct StreamDetails",
+        "components": [
+          {
+            "name": "token",
+            "type": "address",
+            "internalType": "address"
+          },
+          {
+            "name": "amount",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "streamCount",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "streamsRemaining",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "swapPerStream",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "swapAmountRemaining",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "dustTokenAmount",
+            "type": "uint256",
+            "internalType": "uint256"
+          }
+        ]
+      },
+      {
+        "name": "dAmountOut",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "mapToken_removeLiqQueue_back",
+    "inputs": [
+      {
+        "name": "tokenAddress",
+        "type": "address",
+        "internalType": "address"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "back",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "mapToken_removeLiqQueue_front",
+    "inputs": [
+      {
+        "name": "tokenAddress",
+        "type": "address",
+        "internalType": "address"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "front",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "mapToken_removeLiqStreamQueue",
+    "inputs": [
+      {
+        "name": "tokenAddress",
+        "type": "address",
+        "internalType": "address"
+      },
+      {
+        "name": "",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "user",
+        "type": "address",
+        "internalType": "address"
+      },
+      {
+        "name": "lpAmount",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "streamCountTotal",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "streamCountRemaining",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "conversionPerStream",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "tokenAmountOut",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "conversionRemaining",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "orderBook",
+    "inputs": [
+      {
+        "name": "pairId",
+        "type": "bytes32",
+        "internalType": "bytes32"
+      },
+      {
+        "name": "priceKey",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "isLimitOrder",
+        "type": "bool",
+        "internalType": "bool"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "",
+        "type": "tuple[]",
+        "internalType": "struct Swap[]",
+        "components": [
+          {
+            "name": "swapID",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "swapAmount",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "swapAmountRemaining",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "streamsCount",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "streamsRemaining",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "swapPerStream",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "executionPrice",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "amountOut",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "dustTokenAmount",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "user",
+            "type": "address",
+            "internalType": "address"
+          },
+          {
+            "name": "tokenIn",
+            "type": "address",
+            "internalType": "address"
+          },
+          {
+            "name": "tokenOut",
+            "type": "address",
+            "internalType": "address"
+          },
+          {
+            "name": "typeOfOrder",
+            "type": "uint8",
+            "internalType": "uint8"
+          },
+          {
+            "name": "completed",
+            "type": "bool",
+            "internalType": "bool"
+          }
+        ]
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "owner",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "address",
+        "internalType": "address"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "pairPendingQueue",
+    "inputs": [
+      {
+        "name": "pairId",
+        "type": "bytes32",
+        "internalType": "bytes32"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "swaps",
+        "type": "tuple[]",
+        "internalType": "struct Swap[]",
+        "components": [
+          {
+            "name": "swapID",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "swapAmount",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "swapAmountRemaining",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "streamsCount",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "streamsRemaining",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "swapPerStream",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "executionPrice",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "amountOut",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "dustTokenAmount",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "user",
+            "type": "address",
+            "internalType": "address"
+          },
+          {
+            "name": "tokenIn",
+            "type": "address",
+            "internalType": "address"
+          },
+          {
+            "name": "tokenOut",
+            "type": "address",
+            "internalType": "address"
+          },
+          {
+            "name": "typeOfOrder",
+            "type": "uint8",
+            "internalType": "uint8"
+          },
+          {
+            "name": "completed",
+            "type": "bool",
+            "internalType": "bool"
+          }
+        ]
+      },
+      {
+        "name": "front",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "back",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "pairSlippage",
+    "inputs": [
+      {
+        "name": "",
+        "type": "bytes32",
+        "internalType": "bytes32"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "pairStreamQueue",
+    "inputs": [
+      {
+        "name": "pairId",
+        "type": "bytes32",
+        "internalType": "bytes32"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "swaps",
+        "type": "tuple[]",
+        "internalType": "struct Swap[]",
+        "components": [
+          {
+            "name": "swapID",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "swapAmount",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "swapAmountRemaining",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "streamsCount",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "streamsRemaining",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "swapPerStream",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "executionPrice",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "amountOut",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "dustTokenAmount",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "user",
+            "type": "address",
+            "internalType": "address"
+          },
+          {
+            "name": "tokenIn",
+            "type": "address",
+            "internalType": "address"
+          },
+          {
+            "name": "tokenOut",
+            "type": "address",
+            "internalType": "address"
+          },
+          {
+            "name": "typeOfOrder",
+            "type": "uint8",
+            "internalType": "uint8"
+          },
+          {
+            "name": "completed",
+            "type": "bool",
+            "internalType": "bool"
+          }
+        ]
+      },
+      {
+        "name": "front",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "back",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "poolAddress",
+    "inputs": [
+      {
+        "name": "",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "",
+        "type": "address",
+        "internalType": "address"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "poolInfo",
+    "inputs": [
+      {
+        "name": "tokenAddress",
+        "type": "address",
+        "internalType": "address"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "reserveD",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "poolOwnershipUnitsTotal",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "reserveA",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "initialDToMint",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "poolFeeCollected",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "initialized",
+        "type": "bool",
+        "internalType": "bool"
+      },
+      {
+        "name": "decimals",
+        "type": "uint8",
+        "internalType": "uint8"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "removeLiquidityStreamQueue",
+    "inputs": [
+      {
+        "name": "pool",
+        "type": "address",
+        "internalType": "address"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "removeLiquidityStream",
+        "type": "tuple[]",
+        "internalType": "struct RemoveLiquidityStream[]",
+        "components": [
+          {
+            "name": "user",
+            "type": "address",
+            "internalType": "address"
+          },
+          {
+            "name": "lpAmount",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "streamCountTotal",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "streamCountRemaining",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "conversionPerStream",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "tokenAmountOut",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "conversionRemaining",
+            "type": "uint256",
+            "internalType": "uint256"
+          }
+        ]
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "renounceOwnership",
+    "inputs": [],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "setHighestPriceKey",
+    "inputs": [
+      {
+        "name": "pairId",
+        "type": "bytes32",
+        "internalType": "bytes32"
+      },
+      {
+        "name": "value",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "sortPairPendingQueue",
+    "inputs": [
+      {
+        "name": "pairId",
+        "type": "bytes32",
+        "internalType": "bytes32"
+      }
+    ],
+    "outputs": [],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "transferOwnership",
+    "inputs": [
+      {
+        "name": "newOwner",
+        "type": "address",
+        "internalType": "address"
+      }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "transferTokens",
+    "inputs": [
+      {
+        "name": "token",
+        "type": "address",
+        "internalType": "address"
+      },
+      {
+        "name": "to",
+        "type": "address",
+        "internalType": "address"
+      },
+      {
+        "name": "amount",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "triggerAndMarketOrderBook",
+    "inputs": [
+      {
+        "name": "",
+        "type": "bytes32",
+        "internalType": "bytes32"
+      },
+      {
+        "name": "",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "swapID",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "swapAmount",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "swapAmountRemaining",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "streamsCount",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "streamsRemaining",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "swapPerStream",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "executionPrice",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "amountOut",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "dustTokenAmount",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "user",
+        "type": "address",
+        "internalType": "address"
+      },
+      {
+        "name": "tokenIn",
+        "type": "address",
+        "internalType": "address"
+      },
+      {
+        "name": "tokenOut",
+        "type": "address",
+        "internalType": "address"
+      },
+      {
+        "name": "typeOfOrder",
+        "type": "uint8",
+        "internalType": "uint8"
+      },
+      {
+        "name": "completed",
+        "type": "bool",
+        "internalType": "bool"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "updateGlobalPoolBalance",
+    "inputs": [
+      {
+        "name": "updatedBalance",
+        "type": "bytes",
+        "internalType": "bytes"
+      }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "updateGlobalPoolDepositStream",
+    "inputs": [
+      {
+        "name": "stream",
+        "type": "tuple",
+        "internalType": "struct GlobalPoolStream",
+        "components": [
+          {
+            "name": "user",
+            "type": "address",
+            "internalType": "address"
+          },
+          {
+            "name": "tokenIn",
+            "type": "address",
+            "internalType": "address"
+          },
+          {
+            "name": "tokenAmount",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "streamCount",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "streamsRemaining",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "swapPerStream",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "swapAmountRemaining",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "amountOut",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "deposit",
+            "type": "bool",
+            "internalType": "bool"
+          }
+        ]
+      },
+      {
+        "name": "pairId",
+        "type": "bytes32",
+        "internalType": "bytes32"
+      },
+      {
+        "name": "index",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "updateGlobalPoolUserBalance",
+    "inputs": [
+      {
+        "name": "userBalance",
+        "type": "bytes",
+        "internalType": "bytes"
+      }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "updateGlobalPoolWithdrawStream",
+    "inputs": [
+      {
+        "name": "stream",
+        "type": "tuple",
+        "internalType": "struct GlobalPoolStream",
+        "components": [
+          {
+            "name": "user",
+            "type": "address",
+            "internalType": "address"
+          },
+          {
+            "name": "tokenIn",
+            "type": "address",
+            "internalType": "address"
+          },
+          {
+            "name": "tokenAmount",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "streamCount",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "streamsRemaining",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "swapPerStream",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "swapAmountRemaining",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "amountOut",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "deposit",
+            "type": "bool",
+            "internalType": "bool"
+          }
+        ]
+      },
+      {
+        "name": "pairId",
+        "type": "bytes32",
+        "internalType": "bytes32"
+      },
+      {
+        "name": "index",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "updateGlobalSlippage",
+    "inputs": [
+      {
+        "name": "newGlobalSlippage",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "updateOrderBook",
+    "inputs": [
+      {
+        "name": "pairId",
+        "type": "bytes32",
+        "internalType": "bytes32"
+      },
+      {
+        "name": "swap",
+        "type": "tuple",
+        "internalType": "struct Swap",
+        "components": [
+          {
+            "name": "swapID",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "swapAmount",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "swapAmountRemaining",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "streamsCount",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "streamsRemaining",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "swapPerStream",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "executionPrice",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "amountOut",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "dustTokenAmount",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "user",
+            "type": "address",
+            "internalType": "address"
+          },
+          {
+            "name": "tokenIn",
+            "type": "address",
+            "internalType": "address"
+          },
+          {
+            "name": "tokenOut",
+            "type": "address",
+            "internalType": "address"
+          },
+          {
+            "name": "typeOfOrder",
+            "type": "uint8",
+            "internalType": "uint8"
+          },
+          {
+            "name": "completed",
+            "type": "bool",
+            "internalType": "bool"
+          }
+        ]
+      },
+      {
+        "name": "key",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "isLimitOrder",
+        "type": "bool",
+        "internalType": "bool"
+      }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "updatePairSlippage",
+    "inputs": [
+      {
+        "name": "tokenA",
+        "type": "address",
+        "internalType": "address"
+      },
+      {
+        "name": "tokenB",
+        "type": "address",
+        "internalType": "address"
+      },
+      {
+        "name": "newSlippage",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "updatePairStreamQueueSwap",
+    "inputs": [
+      {
+        "name": "updatedSwapData",
+        "type": "bytes",
+        "internalType": "bytes"
+      },
+      {
+        "name": "executionPriceKey",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "index",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "isLimitOrder",
+        "type": "bool",
+        "internalType": "bool"
+      }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "updatePoolLogicAddress",
+    "inputs": [
+      {
+        "name": "poolLogicAddress",
+        "type": "address",
+        "internalType": "address"
+      }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "updatePoolOwnershipUnitsTotalRemoveLiqStream",
+    "inputs": [
+      {
+        "name": "updatedPoolOwnershipUnitsTotalRemoveLiqData",
+        "type": "bytes",
+        "internalType": "bytes"
+      }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "updateRemoveLiqStream",
+    "inputs": [
+      {
+        "name": "updatedReservesAndRemoveLiqData",
+        "type": "bytes",
+        "internalType": "bytes"
+      },
+      {
+        "name": "index",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "updateRemoveLiquidityStream",
+    "inputs": [
+      {
+        "name": "updatedRemoveLiqData",
+        "type": "bytes",
+        "internalType": "bytes"
+      }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "updateReserves",
+    "inputs": [
+      {
+        "name": "updatedReservesParams",
+        "type": "bytes",
+        "internalType": "bytes"
+      }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "updateReservesGlobalStream",
+    "inputs": [
+      {
+        "name": "updatedReservesParams",
+        "type": "bytes",
+        "internalType": "bytes"
+      }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "updateReservesRemoveLiqStream",
+    "inputs": [
+      {
+        "name": "updatedReservesAndRemoveLiqData",
+        "type": "bytes",
+        "internalType": "bytes"
+      }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "updateReservesWhenStreamingLiq",
+    "inputs": [
+      {
+        "name": "updatedReservesParams",
+        "type": "bytes",
+        "internalType": "bytes"
+      }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "updateRouterAddress",
+    "inputs": [
+      {
+        "name": "routerAddress",
+        "type": "address",
+        "internalType": "address"
+      }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "updateStreamQueueLiqStream",
+    "inputs": [
+      {
+        "name": "updatedStreamData",
+        "type": "bytes",
+        "internalType": "bytes"
+      }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "updateUserLpUnits",
+    "inputs": [
+      {
+        "name": "updatedLpUnits",
+        "type": "bytes",
+        "internalType": "bytes"
+      }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "updateVaultAddress",
+    "inputs": [
+      {
+        "name": "vaultAddress",
+        "type": "address",
+        "internalType": "address"
+      }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "userGlobalPoolInfo",
+    "inputs": [
+      {
+        "name": "",
+        "type": "address",
+        "internalType": "address"
+      },
+      {
+        "name": "",
+        "type": "address",
+        "internalType": "address"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "userLpUnitInfo",
+    "inputs": [
+      {
+        "name": "",
+        "type": "address",
+        "internalType": "address"
+      },
+      {
+        "name": "",
+        "type": "address",
+        "internalType": "address"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "userVaultInfo",
+    "inputs": [
+      {
+        "name": "",
+        "type": "address",
+        "internalType": "address"
+      },
+      {
+        "name": "",
+        "type": "address",
+        "internalType": "address"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "tokenAmount",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "dAmount",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "event",
+    "name": "GlobalSlippageUpdated",
+    "inputs": [
+      {
+        "name": "",
+        "type": "uint256",
+        "indexed": false,
+        "internalType": "uint256"
+      },
+      {
+        "name": "",
+        "type": "uint256",
+        "indexed": false,
+        "internalType": "uint256"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
+    "name": "LiquidityAdded",
+    "inputs": [
+      {
+        "name": "",
+        "type": "address",
+        "indexed": false,
+        "internalType": "address"
+      },
+      {
+        "name": "",
+        "type": "address",
+        "indexed": false,
+        "internalType": "address"
+      },
+      {
+        "name": "",
+        "type": "uint256",
+        "indexed": false,
+        "internalType": "uint256"
+      },
+      {
+        "name": "",
+        "type": "uint256",
+        "indexed": false,
+        "internalType": "uint256"
+      },
+      {
+        "name": "",
+        "type": "uint256",
+        "indexed": false,
+        "internalType": "uint256"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
+    "name": "LiquidityRemoved",
+    "inputs": [
+      {
+        "name": "",
+        "type": "address",
+        "indexed": false,
+        "internalType": "address"
+      },
+      {
+        "name": "",
+        "type": "address",
+        "indexed": false,
+        "internalType": "address"
+      },
+      {
+        "name": "",
+        "type": "uint256",
+        "indexed": false,
+        "internalType": "uint256"
+      },
+      {
+        "name": "",
+        "type": "uint256",
+        "indexed": false,
+        "internalType": "uint256"
+      },
+      {
+        "name": "",
+        "type": "uint256",
+        "indexed": false,
+        "internalType": "uint256"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
+    "name": "MinLaunchReserveUpdated",
+    "inputs": [
+      {
+        "name": "",
+        "type": "address",
+        "indexed": false,
+        "internalType": "address"
+      },
+      {
+        "name": "",
+        "type": "uint256",
+        "indexed": false,
+        "internalType": "uint256"
+      },
+      {
+        "name": "",
+        "type": "uint256",
+        "indexed": false,
+        "internalType": "uint256"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
+    "name": "OwnershipTransferred",
+    "inputs": [
+      {
+        "name": "previousOwner",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      },
+      {
+        "name": "newOwner",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
+    "name": "PairSlippageUpdated",
+    "inputs": [
+      {
+        "name": "",
+        "type": "address",
+        "indexed": false,
+        "internalType": "address"
+      },
+      {
+        "name": "",
+        "type": "address",
+        "indexed": false,
+        "internalType": "address"
+      },
+      {
+        "name": "",
+        "type": "uint256",
+        "indexed": false,
+        "internalType": "uint256"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
+    "name": "PendingStreamAdded",
+    "inputs": [
+      {
+        "name": "",
+        "type": "uint256",
+        "indexed": false,
+        "internalType": "uint256"
+      },
+      {
+        "name": "",
+        "type": "uint256",
+        "indexed": false,
+        "internalType": "uint256"
+      },
+      {
+        "name": "",
+        "type": "uint256",
+        "indexed": false,
+        "internalType": "uint256"
+      },
+      {
+        "name": "",
+        "type": "uint256",
+        "indexed": false,
+        "internalType": "uint256"
+      },
+      {
+        "name": "",
+        "type": "bytes32",
+        "indexed": false,
+        "internalType": "bytes32"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
+    "name": "PoolCreated",
+    "inputs": [
+      {
+        "name": "",
+        "type": "address",
+        "indexed": false,
+        "internalType": "address"
+      },
+      {
+        "name": "",
+        "type": "uint256",
+        "indexed": false,
+        "internalType": "uint256"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
+    "name": "PoolLogicAddressUpdated",
+    "inputs": [
+      {
+        "name": "",
+        "type": "address",
+        "indexed": false,
+        "internalType": "address"
+      },
+      {
+        "name": "",
+        "type": "address",
+        "indexed": false,
+        "internalType": "address"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
+    "name": "RouterAddressUpdated",
+    "inputs": [
+      {
+        "name": "",
+        "type": "address",
+        "indexed": false,
+        "internalType": "address"
+      },
+      {
+        "name": "",
+        "type": "address",
+        "indexed": false,
+        "internalType": "address"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
+    "name": "StreamAdded",
+    "inputs": [
+      {
+        "name": "",
+        "type": "uint256",
+        "indexed": false,
+        "internalType": "uint256"
+      },
+      {
+        "name": "",
+        "type": "uint256",
+        "indexed": false,
+        "internalType": "uint256"
+      },
+      {
+        "name": "",
+        "type": "uint256",
+        "indexed": false,
+        "internalType": "uint256"
+      },
+      {
+        "name": "",
+        "type": "uint256",
+        "indexed": false,
+        "internalType": "uint256"
+      },
+      {
+        "name": "",
+        "type": "bytes32",
+        "indexed": false,
+        "internalType": "bytes32"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
+    "name": "SwapAdded",
+    "inputs": [
+      {
+        "name": "",
+        "type": "bytes32",
+        "indexed": false,
+        "internalType": "bytes32"
+      },
+      {
+        "name": "",
+        "type": "uint256",
+        "indexed": false,
+        "internalType": "uint256"
+      },
+      {
+        "name": "",
+        "type": "uint256",
+        "indexed": false,
+        "internalType": "uint256"
+      },
+      {
+        "name": "",
+        "type": "uint256",
+        "indexed": false,
+        "internalType": "uint256"
+      },
+      {
+        "name": "",
+        "type": "uint256",
+        "indexed": false,
+        "internalType": "uint256"
+      },
+      {
+        "name": "",
+        "type": "address",
+        "indexed": false,
+        "internalType": "address"
+      },
+      {
+        "name": "",
+        "type": "address",
+        "indexed": false,
+        "internalType": "address"
+      },
+      {
+        "name": "",
+        "type": "address",
+        "indexed": false,
+        "internalType": "address"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
+    "name": "SwapCancelled",
+    "inputs": [
+      {
+        "name": "",
+        "type": "uint256",
+        "indexed": false,
+        "internalType": "uint256"
+      },
+      {
+        "name": "",
+        "type": "bytes32",
+        "indexed": false,
+        "internalType": "bytes32"
+      },
+      {
+        "name": "",
+        "type": "uint256",
+        "indexed": false,
+        "internalType": "uint256"
+      },
+      {
+        "name": "",
+        "type": "uint256",
+        "indexed": false,
+        "internalType": "uint256"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
+    "name": "VaultAddressUpdated",
+    "inputs": [
+      {
+        "name": "",
+        "type": "address",
+        "indexed": false,
+        "internalType": "address"
+      },
+      {
+        "name": "",
+        "type": "address",
+        "indexed": false,
+        "internalType": "address"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "error",
+    "name": "DuplicatePool",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "InvalidExecutionPrice",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "InvalidPool",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "InvalidSwap",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "InvalidToken",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "InvalidTokenAmount",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "MinLaunchReservesNotReached",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "NotPoolLogic",
+    "inputs": [
+      {
+        "name": "",
+        "type": "address",
+        "internalType": "address"
+      }
+    ]
+  },
+  {
+    "type": "error",
+    "name": "NotRouter",
+    "inputs": [
+      {
+        "name": "",
+        "type": "address",
+        "internalType": "address"
+      }
+    ]
+  },
+  {
+    "type": "error",
+    "name": "OwnableInvalidOwner",
+    "inputs": [
+      {
+        "name": "owner",
+        "type": "address",
+        "internalType": "address"
+      }
+    ]
+  },
+  {
+    "type": "error",
+    "name": "OwnableUnauthorizedAccount",
+    "inputs": [
+      {
+        "name": "account",
+        "type": "address",
+        "internalType": "address"
+      }
+    ]
+  },
+  {
+    "type": "error",
+    "name": "SafeERC20FailedOperation",
+    "inputs": [
+      {
+        "name": "token",
+        "type": "address",
+        "internalType": "address"
+      }
+    ]
+  }
+]
