@@ -236,7 +236,7 @@ contract Router is Ownable, ReentrancyGuard, IRouter {
         IPoolLogic(poolStates.POOL_LOGIC()).processGlobalStreamPairWithdraw(token);
     }
 
-    function processPair(address tokenIn, address tokenOut) external nonReentrant {
+    function processLimitOrders(address tokenIn, address tokenOut) external nonReentrant {
         if (tokenIn == tokenOut) revert SamePool();
         if (!poolExist(tokenIn) || !poolExist(tokenOut)) revert InvalidPool();
         IPoolLogic(poolStates.POOL_LOGIC()).processLimitOrders(tokenIn, tokenOut);

@@ -155,11 +155,12 @@ contract Router_SwapLimit is RouterTest {
         uint256 poolTokenABalance_beforeSwap = tokenA.balanceOf(address(pool));
         uint256 poolTokenBBalance_beforeSwap = tokenB.balanceOf(address(pool));
 
-        uint256 expectedAmountOut =
-            PoolLogicLib.calculateAmountOutFromPrice(swapPerStream, limitOrderPrice, tokenADecimals, tokenBDecimals);
+        uint256 expectedAmountOut = PoolLogicLib.calculateExpectedAmountFromPrice(
+            swapPerStream, limitOrderPrice, tokenADecimals, tokenBDecimals
+        );
         // now we get the expected amount in to get the expectedAmountOut at the pool price
-        uint256 expectedAmountIn = PoolLogicLib.calculateAmountInFromPrice(
-            expectedAmountOut, marketPriceBeforeSwap, tokenADecimals, tokenBDecimals
+        uint256 expectedAmountIn = PoolLogicLib.calculateExpectedAmountFromPrice(
+            expectedAmountOut, PoolLogicLib.getOppositePrice(marketPriceBeforeSwap), tokenBDecimals, tokenADecimals
         );
 
         uint256 extraToThePool = swapPerStream - expectedAmountIn;
@@ -250,8 +251,8 @@ contract Router_SwapLimit is RouterTest {
         for (uint256 i = 0; i < oppositeSwaps.length; i++) {
             Swap memory oppositeSwap = oppositeSwaps[i];
             tokenOutAmountIn += oppositeSwap.swapAmountRemaining; // tokenBAmount
-            tokenInAmountOut += PoolLogicLib.calculateAmountInFromPrice(
-                oppositeSwap.swapAmountRemaining, oppositeSwap.executionPrice, tokenADecimals, tokenBdecimals
+            tokenInAmountOut += PoolLogicLib.calculateExpectedAmountFromPrice(
+                oppositeSwap.swapAmountRemaining, oppositeSwap.executionPrice, tokenBdecimals, tokenADecimals
             );
         }
         console.log("total tokenOutAmountIn (token B comming in)", tokenOutAmountIn);
@@ -278,8 +279,8 @@ contract Router_SwapLimit is RouterTest {
             Swap memory oppositeSwap = oppositeSwaps[i];
             uint256 oppSwapTokenAmount = oppositeSwap.swapAmountRemaining + oppositeSwap.dustTokenAmount;
 
-            uint256 oppTokenInAmountOut = PoolLogicLib.calculateAmountInFromPrice(
-                oppSwapTokenAmount, oppositeSwap.executionPrice, tokenADecimals, tokenBdecimals
+            uint256 oppTokenInAmountOut = PoolLogicLib.calculateExpectedAmountFromPrice(
+                oppSwapTokenAmount, oppositeSwap.executionPrice, tokenBdecimals, tokenADecimals
             );
 
             if (t > oppTokenInAmountOut) {
@@ -296,7 +297,7 @@ contract Router_SwapLimit is RouterTest {
                 }
             } else {
                 swapTokenBAmountOut +=
-                    PoolLogicLib.calculateAmountOutFromPrice(t, executionPrice, tokenADecimals, tokenBdecimals);
+                    PoolLogicLib.calculateExpectedAmountFromPrice(t, executionPrice, tokenADecimals, tokenBdecimals);
                 break;
             }
             tokenInCalculation = t;
@@ -382,8 +383,9 @@ contract Router_SwapLimit is RouterTest {
 
         uint256 tokenAOutOppSwaps;
         for (uint256 i = 0; i < oppositeSwapsCount; i++) {
-            tokenAOutOppSwaps +=
-                PoolLogicLib.calculateAmountInFromPrice(oppSwapAmount, executionPriceOppositeSwap, decimalsA, decimalsB);
+            tokenAOutOppSwaps += PoolLogicLib.calculateExpectedAmountFromPrice(
+                oppSwapAmount, executionPriceOppositeSwap, decimalsB, decimalsA
+            );
         }
 
         uint256 tokenAForPoolReserveSwap = 1 * 10 ** (tokenA.decimals() - 3);
@@ -402,10 +404,11 @@ contract Router_SwapLimit is RouterTest {
             _getCurrentPrice(address(tokenA), address(tokenB)) + 3 * poolLogic.PRICE_PRECISION();
 
         uint256 expectedAmountOut =
-            PoolLogicLib.calculateAmountOutFromPrice(swapPerStream, swapExecutionPrice, decimalsA, decimalsB);
+            PoolLogicLib.calculateExpectedAmountFromPrice(swapPerStream, swapExecutionPrice, decimalsA, decimalsB);
         // now we get the expected amount in to get the expectedAmountOut at the pool price
-        uint256 expectedAmountIn =
-            PoolLogicLib.calculateAmountInFromPrice(expectedAmountOut, currentPrice, decimalsA, decimalsB);
+        uint256 expectedAmountIn = PoolLogicLib.calculateExpectedAmountFromPrice(
+            expectedAmountOut, PoolLogicLib.getOppositePrice(currentPrice), decimalsA, decimalsB
+        );
 
         uint256 extraToThePool = swapPerStream - expectedAmountIn;
         console.log("extraToThePool", extraToThePool);

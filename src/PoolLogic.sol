@@ -373,11 +373,16 @@ contract PoolLogic is IPoolLogic {
         (,, uint256 reserveA_Out,,,, uint8 decimals_Out) = pool.poolInfo(address(tokenOut));
         uint256 poolReservesPriceKey = PoolLogicLib.getExecutionPriceKey(
             PoolLogicLib.getExecutionPrice(reserveA_In, reserveA_Out, decimals_In, decimals_Out), PRICE_PRECISION
-        ); // @noticewhy
-            // this?
+        );
 
+        console.log("priceKey", priceKey);
+        console.log("poolReservesPriceKey", poolReservesPriceKey);
+
+        uint16 limitLoop;
         while (priceKey > poolReservesPriceKey) {
-            bool poolSwapExecuted = _executeStreams(currentPairId, priceKey); // Appelle la fonction pour ce priceKey.
+            limitLoop++;
+            (bool poolSwapExecuted, bool orderBookEmpty) = _executeStreams(currentPairId, priceKey); // Appelle la
+                // fonction pour ce priceKey.
             if (poolSwapExecuted) {
                 // @audit this code block may be substituted for a leaner dedicated function,
                 //      can be used in processing of market orders in single price key
@@ -395,22 +400,36 @@ contract PoolLogic is IPoolLogic {
                 );
             }
 
+            if (orderBookEmpty) {
+                IPoolActions(POOL_ADDRESS).setHighestPriceKey(currentPairId, priceKey);
+            }
+
             priceKey -= PRICE_PRECISION; // 1 Gwei ou autre précision utilisée.
                 // update A->B highest price marker
                 // need get reserve price for the next priceKey
             console.log("priceKey", priceKey);
             console.log("poolReservesPriceKey", poolReservesPriceKey);
-            return;
+            console.log("limitLoop", limitLoop);
+            if (limitLoop > 50) {
+                console.log("LIMIT LOOP REACHED!!!!!", limitLoop);
+                return;
+            }
         }
     }
 
     // @note dedicate some limititation on price gap and opp swaps count on single prcieKey for maintenance bot call !!
     // @audit ensure we are decrementing the highestPriceKLey on the completion of swaps in memory at a given key
 
-    function _executeStreams(bytes32 pairId, uint256 executionPriceKey) internal returns (bool poolSwapExecuted) {
+    function _executeStreams(
+        bytes32 pairId,
+        uint256 executionPriceKey
+    )
+        internal
+        returns (bool poolSwapExecuted, bool orderBookEmpty)
+    {
         Swap[] memory swaps = pool.orderBook(pairId, executionPriceKey, true);
         if (swaps.length == 0) {
-            return poolSwapExecuted;
+            return (poolSwapExecuted, orderBookEmpty = true);
         }
         uint256 swapRemoved;
         for (uint256 i = 0; i < swaps.length;) {
@@ -422,6 +441,7 @@ contract PoolLogic is IPoolLogic {
 
             uint256 amountInRemaining;
             (currentSwap, amountInRemaining) = _streamingAgainstOppositeSwaps(currentSwap, oppositeExecutionPriceKey);
+            console.log("amountInRemaining", amountInRemaining);
 
             if (amountInRemaining == 0) {
                 // if completed
@@ -441,7 +461,7 @@ contract PoolLogic is IPoolLogic {
                     if (lastIndex == 0) {
                         // TODO we need to decrement the priceKey and find next collection of swaps
                         // it means no more swaps to process for the current priceKey
-                        return poolSwapExecuted;
+                        return (poolSwapExecuted, orderBookEmpty = true);
                     }
                 } else {
                     currentSwap = _updateSwapStreamInfo(currentSwap);
@@ -484,7 +504,7 @@ contract PoolLogic is IPoolLogic {
                         currentSwap.tokenOut, currentSwap.user, currentSwap.amountOut
                     );
                     if (lastIndex == 0) {
-                        break;
+                        return (poolSwapExecuted, orderBookEmpty = true);
                     }
                 } else {
                     // update the swap
@@ -524,10 +544,13 @@ contract PoolLogic is IPoolLogic {
         internal
         returns (Swap memory)
     {
+        uint256 tokenInAmountIn = currentSwap.swapAmount;
         uint256 amountInRemaining;
-
         (currentSwap, amountInRemaining) =
-            _matchAgainstOppositeSwaps(currentSwap, currentOppositePriceKey, currentSwap.swapAmountRemaining);
+            _matchAgainstOppositeSwaps(currentSwap, currentOppositePriceKey, tokenInAmountIn);
+
+        uint256 consumedAmountIn = tokenInAmountIn - amountInRemaining;
+        currentSwap.swapAmountRemaining -= consumedAmountIn;
 
         if (amountInRemaining == 0) {
             currentSwap.completed = true;
@@ -549,8 +572,14 @@ contract PoolLogic is IPoolLogic {
             tokenInAmountIn += currentSwap.dustTokenAmount;
         }
 
+        console.log("tokenInAmountIn", tokenInAmountIn);
+
         (currentSwap, amountInRemaining) =
             _matchAgainstOppositeSwaps(currentSwap, currentOppositePriceKey, tokenInAmountIn);
+
+        uint256 consumedAmountIn = tokenInAmountIn - amountInRemaining;
+        currentSwap.swapAmountRemaining -= consumedAmountIn;
+
         if (amountInRemaining == 0) {
             currentSwap.streamsRemaining--;
             if (currentSwap.streamsRemaining == 0) {
@@ -582,20 +611,25 @@ contract PoolLogic is IPoolLogic {
         bytes32 oppositePairId = bytes32(abi.encodePacked(tokenOut, tokenIn));
         uint256 oppositeCachedPriceKey = pool.highestPriceKey(oppositePairId);
 
+        // quick bounding
+        uint16 limitLoop;
+        // @audit need ot handle out of boundaries for the price_key decrementation while loop
         while (oppositeCachedPriceKey >= oppositeCurrentPoolPrice) {
+            limitLoop++;
+            if (limitLoop > 4) {
+                console.log("LIMIT OPPOSITE SWAPS LOOPS REACHED!!!!!", limitLoop);
+                return (currentSwap, amountInRemaining);
+            }
             Swap[] memory oppositeSwaps = pool.orderBook(oppositePairId, oppositeCachedPriceKey, true);
 
             if (oppositeSwaps.length == 0) {
-                /**
-                 * @audit need ot handle out of bounds errors
-                 */
-                // return currentSwap;
                 oppositeCachedPriceKey -= PRICE_PRECISION;
                 IPoolActions(POOL_ADDRESS).setHighestPriceKey(oppositePairId, oppositeCachedPriceKey);
                 continue;
             }
 
             uint256 swapRemoved;
+            // @audit need ot handle out of boundaries for the oppositeSwaps array
             for (uint256 i = 0; i < oppositeSwaps.length;) {
                 Swap memory oppositeSwap = oppositeSwaps[i];
 
@@ -606,13 +640,13 @@ contract PoolLogic is IPoolLogic {
                 // we need to calculate the amount of tokenOut for the given tokenInAmountIn -> tokenA -> tokenB
                 // uint256 tokenOutAmountOut = PoolLogicLib.getAmountOut(tokenInAmountIn, reserveA_In,
                 // reserveAOutFromPrice);
-                uint256 tokenOutAmountOut = PoolLogicLib.calculateAmountOutFromPrice(
+                uint256 tokenOutAmountOut = PoolLogicLib.calculateExpectedAmountFromPrice(
                     tokenInAmountIn, executionPriceCurrentSwap, decimals_In, decimals_Out
                 );
 
                 // we need to calculate the amount of tokenIn for the given tokenOutAmountIn -> tokenB -> tokenA
-                uint256 tokenInAmountOut = PoolLogicLib.calculateAmountInFromPrice(
-                    tokenOutAmountIn, oppositeSwap.executionPrice, decimals_In, decimals_Out
+                uint256 tokenInAmountOut = PoolLogicLib.calculateExpectedAmountFromPrice(
+                    tokenOutAmountIn, oppositeSwap.executionPrice, decimals_Out, decimals_In
                 );
 
                 // we need to check if the amount of tokenIn that we need to send to the user is less than the amount of
@@ -628,7 +662,7 @@ contract PoolLogic is IPoolLogic {
 
                     uint256 newTokenInAmountIn = tokenInAmountIn - tokenInAmountOut;
 
-                    currentSwap.swapAmountRemaining = newTokenInAmountIn;
+                    // currentSwap.swapAmountRemaining = newTokenInAmountIn;
                     currentSwap.amountOut += tokenOutAmountIn;
                     tokenInAmountIn = newTokenInAmountIn;
 
@@ -636,7 +670,10 @@ contract PoolLogic is IPoolLogic {
                     // 4. we continue to the next oppositeSwap
 
                     swapRemoved++;
+                    // if all opposite swaps for the given price key are consumed we need to update the highestPriceKey
                     if (swapRemoved == oppositeSwaps.length) {
+                        oppositeCachedPriceKey -= PRICE_PRECISION;
+                        IPoolActions(POOL_ADDRESS).setHighestPriceKey(oppositePairId, oppositeCachedPriceKey);
                         break;
                     }
                     uint256 lastIndex = oppositeSwaps.length - swapRemoved;
@@ -651,7 +688,7 @@ contract PoolLogic is IPoolLogic {
                     // 1. frontSwap is completed and is taken out of the stream queue
 
                     currentSwap.amountOut += tokenOutAmountOut;
-                    currentSwap.swapAmountRemaining -= amountInRemaining;
+                    // currentSwap.swapAmountRemaining -= amountInRemaining;
                     amountInRemaining = 0;
 
                     // 2. we recalculate the oppositeSwap conditions and update it (if tokenInAmountIn ==
@@ -694,8 +731,6 @@ contract PoolLogic is IPoolLogic {
                     return (currentSwap, amountInRemaining);
                 }
             }
-            oppositeCachedPriceKey -= PRICE_PRECISION;
-            IPoolActions(POOL_ADDRESS).setHighestPriceKey(oppositePairId, oppositeCachedPriceKey);
             continue;
         }
 
@@ -772,10 +807,11 @@ contract PoolLogic is IPoolLogic {
         }
 
         uint256 expectedAmountOut =
-            PoolLogicLib.calculateAmountOutFromPrice(swapAmountIn, executionPrice, decimals_In, decimals_Out);
+            PoolLogicLib.calculateExpectedAmountFromPrice(swapAmountIn, executionPrice, decimals_In, decimals_Out);
         // now we get the expected amount in to get the expectedAmountOut at the pool price
-        uint256 amountIn =
-            PoolLogicLib.calculateAmountInFromPrice(expectedAmountOut, currentExecPrice, decimals_In, decimals_Out);
+        uint256 amountIn = PoolLogicLib.calculateExpectedAmountFromPrice(
+            expectedAmountOut, PoolLogicLib.getOppositePrice(currentExecPrice), decimals_Out, decimals_In
+        );
 
         (dToUpdate, amountOut) =
             PoolLogicLib.getSwapAmountOut(amountIn, reserveA_In, reserveA_Out, reserveD_In, reserveD_Out);

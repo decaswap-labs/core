@@ -1,5 +1,5 @@
-// // SPDX-License-Identifier: MIT
-// pragma solidity ^0.8.13;
+// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.13;
 
 import { Test, console } from "forge-std/Test.sol";
 import { Router } from "src/Router.sol";
@@ -9,7 +9,7 @@ import { MockERC20 } from "src/MockERC20.sol";
 import { PoolLogicLib } from "src/lib/PoolLogicLib.sol";
 import { console } from "forge-std/Test.sol";
 
-contract Handler is Test {
+contract ProcessLimitOrdersHandlerTest is Test {
     Router public router;
     PoolLogic public poolLogic;
     Pool public pool;
@@ -17,7 +17,12 @@ contract Handler is Test {
     MockERC20 public tokenB;
     address public owner;
 
-    uint96 public constant MAX_DEPOSIT_SIZE = 10_000 ether;
+    uint96 public constant MAX_AMOUNT_IN_SIZE = 10_000 ether;
+    uint96 public constant MIN_AMOUNT_IN_SIZE = 1 ether;
+
+    address public processor_bot;
+
+    uint8 public swapCount;
 
     constructor(Router _router, MockERC20 _tokenA, MockERC20 _tokenB, address _owner) {
         router = _router;
@@ -43,12 +48,15 @@ contract Handler is Test {
         pool.updatePairSlippage(address(tokenA), address(tokenB), SLIPPAGE);
 
         vm.stopPrank();
+
+        processor_bot = makeAddr("processor_bot");
     }
 
     function swap(uint256 seed, uint256 amountIn) public {
+        swapCount++;
         MockERC20 tokenIn = _getTokenFromSeed(seed);
         MockERC20 tokenOut = tokenIn == tokenA ? tokenB : tokenA;
-        amountIn = bound(amountIn, 1, MAX_DEPOSIT_SIZE);
+        amountIn = bound(amountIn, MIN_AMOUNT_IN_SIZE, MAX_AMOUNT_IN_SIZE);
         uint256 executionPrice = _getCurrentPrice(address(tokenIn), address(tokenOut));
         uint256 executionpriceDelta = bound(seed, 1, executionPrice / 10);
         bool addDelta = _getBoolFromSeed(seed);
@@ -61,6 +69,20 @@ contract Handler is Test {
         router.swapLimitOrder(address(tokenIn), address(tokenOut), amountIn, executionPrice);
 
         vm.stopPrank();
+    }
+
+    function processLimitOrders(uint256 seed) public {
+        if (swapCount < 3) {
+            return;
+        }
+        MockERC20 tokenIn = _getTokenFromSeed(seed);
+        MockERC20 tokenOut = tokenIn == tokenA ? tokenB : tokenA;
+
+        vm.startPrank(processor_bot);
+        router.processLimitOrders(address(tokenIn), address(tokenOut));
+        vm.stopPrank();
+
+        swapCount = 0;
     }
 
     function _getTokenFromSeed(uint256 collateralSeed) private view returns (MockERC20) {

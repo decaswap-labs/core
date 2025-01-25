@@ -23,8 +23,8 @@ wrap_comments = true
 
 
 [invariant]
-runs = 200
-depth = 256
+runs = 500
+depth = 1600
 fail_on_revert = true
 # See more config options https://github.com/foundry-rs/foundry/blob/master/crates/config/README.md#all-options
 

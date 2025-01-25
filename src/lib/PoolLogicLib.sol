@@ -179,7 +179,7 @@ library PoolLogicLib {
     // @audit ensure decimals are passed in securely on internal calls
     // @audit is a high level check approach for all non-18 tokens a better way to avoid utilising scaling
     // considerations on every stream execution
-    function calculateAmountOutFromPrice(
+    function calculateExpectedAmountFromPrice(
         uint256 amountIn,
         uint256 price,
         uint8 decimalsIn,
@@ -199,34 +199,6 @@ library PoolLogicLib {
 
         // Scale back to target decimals
         return scaledAmountOut.scaleAmountToDecimals(18, decimalsOut);
-    }
-
-    /// @notice Calculate the TokenIn amount given TokenOut amount, price, and decimals.
-    /// @param tokenAmountOut The amount of TokenOut given.
-    /// @param price The price (TokenIn / TokenOut), scaled to 18 decimals.
-    /// @param decimalsIn Decimals of TokenIn.
-    /// @param decimalsOut Decimals of TokenOut.
-    /// @return tokenAmountIn The equivalent amount of TokenIn.
-    function calculateAmountInFromPrice(
-        uint256 tokenAmountOut,
-        uint256 price,
-        uint8 decimalsIn,
-        uint8 decimalsOut
-    )
-        public
-        pure
-        returns (uint256)
-    {
-        require(price > 0, "Price must be greater than 0");
-
-        // Scale tokenAmountB to 18 decimals
-        uint256 scaledAmountOut = tokenAmountOut.scaleAmountToDecimals(decimalsOut, 18);
-
-        // Calculate TokenA amount: tokenAmountIn = scaledAmountOut * price
-        uint256 scaledAmountIn = scaledAmountOut.wmul(price);
-
-        // Scale back to TokenA decimals
-        return scaledAmountIn.scaleAmountToDecimals(18, decimalsIn);
     }
 
     function getOppositePrice(uint256 price) public pure returns (uint256) {

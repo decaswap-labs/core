@@ -1,16 +1,16 @@
-// // SPDX-License-Identifier: MIT
-// pragma solidity ^0.8.13;
+// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.13;
 
 import { Deploys } from "test/shared/Deploys.t.sol";
-import { Handler } from "test/integration/invariants/Handler.t.sol";
+import { SwapLimitHandlerTest } from "test/integration/invariants/swapLimit/SwapLimitHandler.t.sol";
 import { console } from "forge-std/Test.sol";
 
 contract SwapBalanceAndReservesInvariantsTest is Deploys {
-    Handler public handler;
+    SwapLimitHandlerTest public handler;
 
     function setUp() public virtual override {
         super.setUp();
-        handler = new Handler(router, tokenA, tokenB, owner);
+        handler = new SwapLimitHandlerTest(router, tokenA, tokenB, owner);
         targetContract(address(handler));
     }
 
