@@ -30,7 +30,6 @@ Thumbs.db
 # Foundry-specific files
 out/
 cache/
-lib/
 artifacts/
 
 # Solidity compiler artifacts
