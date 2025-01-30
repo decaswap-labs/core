@@ -38,10 +38,10 @@ interface IPoolActions {
     function dequeueGlobalPoolWithdrawStream(bytes32 pairId, uint256 index) external;
     // updateReservesParams encoding format => (bool aToB, address tokenA, address tokenB, uint256 reserveA_A, uint256
     // reserveD_A,uint256 reserveA_B, uint256 reserveD_B)
-    function updateReserves(bytes memory updateReservesParams) external;
+    function updateReservesOfTwoPool(bytes memory updateReservesParams) external;
     // updateReservesParams encoding format => (address tokenA, address tokenB, uint256 reserveA_A, uint256 reserveA_B,
     // uint256 changeInD)
-    function updateReservesWhenStreamingLiq(bytes memory updatedReservesParams) external;
+    function updateReservesOfOnePool(bytes memory updatedReservesParams) external;
     // updatedStreamData encoding format => (bytes32 pairId, uint256 amountAToDeduct, uint256 amountBToDeduct, uint256
     // poolAStreamsRemaining,uint256 poolBStreamsRemaining, uint dAmountOut)
     function updateStreamQueueLiqStream(bytes memory updatedStreamData) external;
@@ -85,4 +85,8 @@ interface IPoolActions {
     function updateReservesRemoveLiqStream(bytes memory updatedReservesAndRemoveLiqData) external;
 
     function updateIsValidCaller(address caller, bool isValid) external;
+
+    function getNextAddLiquidityId() external returns (uint256);
+    function getNextRemoveLiquidityId() external returns (uint256);
+    function getNextDPoolId() external returns (uint256);
 }

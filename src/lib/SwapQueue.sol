@@ -19,13 +19,9 @@ struct Swap {
 }
 /* $10, we will iterate over all the swaps <=$10, n=50, 50 streams */
 
-struct LiquidityStream {
+struct AddLiquidityEntry {
+    uint256 id;
     address user;
-    StreamDetails poolAStream;
-    StreamDetails poolBStream;
-}
-
-struct StreamDetails {
     address token;
     uint256 amount;
     uint256 streamCount;
@@ -33,16 +29,30 @@ struct StreamDetails {
     uint256 swapPerStream;
     uint256 swapAmountRemaining;
     uint256 dustTokenAmount;
+    // StreamDetails poolAStream;
+    // StreamDetails poolBStream;
 }
 
-struct RemoveLiquidityStream {
+// struct StreamDetails {
+//     address token;
+//     uint256 amount;
+//     uint256 streamCount;
+//     uint256 streamsRemaining;
+//     uint256 swapPerStream;
+//     uint256 swapAmountRemaining;
+//     uint256 dustTokenAmount;
+// }
+
+struct RemoveLiquidityEntry {
+    uint256 id;
     address user;
     uint256 lpAmount;
-    uint256 streamCountTotal;
+    uint256 streamCount;
     uint256 streamCountRemaining;
-    uint256 conversionPerStream;
+    uint256 swapPerStream;
     uint256 tokenAmountOut;
-    uint256 conversionRemaining;
+    uint256 swapAmountRemaining;
+    uint256 dustLpUnits;
 }
 
 struct PoolSwapData {
@@ -51,6 +61,7 @@ struct PoolSwapData {
 }
 
 struct GlobalPoolStream {
+    uint256 globalPoolStreamId;
     address user;
     address tokenIn;
     uint256 tokenAmount;

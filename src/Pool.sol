@@ -93,6 +93,10 @@ contract Pool is IPool, Ownable {
     address[] public poolAddress;
 
     uint256 public SWAP_IDS = 0;
+    uint256 public ADD_LIQUIDITY_IDS = 0;
+    uint256 public REMOVE_LIQUIDITY_IDS = 0;
+    uint256 public D_POOL_IDS = 0;
+    // uint256 public D_POOL_WITHDRAW_IDS = 0;
 
     // modifier onlyRouter() {
     //     if (msg.sender != ROUTER_ADDRESS) revert NotRouter(msg.sender);
@@ -200,10 +204,8 @@ contract Pool is IPool, Ownable {
     }
 
     function enqueueLiquidityStream(bytes32 pairId, LiquidityStream memory liquidityStream) external onlyValidCaller {
-        console.log("enqueueLiquidityStream", "IN HERE");
         mapPairId_streamQueue_liquidityStream[pairId].push(liquidityStream);
         // console.log("pairId", pairId);
-        console.log(mapPairId_streamQueue_liquidityStream[pairId].length);
         // mapPairId_streamQueue_back[pairId]++;
     }
 
@@ -215,10 +217,6 @@ contract Pool is IPool, Ownable {
         onlyValidCaller
     {
         mapToken_removeLiqStreamQueue[token].push(removeLiquidityStream);
-        mapToken_removeLiqQueue_back[token]++;
-        // @note keep this in mind WHEN implementing cancelRemoveLiquidityStreamRequest()
-        // subtracting lp balance straight away to restrict users creating invalid removeLiq requests.
-        userLpUnitInfo[removeLiquidityStream.user][token] -= removeLiquidityStream.lpAmount;
     }
 
     function enqueueGlobalPoolDepositStream(
@@ -281,7 +279,7 @@ contract Pool is IPool, Ownable {
 
     // updateReservesParams encoding format => (bool aToB, address tokenA, address tokenB, uint256 reserveA_A, uint256
     // reserveD_A,uint256 reserveA_B, uint256 reserveD_B)
-    function updateReserves(bytes memory updatedReservesParams) external onlyValidCaller {
+    function updateReservesOfTwoPool(bytes memory updatedReservesParams) external onlyValidCaller {
         (
             bool aToB,
             address tokenA,
@@ -308,22 +306,21 @@ contract Pool is IPool, Ownable {
 
     // updateReservesParams encoding format => (address tokenA, address tokenB, uint256 reserveA_A, uint256 reserveA_B,
     // uint256 changeInD)
-    function updateReservesWhenStreamingLiq(bytes memory updatedReservesParams) external onlyValidCaller {
-        (address tokenA, address tokenB, uint256 reserveA_A, uint256 reserveA_B, uint256 changeInD) =
-            abi.decode(updatedReservesParams, (address, address, uint256, uint256, uint256));
-
-        console.log("tokenA", tokenA);
-        mapToken_reserveA[tokenA] += reserveA_A;
-        console.log("changeInD", mapToken_reserveD[tokenA]);
-        mapToken_reserveD[tokenA] += changeInD;
-        console.log("changeInD", mapToken_reserveD[tokenA]);
-
-        mapToken_reserveA[tokenB] += reserveA_B;
-        mapToken_reserveD[tokenB] -= changeInD;
+    function updateReservesOfOnePool(bytes memory updatedReservesParams) external onlyValidCaller {
+        (address token, uint256 reserveA, uint256 changeInD, bool flag) =
+            abi.decode(updatedReservesParams, (address, uint256, uint256, bool));
+        if (flag) {
+            mapToken_reserveA[token] += reserveA;
+            mapToken_reserveD[token] -= changeInD;
+        } else {
+            mapToken_reserveA[token] -= reserveA;
+            mapToken_reserveD[token] += changeInD;
+        }
     }
 
+    // TODO remove this because updateReservesOfOnePool() is used instead
     function updateReservesGlobalStream(bytes memory updatedReservesParams) external override onlyValidCaller {
-        (address tokenB, uint256 reserveToAdd, uint256 reserveToDeduct, bool flag) =
+        (address token, uint256 reserveToAdd, uint256 reserveToDeduct, bool flag) =
             abi.decode(updatedReservesParams, (address, uint256, uint256, bool));
         if (flag) {
             mapToken_reserveA[tokenB] += reserveToAdd;
@@ -394,11 +391,14 @@ contract Pool is IPool, Ownable {
 
     // updatedLpUnits encoding format => (address token, address user, uint lpUnits)
     function updateUserLpUnits(bytes memory updatedLpUnits) external onlyValidCaller {
-        (address token, address user, uint256 lpUnits) = abi.decode(updatedLpUnits, (address, address, uint256));
-        console.log(userLpUnitInfo[user][token]);
-        userLpUnitInfo[user][token] += lpUnits;
-        mapToken_poolOwnershipUnitsTotal[token] += lpUnits;
-        console.log(userLpUnitInfo[user][token]);
+        (address token, address user, uint256 lpUnits, bool flag) = abi.decode(updatedLpUnits, (address, address, uint256, bool));
+        if(flag) {
+            userLpUnitInfo[user][token] += lpUnits;
+            mapToken_poolOwnershipUnitsTotal[token] += lpUnits;
+        } else {
+            userLpUnitInfo[user][token] -= lpUnits;
+            mapToken_poolOwnershipUnitsTotal[token] -= lpUnits;
+        }
     }
 
     function updateRemoveLiqStream(
@@ -410,7 +410,7 @@ contract Pool is IPool, Ownable {
     {
         (address token, uint256 reservesToRemove, uint256 conversionRemaining, uint256 streamCountRemaining) =
             abi.decode(updatedReservesAndRemoveLiqData, (address, uint256, uint256, uint256));
-        RemoveLiquidityStream storage removeLiqStream = mapToken_removeLiqStreamQueue[token][index];
+        updateReservesRemoveLiqStreamStream storage removeLiqStream = mapToken_removeLiqStreamQueue[token][index];
         removeLiqStream.conversionRemaining = conversionRemaining;
         removeLiqStream.streamCountRemaining = streamCountRemaining;
         removeLiqStream.tokenAmountOut += reservesToRemove;
@@ -426,8 +426,8 @@ contract Pool is IPool, Ownable {
         override
         onlyValidCaller
     {
-        (address token, uint256 reservesToRemove) = abi.decode(updatedReservesAndRemoveLiqData, (address, uint256));
-        mapToken_reserveA[token] -= reservesToRemove;
+        // (address token, uint256 reservesToRemove) = abi.decode(updatedReservesAndRemoveLiqData, (address, uint256));
+        // mapToken_reserveA[token] -= reservesToRemove;
     }
 
     function updatePoolOwnershipUnitsTotalRemoveLiqStream(bytes memory updatedPoolOwnershipUnitsTotalRemoveLiqData)
@@ -435,25 +435,25 @@ contract Pool is IPool, Ownable {
         override
         onlyValidCaller
     {
-        (address token, uint256 lpUnitsToRemove) =
-            abi.decode(updatedPoolOwnershipUnitsTotalRemoveLiqData, (address, uint256));
-        mapToken_poolOwnershipUnitsTotal[token] -= lpUnitsToRemove;
+        // (address token, uint256 lpUnitsToRemove) =
+        //     abi.decode(updatedPoolOwnershipUnitsTotalRemoveLiqData, (address, uint256));
+        // mapToken_poolOwnershipUnitsTotal[token] -= lpUnitsToRemove;
     }
 
-    function updateRemoveLiquidityStream(bytes memory updatedRemoveLiqData) external onlyValidCaller {
-        (address token, uint256 reservesToRemove, uint256 conversionRemaining, uint256 streamCountRemaining) =
-            abi.decode(updatedRemoveLiqData, (address, uint256, uint256, uint256));
-        RemoveLiquidityStream storage removeLiqStream =
-            mapToken_removeLiqStreamQueue[token][mapToken_removeLiqQueue_front[token]];
-        removeLiqStream.conversionRemaining = conversionRemaining;
-        removeLiqStream.streamCountRemaining = streamCountRemaining;
-        removeLiqStream.tokenAmountOut += reservesToRemove;
-        mapToken_reserveA[token] -= reservesToRemove;
-        uint256 lpUnitsToRemove = removeLiqStream.conversionPerStream;
-        mapToken_poolOwnershipUnitsTotal[token] -= lpUnitsToRemove;
-        // @note not doing this here because lpUnits are subtracted when enqueuing user's removeLiq request
-        // userLpUnitInfo[removeLiqStream.user][token] -= lpUnitsToRemove;
-    }
+    // function updateRemoveLiquidityStream(bytes memory updatedRemoveLiqData) external onlyValidCaller {
+    //     (address token, uint256 reservesToRemove, uint256 conversionRemaining, uint256 streamCountRemaining) =
+    //         abi.decode(updatedRemoveLiqData, (address, uint256, uint256, uint256));
+    //     RemoveLiquidityStream storage removeLiqStream =
+    //         mapToken_removeLiqStreamQueue[token][mapToken_removeLiqQueue_front[token]];
+    //     removeLiqStream.conversionRemaining = conversionRemaining;
+    //     removeLiqStream.streamCountRemaining = streamCountRemaining;
+    //     removeLiqStream.tokenAmountOut += reservesToRemove;
+    //     mapToken_reserveA[token] -= reservesToRemove;
+    //     uint256 lpUnitsToRemove = removeLiqStream.conversionPerStream;
+    //     mapToken_poolOwnershipUnitsTotal[token] -= lpUnitsToRemove;
+    //     // @note not doing this here because lpUnits are subtracted when enqueuing user's removeLiq request
+    //     // userLpUnitInfo[removeLiqStream.user][token] -= lpUnitsToRemove;
+    // }
 
     function updateGlobalPoolBalance(bytes memory updatedBalance) external override onlyValidCaller {
         (uint256 changeInD, bool flag) = abi.decode(updatedBalance, (uint256, bool));
@@ -475,7 +475,6 @@ contract Pool is IPool, Ownable {
         onlyValidCaller
     {
         if (isLimitOrder) {
-            console.log("swap.swapID", swap.swapID);
             limitOrderBook[pairId][key].push(swap);
         } else {
             triggerAndMarketOrderBook[pairId][key].push(swap);
@@ -503,10 +502,10 @@ contract Pool is IPool, Ownable {
     // }
 
     // @todo ask if we should sort it here, or pass sorted array from logic and just save
-    function sortPairPendingQueue(bytes32 pairId) external view onlyValidCaller {
-        // Sort the array w.r.t price
-        SwapSorter.quickSort(mapPairId_pairPendingQueue_Swaps[pairId]);
-    }
+    // function sortPairPendingQueue(bytes32 pairId) external view onlyValidCaller {
+    //     // Sort the array w.r.t price
+    //     SwapSorter.quickSort(mapPairId_pairPendingQueue_Swaps[pairId]);
+    // }
 
     function transferTokens(address token, address to, uint256 amount) external onlyValidCaller {
         IERC20(token).safeTransfer(to, amount);
@@ -544,16 +543,11 @@ contract Pool is IPool, Ownable {
     }
 
     function _initPool(address token, uint8 decimals, uint256 initialDToMint) internal {
-        if (mapToken_initialized[token]) revert DuplicatePool();
-
         mapToken_initialized[token] = true;
         mapToken_decimals[token] = decimals;
-        // @todo need confirmation on that. hardcoded?
         mapToken_initialDToMint[token] = initialDToMint;
-
         poolAddress.push(token);
 
-        // emit PoolCreated(token, initialDToMint);
     }
 
     // addLiqParams encoding format => (address token, address user, uint amount, uint256 newLpUnits, uint256 newDUnits,
@@ -565,37 +559,37 @@ contract Pool is IPool, Ownable {
         mapToken_reserveA[token] += amount;
         // mapToken_poolOwnershipUnitsTotal[token] += newLpUnits;
         // @note may or may not be needed here.
-        mapToken_poolFeeCollected[token] += poolFeeCollected;
+        // mapToken_poolFeeCollected[token] += poolFeeCollected;
 
         // userLpUnitInfo[user][token] += newLpUnits;
 
         // emit LiquidityAdded(user, token, amount, newLpUnits, newDUnits);
     }
 
-    // removeLiqParams encoding format => (address token, address user, uint lpUnits, uint256 assetToTransfer, uint256
-    // dAmountToDeduct, uint256 poolFeeCollected)
-    function _removeLiquidity(bytes memory removeLiqParams) internal {
-        (
-            address token,
-            address user,
-            uint256 lpUnits,
-            uint256 assetToTransfer,
-            uint256 dAmountToDeduct,
-            uint256 poolFeeCollected
-        ) = abi.decode(removeLiqParams, (address, address, uint256, uint256, uint256, uint256));
-        // deduct lp from user
-        userLpUnitInfo[user][token] -= lpUnits;
+    // // removeLiqParams encoding format => (address token, address user, uint lpUnits, uint256 assetToTransfer, uint256
+    // // dAmountToDeduct, uint256 poolFeeCollected)
+    // function _removeLiquidity(bytes memory removeLiqParams) internal {
+    //     (
+    //         address token,
+    //         address user,
+    //         uint256 lpUnits,
+    //         uint256 assetToTransfer,
+    //         uint256 dAmountToDeduct,
+    //         uint256 poolFeeCollected
+    //     ) = abi.decode(removeLiqParams, (address, address, uint256, uint256, uint256, uint256));
+    //     // deduct lp from user
+    //     userLpUnitInfo[user][token] -= lpUnits;
 
-        // updating pool state
-        mapToken_reserveA[token] -= assetToTransfer;
-        mapToken_reserveD[token] -= dAmountToDeduct;
-        mapToken_poolOwnershipUnitsTotal[token] -= lpUnits;
-        mapToken_poolFeeCollected[token] += poolFeeCollected;
+    //     // updating pool state
+    //     mapToken_reserveA[token] -= assetToTransfer;
+    //     mapToken_reserveD[token] -= dAmountToDeduct;
+    //     mapToken_poolOwnershipUnitsTotal[token] -= lpUnits;
+    //     mapToken_poolFeeCollected[token] += poolFeeCollected;
 
-        IERC20(token).safeTransfer(user, assetToTransfer);
+    //     IERC20(token).safeTransfer(user, assetToTransfer);
 
-        // emit LiquidityRemoved(user, token, lpUnits, assetToTransfer, dAmountToDeduct);
-    }
+    //     // emit LiquidityRemoved(user, token, lpUnits, assetToTransfer, dAmountToDeduct);
+    // }
 
     function poolInfo(address tokenAddress)
         external
@@ -686,6 +680,18 @@ contract Pool is IPool, Ownable {
 
     function getNextSwapId() external override returns (uint256) {
         return SWAP_IDS++;
+    }
+
+    function getNextAddLiquidityId() external override returns (uint256) {
+        return ADD_LIQUIDITY_IDS++;
+    }
+
+    function getNextRemoveLiquidityId() external override returns (uint256) {
+        return REMOVE_LIQUIDITY_IDS++;
+    }
+
+    function getNextDPoolId() external override returns (uint256) {
+        return D_POOL_IDS++;
     }
 
     function setHighestPriceMarker(bytes32 pairId, uint256 value) external override onlyValidCaller {

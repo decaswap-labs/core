@@ -133,18 +133,18 @@ contract Router is Ownable, ReentrancyGuard, IRouter {
     function removeLiquidity(address token, uint256 lpUnits) external override nonReentrant {
         if (!poolExist(token)) revert InvalidPool();
         if (lpUnits == 0 || lpUnits > poolStates.userLpUnitInfo(msg.sender, token)) revert InvalidAmount();
-        (uint256 reserveD,,,,,, uint8 decimals) = poolStates.poolInfo(address(token));
-        uint256 streamCount = PoolLogicLib.calculateStreamCount(
-            lpUnits,
-            poolStates.globalSlippage(),
-            reserveD,
-            IPoolLogic(poolStates.POOL_LOGIC()).STREAM_COUNT_PRECISION(),
-            decimals
-        );
-        if (lpUnits % streamCount != 0) {
-            uint256 swapPerStream = lpUnits / streamCount;
-            lpUnits = streamCount * swapPerStream;
-        }
+        // (uint256 reserveD,,,,,, uint8 decimals) = poolStates.poolInfo(address(token));
+        // uint256 streamCount = PoolLogicLib.calculateStreamCount(
+        //     lpUnits,
+        //     poolStates.globalSlippage(),
+        //     reserveD,
+        //     IPoolLogic(poolStates.POOL_LOGIC()).STREAM_COUNT_PRECISION(),
+        //     decimals
+        // );
+        // if (lpUnits % streamCount != 0) {
+        //     uint256 swapPerStream = lpUnits / streamCount;
+        //     lpUnits = streamCount * swapPerStream;
+        // }
         IPoolLogic(poolStates.POOL_LOGIC()).removeLiquidity(token, msg.sender, lpUnits);
 
         emit LiquidityRemoved(msg.sender, token, lpUnits);
